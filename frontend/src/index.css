@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f8fafc; /* brand-50 */
+  color: #0f172a; /* brand-900 */
+}
+
+@layer base {
+  button:not(:disabled) {
+    transition: box-shadow 0.3s ease;
+  }
+  button:not(:disabled):hover {
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  }
+}
+
+/* Custom Sleek Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Glassmorphism utilities */
+.glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printable-ticket, #printable-ticket * {
+    visibility: visible;
+  }
+  #printable-ticket {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 300px; /* Ticket width */
+    margin: 0;
+    padding: 10px;
+    box-shadow: none !important;
+  }
+  @page {
+    margin: 0;
+  }
+}

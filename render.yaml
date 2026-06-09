@@ -1,0 +1,32 @@
+databases:
+  - name: tienda-chiluda-db
+    plan: free
+
+services:
+  # Servicio Web para el Backend (FastAPI)
+  - type: web
+    name: tienda-chiluda-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    rootDir: backend
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: tienda-chiluda-db
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.10.0
+
+  # Sitio Estático para el Frontend (React + Vite)
+  - type: static
+    name: tienda-chiluda-frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    rootDir: frontend
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: tienda-chiluda-backend
+          property: url

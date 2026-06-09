@@ -1,8 +1,13 @@
 import axios from 'axios';
 
 let baseApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
-if (import.meta.env.VITE_API_URL && !baseApiUrl.endsWith('/api')) {
-    baseApiUrl = baseApiUrl.endsWith('/') ? `${baseApiUrl}api` : `${baseApiUrl}/api`;
+if (import.meta.env.VITE_API_URL) {
+    if (!baseApiUrl.startsWith('http://') && !baseApiUrl.startsWith('https://')) {
+        baseApiUrl = `https://${baseApiUrl}`;
+    }
+    if (!baseApiUrl.endsWith('/api')) {
+        baseApiUrl = baseApiUrl.endsWith('/') ? `${baseApiUrl}api` : `${baseApiUrl}/api`;
+    }
 }
 export const API_URL = baseApiUrl;
 

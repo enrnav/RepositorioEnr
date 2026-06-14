@@ -44,22 +44,41 @@ body {
 }
 
 @media print {
+  /* Ocultar elementos de navegación y de control del flujo del DOM */
+  header, aside, button, .print-hidden {
+    display: none !important;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   body * {
     visibility: hidden;
   }
+
   #printable-ticket, #printable-ticket * {
     visibility: visible;
   }
+
   #printable-ticket {
     position: absolute;
     left: 0;
     top: 0;
-    width: 300px; /* Ticket width */
-    margin: 0;
-    padding: 10px;
+    width: 100% !important;
+    max-width: 300px !important;
+    margin: 0 !important;
+    padding: 12px !important;
     box-shadow: none !important;
+    background: white !important;
   }
+
   @page {
     margin: 0;
+    size: auto;
   }
 }
+

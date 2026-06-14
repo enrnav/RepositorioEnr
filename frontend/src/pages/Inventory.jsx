@@ -181,7 +181,7 @@ const Inventory = () => {
           const dateStr = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
 
           const aoa = [
-            ['🌶️ LA CHILUDA EN PAPAS'], 
+            ['ABARROTES ED & E'], 
             ['Reporte de Ventas: ' + periodText],
             ['Fecha de Emisión: ' + dateStr],
             [], 
@@ -202,7 +202,7 @@ const Inventory = () => {
 
           // Aplicar estilos de diseño
           worksheet['A1'].s = {
-              font: { bold: true, sz: 16, color: { rgb: "FFEF4444" } }, // Rojo Chiluda
+              font: { bold: true, sz: 16, color: { rgb: "FFEF4444" } }, 
               alignment: { horizontal: "center", vertical: "center" }
           };
           worksheet['A2'].s = { font: { bold: true, sz: 12 }, alignment: { horizontal: "center" } };
@@ -214,8 +214,8 @@ const Inventory = () => {
               const cellRef = XLSX.utils.encode_cell({ c: c, r: 4 });
               if (!worksheet[cellRef]) continue;
               worksheet[cellRef].s = {
-                  fill: { fgColor: { rgb: "FFEF4444" } }, // Rojo fondo
-                  font: { bold: true, color: { rgb: "FFFFFFFF" } }, // Blanco texto
+                  fill: { fgColor: { rgb: "FFEF4444" } }, 
+                  font: { bold: true, color: { rgb: "FFFFFFFF" } }, 
                   alignment: { horizontal: "center", vertical: "center" },
                   border: { top: { style: "thin" }, bottom: { style: "medium" } }
               };
@@ -230,8 +230,8 @@ const Inventory = () => {
                   if (r === range.e.r) {
                       // Estilo para la última fila (Total General)
                       worksheet[cellRef].s = {
-                          font: { bold: true, color: { rgb: "FF991B1B" } }, // Red-800
-                          fill: { fgColor: { rgb: "FFFEE2E2" } }, // Red-50
+                          font: { bold: true, color: { rgb: "FF991B1B" } }, 
+                          fill: { fgColor: { rgb: "FFFEE2E2" } }, 
                           border: { top: { style: "medium" }, bottom: { style: "medium" } }
                       };
                   } else {
@@ -297,29 +297,24 @@ const Inventory = () => {
       } else if (exportFormat === 'pdf') {
           const doc = new jsPDF();
           
-          // Generar un logo de forma programática usando Canvas para embeberlo en el PDF
           const canvas = document.createElement('canvas');
-          canvas.width = 300;
+          canvas.width = 350;
           canvas.height = 80;
           const ctx = canvas.getContext('2d');
-          
-          // Icono de chile
-          ctx.font = '40px Arial';
-          ctx.fillText('🌶️', 10, 52);
-
+           
           // Texto de la empresa
-          ctx.fillStyle = '#1f2937';
-          ctx.font = 'bold 32px Arial';
-          ctx.fillText('LA CHILUDA', 70, 40);
-          
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 28px Arial';
+          ctx.fillText('ABARROTES ED & E', 10, 40);
+           
           ctx.fillStyle = '#ef4444';
-          ctx.font = 'bold 16px Arial';
-          ctx.fillText('EN PAPAS', 70, 62);
+          ctx.font = 'bold 14px Arial';
+          ctx.fillText('TU MERCADO DE CONFIANZA', 10, 62);
 
           const logoData = canvas.toDataURL('image/png');
           
           // Insertar logo
-          doc.addImage(logoData, 'PNG', 14, 10, 75, 20);
+          doc.addImage(logoData, 'PNG', 14, 10, 87.5, 20);
           
           // Título y Fecha
           doc.setFontSize(22);
@@ -353,8 +348,8 @@ const Inventory = () => {
               didParseCell: function (data) {
                   if (data.section === 'body' && data.row.index === body.length - 1) {
                       data.cell.styles.fontStyle = 'bold';
-                      data.cell.styles.textColor = [153, 27, 27]; // Red-800
-                      data.cell.styles.fillColor = [254, 226, 226]; // Red-50
+                      data.cell.styles.textColor = [153, 27, 27]; 
+                      data.cell.styles.fillColor = [254, 226, 226]; 
                   }
               }
           });
@@ -390,7 +385,7 @@ const Inventory = () => {
       if (stockExportFormat === 'xlsx') {
           const workbook = XLSX.utils.book_new();
           const aoa = [
-            ['🌶️ LA CHILUDA EN PAPAS'], 
+            ['ABARROTES ED & E'], 
             ['Reporte de Inventario Actual'],
             ['Fecha de Emisión: ' + dateStr],
             [], 
@@ -441,14 +436,13 @@ const Inventory = () => {
       } else if (stockExportFormat === 'pdf') {
           const doc = new jsPDF();
           const canvas = document.createElement('canvas');
-          canvas.width = 300; canvas.height = 80;
+          canvas.width = 350; canvas.height = 80;
           const ctx = canvas.getContext('2d');
-          ctx.font = '40px Arial'; ctx.fillText('🌶️', 10, 52);
-          ctx.fillStyle = '#1f2937'; ctx.font = 'bold 32px Arial'; ctx.fillText('LA CHILUDA', 70, 40);
-          ctx.fillStyle = '#ef4444'; ctx.font = 'bold 16px Arial'; ctx.fillText('EN PAPAS', 70, 62);
+          ctx.fillStyle = '#0f172a'; ctx.font = 'bold 28px Arial'; ctx.fillText('ABARROTES ED & E', 10, 40);
+          ctx.fillStyle = '#ef4444'; ctx.font = 'bold 14px Arial'; ctx.fillText('TU MERCADO DE CONFIANZA', 10, 62);
           const logoData = canvas.toDataURL('image/png');
           
-          doc.addImage(logoData, 'PNG', 14, 10, 75, 20);
+          doc.addImage(logoData, 'PNG', 14, 10, 87.5, 20);
           doc.setFontSize(22); doc.setTextColor(31, 41, 55); doc.text('Inventario Actual', 14, 45);
           doc.setFontSize(11); doc.setTextColor(107, 114, 128); doc.text(`Fecha de Emisión: ${dateStr}`, 14, 53);
           
@@ -465,7 +459,7 @@ const Inventory = () => {
           });
           doc.save(filename);
       } else if (stockExportFormat === 'sql') {
-          let sqlOutput = "-- Reporte de Inventario La Chiluda\n";
+          let sqlOutput = "-- Reporte de Inventario Abarrotes ED & E\n";
           sqlOutput += `-- Fecha de Emisión: ${dateStr}\n\n`;
           sqlOutput += "CREATE TABLE IF NOT EXISTS products (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(255),\n  price DECIMAL(10,2),\n  quantity INTEGER\n);\n\n";
           
@@ -751,7 +745,7 @@ const Inventory = () => {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Periodo del Reporte</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {['daily', 'weekly', 'monthly'].map(p => (
                     <button
                       key={p}
@@ -770,7 +764,7 @@ const Inventory = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Formato de Archivo</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {['xlsx', 'csv', 'txt', 'json', 'xml', 'pdf'].map(f => (
                     <button
                       key={f}
@@ -819,7 +813,7 @@ const Inventory = () => {
             <div className="p-6 space-y-5">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Formato de Archivo</label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {['xlsx', 'pdf', 'sql'].map(f => (
                     <button
                       key={f}

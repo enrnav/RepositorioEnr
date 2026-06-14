@@ -41,12 +41,10 @@ const Layout = () => {
   if (!isAdmin) {
     return (
       <div className="flex flex-col h-screen bg-brand-50 font-sans selection:bg-chiluda-lightred selection:text-chiluda-red">
-        <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-8 z-10 shadow-sm border-b border-gray-100">
-          <div className="flex items-center space-x-2">
-            <span className="text-3xl drop-shadow-sm animate-fade-in" role="img" aria-label="chile">🌶️</span>
-            <h1 className="text-xl font-extrabold text-brand-900 tracking-tight leading-tight">
-              LA CHILUDA <br /> <span className="text-sm font-bold text-chiluda-red tracking-widest">EN PAPAS</span>
-            </h1>
+        <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100">
+          <div className="flex items-center space-x-3 shrink-0 select-none">
+            <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-12 w-auto object-contain animate-fade-in" />
+            <span className="text-xl font-black text-brand-900 tracking-tight">ABARROTES <span className="text-chiluda-red">ED & E</span></span>
           </div>
           <Link
             to="/login"
@@ -54,10 +52,10 @@ const Layout = () => {
               sessionStorage.removeItem('user');
               sessionStorage.removeItem('token');
             }}
-            className="flex items-center space-x-2 px-3 py-2 sm:px-5 sm:py-2.5 text-gray-500 hover:bg-red-50 hover:text-chiluda-red rounded-full transition-all duration-200"
+            className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-5 sm:py-2.5 text-gray-500 hover:bg-red-50 hover:text-chiluda-red rounded-full transition-all duration-200 shrink-0"
           >
-            <LogOut size={20} />
-            <span className="hidden sm:inline font-semibold text-sm">Cerrar Sesión</span>
+            <LogOut size={20} className="shrink-0" />
+            <span className="font-semibold text-xs sm:text-sm whitespace-nowrap">Cerrar Sesión</span>
           </Link>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative z-0">
@@ -81,12 +79,20 @@ const Layout = () => {
       
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 w-72 bg-white/80 backdrop-blur-xl shadow-[4px_0_24px_rgba(0,0,0,0.02)] flex flex-col border-r border-gray-100 z-50 transition-transform duration-300`}>
-        <div className="h-24 flex flex-col items-center justify-center border-b border-gray-100/50 p-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-3xl drop-shadow-sm animate-fade-in" role="img" aria-label="chile">🌶️</span>
-            <h1 className="text-xl font-extrabold text-brand-900 tracking-tight leading-tight">
-              LA CHILUDA <br /> <span className="text-sm font-bold text-chiluda-red tracking-widest">EN PAPAS</span>
-            </h1>
+        {/* Mobile Sidebar Close Button */}
+        <button 
+          onClick={() => setIsSidebarOpen(false)}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-chiluda-red hover:bg-brand-50 rounded-xl transition-all duration-200 lg:hidden"
+          aria-label="Cerrar menú"
+        >
+          <X size={20} />
+        </button>
+
+        <div className="h-24 flex items-center space-x-3 justify-center border-b border-gray-100/50 p-4 select-none">
+          <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-20 w-auto object-contain animate-fade-in" />
+          <div className="flex flex-col items-center text-center">
+            <span className="text-lg font-black text-brand-900 tracking-tight leading-none">ABARROTES</span>
+            <span className="text-xs font-bold text-chiluda-red tracking-wider mt-1.5 uppercase leading-none">ED & E</span>
           </div>
         </div>
         
@@ -139,9 +145,9 @@ const Layout = () => {
             >
               <Menu size={24} />
             </button>
-            <div className="flex items-center space-x-1.5 lg:hidden select-none">
-              <span className="text-2xl" role="img" aria-label="chile">🌶️</span>
-              <span className="font-extrabold text-brand-900 text-sm tracking-tight leading-none">LA CHILUDA</span>
+            <div className="flex items-center space-x-2 lg:hidden select-none">
+              <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-8 w-auto object-contain animate-fade-in" />
+              <span className="font-extrabold text-brand-900 text-sm tracking-tight leading-none">ABARROTES <span className="text-chiluda-red">ED & E</span></span>
             </div>
           </div>
           

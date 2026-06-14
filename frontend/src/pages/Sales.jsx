@@ -215,11 +215,11 @@ const Sales = () => {
               style={{ animationDelay: `${i * 0.05}s` }}
             >
               <div className="p-3 sm:p-5 flex-1 relative">
-                <h3 className="text-sm sm:text-lg font-bold text-brand-900 line-clamp-2 min-h-[2.5rem] sm:min-h-[3.5rem] pr-1">{item.name}</h3>
-                <p className="text-xl sm:text-3xl font-extrabold text-chiluda-red mt-1 sm:mt-3 tracking-tight">${item.price.toFixed(2)}</p>
+                <h3 className="text-xs sm:text-lg font-bold text-brand-900 line-clamp-2 min-h-[2rem] sm:min-h-[3.5rem] pr-1">{item.name}</h3>
+                <p className="text-base sm:text-3xl font-extrabold text-chiluda-red mt-1 sm:mt-3 tracking-tight">${item.price.toFixed(2)}</p>
                 
                 <div className="mt-2 sm:mt-4 flex items-center justify-between text-sm">
-                  <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-medium text-[10px] sm:text-xs ${
+                  <span className={`px-1.5 py-0.5 sm:px-2.5 sm:py-1 rounded-full font-medium text-[9px] sm:text-xs ${
                     item.quantity > 10 ? 'bg-green-100 text-green-800' : item.quantity > 0 ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                   }`}>
                     Stock: {item.quantity}
@@ -230,7 +230,7 @@ const Sales = () => {
                 <button 
                   onClick={(e) => { e.stopPropagation(); addToCart(item); }}
                   disabled={item.quantity <= 0}
-                  className={`w-full py-1.5 sm:py-2.5 rounded-lg font-bold text-white transition-colors flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-base ${
+                  className={`w-full py-1.5 sm:py-2.5 rounded-lg font-bold text-white transition-colors flex items-center justify-center space-x-1 sm:space-x-2 text-[10px] sm:text-base ${
                     item.quantity > 0 
                       ? 'bg-chiluda-red hover:bg-chiluda-darkred active:scale-[0.98]' 
                       : 'bg-gray-300 cursor-not-allowed'
@@ -466,8 +466,10 @@ const Sales = () => {
             </div>
             
             <div className="p-6 overflow-y-auto flex-1 font-mono text-sm text-gray-800 print:overflow-visible">
-              <div className="text-center mb-6">
-                <h2 className="text-xl font-bold uppercase tracking-widest text-brand-900">La Chiluda<br/><span className="text-sm">En Papas</span></h2>
+              <div className="text-center mb-6 flex flex-col items-center">
+                <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain mb-2" />
+                <h2 className="text-base font-bold uppercase tracking-wider text-brand-900">Abarrotes ED & E</h2>
+                <p className="text-[10px] text-gray-500 font-semibold tracking-wide uppercase">Tu mercado de confianza</p>
                 <p className="text-xs text-gray-500 mt-2">{lastSaleData.date.toLocaleString()}</p>
                 <p className="text-xs text-gray-500 font-bold">Ticket #{lastSaleData.saleId}</p>
               </div>
@@ -509,7 +511,7 @@ const Sales = () => {
               </div>
 
               <div className="flex flex-col items-center mt-8">
-                <QRCodeSVG value={`https://lachiluda.com/ticket/${lastSaleData.saleId}`} size={140} level="L" />
+                <QRCodeSVG value={`https://abarrotesedye.com/ticket/${lastSaleData.saleId}`} size={140} level="L" />
                 <p className="text-center text-[10px] text-gray-400 mt-3 max-w-[200px]">Escanea para ver tu ticket digital</p>
                 <p className="text-center font-bold text-sm text-gray-800 mt-4">¡Gracias por su compra!</p>
               </div>

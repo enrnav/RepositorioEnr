@@ -10,6 +10,16 @@ const Login = () => {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
 
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return 0;
+    let score = 0;
+    if (pwd.length >= 12) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+    return score;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -39,6 +49,32 @@ const Login = () => {
         setError('Error de conexión con el servidor');
       }
     } else {
+      // Validar Nombre Completo (mínimo 3 caracteres, solo letras, espacios y acentos)
+      const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.']{3,}$/;
+      if (!nameRegex.test(fullName)) {
+        setError("El nombre completo debe tener al menos 3 caracteres y contener únicamente letras y espacios (sin números o símbolos).");
+        return;
+      }
+
+      // Validar Usuario (mínimo 3 caracteres, letras, números y guiones bajos)
+      const userRegex = /^[a-zA-Z0-9_]{3,}$/;
+      if (!userRegex.test(username)) {
+        setError("El usuario debe tener al menos 3 caracteres y contener únicamente letras, números o guiones bajos (sin espacios).");
+        return;
+      }
+
+      // Validar fortaleza de contraseña antes de enviar
+      const strength = getPasswordStrength(password);
+      if (strength < 4) {
+        let missing = [];
+        if (password.length < 12) missing.push("mínimo 12 caracteres");
+        if (!/[A-Z]/.test(password)) missing.push("al menos una mayúscula");
+        if (!/[0-9]/.test(password)) missing.push("al menos un número");
+        if (!/[^A-Za-z0-9]/.test(password)) missing.push("al menos un carácter especial");
+        setError("La contraseña no cumple con los requisitos: falta " + missing.join(", ") + ".");
+        return;
+      }
+
       try {
         const response = await fetch(`${API_URL}/auth/register`, {
           method: 'POST',
@@ -51,6 +87,7 @@ const Login = () => {
           setError('Registro exitoso. Ahora puedes iniciar sesión.');
           setFullName('');
           setPassword('');
+          setUsername('');
         } else {
           const data = await response.json();
           setError(data.detail || 'Error al registrarse');
@@ -70,12 +107,10 @@ const Login = () => {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-fade-in">
         <div className="flex justify-center mb-6">
-          <div className="bg-gradient-to-tr from-chiluda-darkred to-chiluda-red p-4 rounded-2xl flex items-center justify-center w-24 h-24 shadow-float hover:scale-105 transition-transform duration-300">
-            <span className="text-6xl drop-shadow-md animate-slide-up" role="img" aria-label="chile">🌶️</span>
-          </div>
+          <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-32 w-auto object-contain hover:scale-105 transition-transform duration-300" />
         </div>
         <h2 className="mt-2 text-center text-4xl font-extrabold text-brand-900 tracking-tight">
-          La Chiluda en Papas
+          Abarrotes ED & E
         </h2>
         <p className="mt-3 text-center text-sm font-medium text-gray-500">
           {isLogin ? 'Ingresa a tu cuenta' : 'Crea una cuenta'}
@@ -119,7 +154,7 @@ const Login = () => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="appearance-none block w-full px-4 py-3 bg-brand-50/50 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red focus:border-transparent focus:bg-white transition-all duration-200 sm:text-sm font-medium"
-                  placeholder="admin_chiluda"
+                  placeholder="admin_abarrotes"
                 />
               </div>
             </div>
@@ -138,6 +173,44 @@ const Login = () => {
                   placeholder="••••••••"
                 />
               </div>
+              
+              {!isLogin && password && (
+                <div className="mt-2 space-y-1 animate-fade-in">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-medium">Fortaleza de contraseña:</span>
+                    <span className={`font-bold ${
+                      getPasswordStrength(password) === 1 ? 'text-red-500' :
+                      getPasswordStrength(password) === 2 ? 'text-orange-500' :
+                      getPasswordStrength(password) === 3 ? 'text-amber-500' :
+                      getPasswordStrength(password) === 4 ? 'text-green-600' :
+                      'text-gray-400'
+                    }`}>
+                      {getPasswordStrength(password) === 0 && 'Ninguna'}
+                      {getPasswordStrength(password) === 1 && 'Muy débil'}
+                      {getPasswordStrength(password) === 2 && 'Regular'}
+                      {getPasswordStrength(password) === 3 && 'Buena'}
+                      {getPasswordStrength(password) === 4 && 'Fuerte'}
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-300 ${
+                        getPasswordStrength(password) === 1 ? 'bg-red-500 w-1/4' :
+                        getPasswordStrength(password) === 2 ? 'bg-orange-500 w-2/4' :
+                        getPasswordStrength(password) === 3 ? 'bg-amber-400 w-3/4' :
+                        getPasswordStrength(password) === 4 ? 'bg-green-500 w-full' :
+                        'w-0'
+                      }`}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {!isLogin && (
+                <p className="text-[11px] text-gray-500 leading-normal mt-2">
+                  * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
+                </p>
+              )}
             </div>
 
             <div className="pt-2">

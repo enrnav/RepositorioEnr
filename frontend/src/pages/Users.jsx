@@ -17,6 +17,16 @@ const Users = () => {
   const [success, setSuccess] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return 0;
+    let score = 0;
+    if (pwd.length >= 12) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+    return score;
+  };
+
   const loadUsers = async () => {
     try {
       const response = await fetch(`${API_URL}/auth/users`, {
@@ -93,6 +103,38 @@ const Users = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+
+    // Validar Nombre Completo (mínimo 3 caracteres, solo letras, espacios y acentos)
+    const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.']{3,}$/;
+    if (!nameRegex.test(formData.full_name)) {
+      setError("El nombre completo debe tener al menos 3 caracteres y contener únicamente letras y espacios (sin números o símbolos).");
+      return;
+    }
+
+    // Validar Usuario (mínimo 3 caracteres, letras, números y guiones bajos)
+    const userRegex = /^[a-zA-Z0-9_]{3,}$/;
+    if (!userRegex.test(formData.username)) {
+      setError("El usuario debe tener al menos 3 caracteres y contener únicamente letras, números o guiones bajos (sin espacios).");
+      return;
+    }
+
+    // Validar fortaleza de contraseña antes de enviar
+    const password = formData.password;
+    if (!password) {
+      setError("La contraseña no puede estar vacía.");
+      return;
+    }
+
+    const strength = getPasswordStrength(password);
+    if (strength < 4) {
+      let missing = [];
+      if (password.length < 12) missing.push("mínimo 12 caracteres");
+      if (!/[A-Z]/.test(password)) missing.push("al menos una mayúscula");
+      if (!/[0-9]/.test(password)) missing.push("al menos un número");
+      if (!/[^A-Za-z0-9]/.test(password)) missing.push("al menos un carácter especial");
+      setError("La contraseña no cumple con los requisitos: falta " + missing.join(", ") + ".");
+      return;
+    }
 
     try {
       const url = editUser 
@@ -216,16 +258,52 @@ const Users = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contraseña {editUser && <span className="text-xs text-gray-400 font-normal">(Opcional)</span>}
+                  Contraseña
                 </label>
                 <input
                   type="password"
-                  required={!editUser}
+                  required
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
                   placeholder="••••••••"
                 />
+                
+                {formData.password && (
+                  <div className="mt-2 space-y-1 animate-fade-in">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-500 font-medium">Fortaleza de contraseña:</span>
+                      <span className={`font-bold ${
+                        getPasswordStrength(formData.password) === 1 ? 'text-red-500' :
+                        getPasswordStrength(formData.password) === 2 ? 'text-orange-500' :
+                        getPasswordStrength(formData.password) === 3 ? 'text-amber-500' :
+                        getPasswordStrength(formData.password) === 4 ? 'text-green-600' :
+                        'text-gray-400'
+                      }`}>
+                        {getPasswordStrength(formData.password) === 0 && 'Ninguna'}
+                        {getPasswordStrength(formData.password) === 1 && 'Muy débil'}
+                        {getPasswordStrength(formData.password) === 2 && 'Regular'}
+                        {getPasswordStrength(formData.password) === 3 && 'Buena'}
+                        {getPasswordStrength(formData.password) === 4 && 'Fuerte'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-300 ${
+                          getPasswordStrength(formData.password) === 1 ? 'bg-red-500 w-1/4' :
+                          getPasswordStrength(formData.password) === 2 ? 'bg-orange-500 w-2/4' :
+                          getPasswordStrength(formData.password) === 3 ? 'bg-amber-400 w-3/4' :
+                          getPasswordStrength(formData.password) === 4 ? 'bg-green-500 w-full' :
+                          'w-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-[11px] text-gray-500 leading-normal mt-2">
+                  * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
@@ -262,9 +340,9 @@ const Users = () => {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
+              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
             </tr>
@@ -272,11 +350,12 @@ const Users = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {users.map((u) => (
               <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{u.id}</td>
+                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{u.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{u.full_name}</div>
+                  <div className="text-sm font-semibold text-gray-900">{u.full_name}</div>
+                  <div className="text-xs text-gray-400 sm:hidden mt-0.5">@{u.username}</div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.username}</td>
+                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.username}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2.5 py-1 inline-flex items-center text-xs font-semibold rounded-full ${
                     u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'

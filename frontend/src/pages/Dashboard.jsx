@@ -95,7 +95,7 @@ const Dashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-soft border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-glass">
+        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-soft border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-glass min-w-0">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold text-brand-900">Stock vs Ventas</h3>
             <span className="px-4 py-1.5 bg-red-50 text-chiluda-red text-xs font-bold uppercase tracking-wider rounded-full">Top 5</span>
@@ -128,7 +128,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-soft border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-glass">
+        <div className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-soft border border-gray-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-glass min-w-0">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-bold text-brand-900">Proporción General</h3>
             <span className="px-4 py-1.5 bg-gray-50 text-gray-500 text-xs font-bold uppercase tracking-wider rounded-full">Global</span>

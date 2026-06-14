@@ -160,25 +160,34 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current_user:
 
 @router.post("/inventory/{product_id}/sell", response_model=schemas.ProductResponse)
 def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    from sqlalchemy import text
+    try:
+        db.execute(
+            text("SELECT vender_producto(:product_id, :quantity, :created_at)"),
+            {
+                "product_id": product_id,
+                "quantity": sell_data.quantity,
+                "created_at": datetime.utcnow().isoformat()
+            }
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        # Parse error message to show a clean response
+        error_msg = str(e)
+        if hasattr(e, 'orig') and e.orig:
+            orig_msg = str(e.orig)
+            if "ERROR:" in orig_msg:
+                parts = orig_msg.split("ERROR:")
+                if len(parts) > 1:
+                    error_msg = parts[1].split("\n")[0].strip()
+            else:
+                error_msg = orig_msg.split("\n")[0].strip()
+        raise HTTPException(status_code=400, detail=error_msg)
+        
     db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
-    if db_product.quantity < sell_data.quantity:
-        raise HTTPException(status_code=400, detail="Not enough stock")
-        
-    db_product.quantity -= sell_data.quantity
-    db_product.sold += sell_data.quantity
-    
-    sale_record = models.SaleHistory(
-        product_id=product_id,
-        quantity=sell_data.quantity,
-        created_at=datetime.utcnow().isoformat()
-    )
-    db.add(sale_record)
-    
-    db.commit()
-    db.refresh(db_product)
     return db_product
 
 @router.get("/inventory/sales_report")

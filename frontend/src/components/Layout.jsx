@@ -58,7 +58,7 @@ const Layout = () => {
             <span className="font-semibold text-xs sm:text-sm whitespace-nowrap">Cerrar Sesión</span>
           </Link>
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative z-0">
+        <main className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative">
           <div className="max-w-[1600px] mx-auto">
             <Outlet />
           </div>
@@ -202,7 +202,7 @@ const Layout = () => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative z-0">
+        <div className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

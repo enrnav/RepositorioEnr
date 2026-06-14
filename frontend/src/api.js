@@ -104,3 +104,24 @@ export const fetchSalesReport = async () => {
         throw error;
     }
 };
+
+export const fetchRecentSales = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/sales/recent`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching recent sales:", error);
+        throw error;
+    }
+};
+
+export const cancelSale = async (saleId, reason) => {
+    try {
+        const response = await axios.post(`${API_URL}/sales/${saleId}/cancel`, { reason });
+        return response.data;
+    } catch (error) {
+        console.error(`Error cancelling sale ${saleId}:`, error);
+        throw error;
+    }
+};
+

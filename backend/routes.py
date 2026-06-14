@@ -195,7 +195,7 @@ def get_sales_report(db: Session = Depends(get_db), current_user: models.User = 
     if current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     products = db.query(models.Product).all()
-    sales = db.query(models.SaleHistory).all()
+    sales = db.query(models.SaleHistory).filter(models.SaleHistory.is_cancelled == False).all()
     
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -241,3 +241,61 @@ def get_stats(db: Session = Depends(get_db), current_user: models.User = Depends
         "total_sold": total_sold,
         "low_stock_alerts": low_stock
     }
+
+@router.get("/sales/recent")
+def get_recent_sales(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    results = db.query(
+        models.SaleHistory.id,
+        models.SaleHistory.product_id,
+        models.SaleHistory.quantity,
+        models.SaleHistory.created_at,
+        models.SaleHistory.is_cancelled,
+        models.SaleHistory.cancel_reason,
+        models.Product.name.label("product_name"),
+        models.Product.price.label("product_price")
+    ).join(
+        models.Product, models.Product.id == models.SaleHistory.product_id
+    ).order_by(
+        models.SaleHistory.id.desc()
+    ).limit(50).all()
+    
+    return [
+        {
+            "id": r.id,
+            "product_id": r.product_id,
+            "product_name": r.product_name,
+            "product_price": r.product_price,
+            "quantity": r.quantity,
+            "created_at": r.created_at,
+            "is_cancelled": r.is_cancelled,
+            "cancel_reason": r.cancel_reason
+        }
+        for r in results
+    ]
+
+@router.post("/sales/{sale_id}/cancel")
+def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes (se requiere administrador)")
+    from sqlalchemy import text
+    try:
+        db.execute(
+            text("SELECT cancelar_venta(:sale_id, :reason)"),
+            {"sale_id": sale_id, "reason": cancel_data.reason}
+        )
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        error_msg = str(e)
+        if hasattr(e, 'orig') and e.orig:
+            orig_msg = str(e.orig)
+            if "ERROR:" in orig_msg:
+                parts = orig_msg.split("ERROR:")
+                if len(parts) > 1:
+                    error_msg = parts[1].split("\n")[0].strip()
+            else:
+                error_msg = orig_msg.split("\n")[0].strip()
+        raise HTTPException(status_code=400, detail=error_msg)
+        
+    return {"message": f"Venta {sale_id} cancelada exitosamente"}
+

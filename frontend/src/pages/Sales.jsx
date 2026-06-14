@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, X, Printer, CreditCard, Banknote } from 'lucide-react';
+import { Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, X, Printer, CreditCard, Banknote, History } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { fetchInventory, sellProduct } from '../api';
+import { fetchInventory, sellProduct, fetchRecentSales, cancelSale } from '../api';
+
 
 const Sales = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +16,62 @@ const Sales = () => {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [lastSaleData, setLastSaleData] = useState(null);
   const [activeTab, setActiveTab] = useState('products'); // 'products' or 'cart'
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [recentSales, setRecentSales] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Estados para alertas y confirmaciones personalizadas
+  const [customAlert, setCustomAlert] = useState({ show: false, title: '', message: '', type: 'success' });
+  const [cancelConfirm, setCancelConfirm] = useState({ show: false, saleId: null, reason: '' });
+
+  const userStr = sessionStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const isAdmin = user?.role === 'admin';
+
+  const showAlert = (title, message, type = 'success') => {
+    setCustomAlert({ show: true, title, message, type });
+  };
+
+  const loadRecentSales = async () => {
+    setHistoryLoading(true);
+    try {
+      const data = await fetchRecentSales();
+      setRecentSales(data);
+    } catch (error) {
+      console.error("Error loading recent sales", error);
+      showAlert("Error", "Error al cargar las ventas", "error");
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const openHistoryModal = () => {
+    loadRecentSales();
+    setShowHistoryModal(true);
+  };
+
+  const triggerCancelSale = (saleId) => {
+    setCancelConfirm({ show: true, saleId, reason: '' });
+  };
+
+  const processCancelSale = async () => {
+    if (!cancelConfirm.reason.trim()) {
+      showAlert("Motivo Requerido", "Por favor, escribe el motivo de la cancelación.", "warning");
+      return;
+    }
+    try {
+      await cancelSale(cancelConfirm.saleId, cancelConfirm.reason.trim());
+      setCancelConfirm({ show: false, saleId: null, reason: '' });
+      showAlert("Venta Cancelada", "La venta ha sido cancelada y el stock ha sido devuelto al inventario exitosamente.", "success");
+      loadRecentSales();
+      loadData();
+    } catch (error) {
+      console.error("Error cancelling sale", error);
+      const detail = error.response?.data?.detail || "Hubo un error al cancelar la venta";
+      showAlert("Error al Cancelar", detail, "error");
+    }
+  };
+
 
   const loadData = async () => {
     try {
@@ -34,7 +91,7 @@ const Sales = () => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
         if (existingItem.cartQuantity >= product.quantity) {
-          alert("No hay suficiente stock disponible.");
+          showAlert("Stock Insuficiente", "No hay suficiente stock disponible para este producto.", "warning");
           return prevCart;
         }
         return prevCart.map((item) =>
@@ -42,7 +99,7 @@ const Sales = () => {
         );
       } else {
         if (product.quantity <= 0) {
-          alert("Producto agotado.");
+          showAlert("Producto Agotado", "Este producto se encuentra agotado.", "warning");
           return prevCart;
         }
         return [...prevCart, { ...product, cartQuantity: 1 }];
@@ -64,7 +121,7 @@ const Sales = () => {
             // Podría ser removido, pero es mejor usar el botón de X.
             return item;
           } else {
-             alert("Stock máximo alcanzado");
+             showAlert("Límite Alcanzado", "Se ha alcanzado el límite de stock disponible para este producto.", "warning");
           }
         }
         return item;
@@ -111,7 +168,7 @@ const Sales = () => {
       setShowTicketModal(true);
     } catch (error) {
       console.error("Error al procesar la venta", error);
-      alert("Hubo un error al registrar la venta. Por favor, revisa el inventario.");
+      showAlert("Error de Venta", "Hubo un error al registrar la venta. Por favor, revisa el inventario.", "error");
       // Recargar inventario para reflejar cualquier cambio parcial
       await loadData();
     } finally {
@@ -180,24 +237,34 @@ const Sales = () => {
         </button>
       </div>
 
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-brand-900 tracking-tight flex items-center animate-fade-in">
+          <ShoppingCart className="mr-2 sm:mr-3 text-chiluda-red w-6 h-6 sm:w-8 sm:h-8" />
+          Punto de Venta
+        </h2>
+        {isAdmin && (
+          <button
+            onClick={openHistoryModal}
+            className="flex items-center space-x-0 sm:space-x-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 p-2 sm:px-4 sm:py-2 rounded-full hover:bg-brand-50 hover:text-chiluda-red hover:border-chiluda-red/30 transition-all shadow-sm hover:shadow-md font-semibold text-sm"
+          >
+            <History size={16} className="w-4 h-4 sm:w-[18px] sm:h-[18px]" />
+            <span className="hidden sm:inline">Cancelación de Producto</span>
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-col lg:flex-row gap-6">
         {/* Left Column: Products Grid */}
         <div className={`flex-1 space-y-6 ${activeTab === 'products' ? 'block' : 'hidden lg:block'}`}>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-extrabold text-brand-900 tracking-tight flex items-center animate-fade-in">
-            <ShoppingCart className="mr-3 text-chiluda-red w-8 h-8" />
-            Punto de Venta
-          </h2>
-        </div>
 
         {/* Toolbar */}
-        <div className="bg-white/80 backdrop-blur-xl p-4 rounded-3xl shadow-soft border border-white flex items-center animate-slide-up">
+        <div className="bg-white/80 backdrop-blur-xl p-3 sm:p-4 rounded-3xl shadow-soft border border-white flex items-center animate-slide-up">
           <div className="relative w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <Search className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
             <input 
               type="text" 
               placeholder="Buscar producto (Enter para agregar)..." 
-              className="w-full pl-12 pr-4 py-3.5 bg-brand-50/50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-lg shadow-inner font-medium transition-all"
+              className="w-full pl-10 sm:pl-12 pr-4 py-2.5 sm:py-3.5 bg-brand-50/50 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm sm:text-lg shadow-inner font-medium transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -530,6 +597,211 @@ const Sales = () => {
                 className="flex-1 py-3 rounded-xl font-bold text-white bg-chiluda-red hover:bg-chiluda-darkred shadow-lg shadow-chiluda-red/30 transition-all"
               >
                 Nueva Venta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] p-2 sm:p-4 overflow-y-auto">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-2xl w-[95vw] lg:w-full max-w-4xl overflow-hidden border border-white flex flex-col max-h-[90vh] my-4">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-xl font-bold text-brand-900 flex items-center gap-2">
+                <History className="text-chiluda-red" size={24} />
+                Cancelación de Producto
+              </h3>
+              <button 
+                onClick={() => setShowHistoryModal(false)} 
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {historyLoading ? (
+                <div className="py-12 text-center text-gray-500 animate-pulse font-medium">
+                  Cargando ventas...
+                </div>
+              ) : recentSales.length === 0 ? (
+                <div className="py-12 text-center text-gray-400 font-medium">
+                  No hay ventas registradas recientemente.
+                </div>
+              ) : (
+                <div className="overflow-x-auto w-full border border-gray-100 rounded-2xl">
+                  <table className="w-full min-w-[800px] text-left border-collapse">
+                    <thead className="bg-brand-50/50 text-brand-900 text-xs uppercase tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3 font-bold">Fecha / Hora</th>
+                        <th className="px-4 py-3 font-bold">Producto</th>
+                        <th className="px-4 py-3 font-bold text-center">Cant.</th>
+                        <th className="px-4 py-3 font-bold text-right">Precio Unit.</th>
+                        <th className="px-4 py-3 font-bold text-right">Total</th>
+                        <th className="px-4 py-3 font-bold text-center">Estado</th>
+                        <th className="px-4 py-3 font-bold text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 text-sm">
+                      {recentSales.map((sale) => {
+                        const date = new Date(sale.created_at);
+                        const formattedDate = isNaN(date.getTime()) 
+                          ? sale.created_at.replace("T", " ").split(".")[0] 
+                          : date.toLocaleString('es-MX', { hour12: false });
+                        const total = sale.product_price * sale.quantity;
+                        
+                        // Check if current logged-in user is admin
+                        const userStr = sessionStorage.getItem('user');
+                        const userObj = userStr ? JSON.parse(userStr) : null;
+                        const isAdmin = userObj?.role === 'admin';
+
+                        return (
+                          <tr key={sale.id} className={`hover:bg-brand-50/30 ${sale.is_cancelled ? 'opacity-60 bg-gray-50/50' : ''}`}>
+                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formattedDate}</td>
+                            <td className="px-4 py-3 font-medium text-gray-800">
+                              <span>{sale.product_name}</span>
+                              {sale.is_cancelled && sale.cancel_reason && (
+                                <span className="block text-xs font-semibold text-red-500 mt-1">
+                                  Motivo: "{sale.cancel_reason}"
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-center font-semibold text-gray-700">{sale.quantity}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-gray-600">${sale.product_price.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right font-bold text-gray-900">${total.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-center">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                sale.is_cancelled 
+                                  ? 'bg-red-100 text-red-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {sale.is_cancelled ? 'Cancelada' : 'Completada'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-center">
+                              {!sale.is_cancelled && (
+                                <button
+                                  onClick={() => triggerCancelSale(sale.id)}
+                                  disabled={!isAdmin}
+                                  title={isAdmin ? "Cancelar venta y devolver stock" : "Solo administradores pueden cancelar ventas"}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    isAdmin 
+                                      ? 'bg-red-500 hover:bg-red-600 text-white active:scale-95' 
+                                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                  }`}
+                                >
+                                  Cancelar
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+            <div className="p-5 border-t border-gray-100 flex justify-end bg-gray-50/30">
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Alert Modal */}
+      {customAlert.show && (
+        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden border border-white p-6 text-center animate-scale-in my-4">
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              customAlert.type === 'success' ? 'bg-green-100 text-green-600' :
+              customAlert.type === 'warning' ? 'bg-yellow-100 text-yellow-600' :
+              'bg-red-100 text-red-600'
+            }`}>
+              {customAlert.type === 'success' ? (
+                <CheckCircle size={32} />
+              ) : customAlert.type === 'warning' ? (
+                <TrendingUp size={32} className="rotate-45" />
+              ) : (
+                <X size={32} />
+              )}
+            </div>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">{customAlert.title}</h3>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">{customAlert.message}</p>
+            <button
+              onClick={() => setCustomAlert({ ...customAlert, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition-all ${
+                customAlert.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
+                customAlert.type === 'warning' ? 'bg-yellow-500 hover:bg-yellow-600' :
+                'bg-red-600 hover:bg-red-700'
+              }`}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Confirmation Modal */}
+      {cancelConfirm.show && (
+        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] p-4 animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-white p-6 animate-scale-in my-4">
+            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+              <h3 className="text-xl font-bold text-brand-900 flex items-center gap-2">
+                <Trash2 className="text-red-500" size={24} />
+                Confirmar Cancelación
+              </h3>
+              <button
+                onClick={() => setCancelConfirm({ show: false, saleId: null, reason: '' })}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <p className="text-gray-600 text-sm font-medium">
+                ¿Está seguro de que desea cancelar la venta y devolver el stock correspondiente al inventario?
+              </p>
+              
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Motivo o comentario de la cancelación:
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Ej. Producto dañado, devolución de cliente..."
+                  className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 text-sm font-medium transition-all resize-none"
+                  value={cancelConfirm.reason}
+                  onChange={(e) => setCancelConfirm({ ...cancelConfirm, reason: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+              <button
+                onClick={() => setCancelConfirm({ show: false, saleId: null, reason: '' })}
+                className="w-1/3 py-3 rounded-xl font-bold text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors text-sm"
+              >
+                Volver
+              </button>
+              <button
+                onClick={processCancelSale}
+                disabled={!cancelConfirm.reason.trim()}
+                className={`flex-1 py-3 rounded-xl font-bold text-white transition-all text-sm flex items-center justify-center gap-2 ${
+                  cancelConfirm.reason.trim()
+                    ? 'bg-red-500 hover:bg-red-600 active:scale-[0.98]'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Confirmar Cancelación
               </button>
             </div>
           </div>

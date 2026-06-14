@@ -31,3 +31,7 @@ class SaleHistory(Base):
     product_id = Column(Integer, index=True)
     quantity = Column(Integer)
     created_at = Column(String) # We will use ISO format string for simplicity with SQLite/Postgres compatibility
+    is_cancelled = Column(Boolean, default=False)
+    cancel_reason = Column(String, nullable=True)
+
+

@@ -73,6 +73,72 @@ def run_migration():
             conn.rollback()
             print("Error creando la función 'vender_producto':", e)
 
+        try:
+            conn.execute(text("ALTER TABLE sales_history ADD COLUMN is_cancelled BOOLEAN DEFAULT FALSE"))
+            conn.commit()
+            print("Columna 'is_cancelled' agregada a sales_history.")
+        except Exception as e:
+            conn.rollback()
+            print("Error agregando columna is_cancelled (tal vez ya existe):", e)
+
+        try:
+            conn.execute(text("ALTER TABLE sales_history ADD COLUMN cancel_reason VARCHAR"))
+            conn.commit()
+            print("Columna 'cancel_reason' agregada a sales_history.")
+        except Exception as e:
+            conn.rollback()
+            print("Error agregando columna cancel_reason (tal vez ya existe):", e)
+
+        try:
+            cancel_proc_sql = """
+            CREATE OR REPLACE FUNCTION cancelar_venta(
+                p_sale_id INT,
+                p_cancel_reason VARCHAR
+            ) RETURNS VOID AS $$
+            DECLARE
+                v_product_id INT;
+                v_quantity INT;
+                v_is_cancelled BOOLEAN;
+            BEGIN
+                -- 1. Obtener detalles de la venta y bloquear
+                SELECT product_id, quantity, is_cancelled INTO v_product_id, v_quantity, v_is_cancelled
+                FROM sales_history
+                WHERE id = p_sale_id
+                FOR UPDATE;
+
+                -- 2. Validar que la venta exista
+                IF v_product_id IS NULL THEN
+                    RAISE EXCEPTION 'La venta con ID % no existe.', p_sale_id;
+                END IF;
+
+                -- 3. Validar que no esté ya cancelada
+                IF v_is_cancelled = TRUE THEN
+                    RAISE EXCEPTION 'La venta con ID % ya fue cancelada.', p_sale_id;
+                END IF;
+
+                -- 4. Marcar como cancelada y registrar motivo
+                UPDATE sales_history
+                SET is_cancelled = TRUE,
+                    cancel_reason = p_cancel_reason
+                WHERE id = p_sale_id;
+
+                -- 5. Devolver stock al producto
+                UPDATE products
+                SET quantity = quantity + v_quantity,
+                    sold = sold - v_quantity
+                WHERE id = v_product_id;
+            END;
+            $$ LANGUAGE plpgsql;
+            """
+            conn.execute(text(cancel_proc_sql))
+            conn.commit()
+            print("Función de base de datos 'cancelar_venta' creada/actualizada exitosamente.")
+        except Exception as e:
+            conn.rollback()
+            print("Error creando la función 'cancelar_venta':", e)
+
+
 
 if __name__ == "__main__":
     run_migration()
+

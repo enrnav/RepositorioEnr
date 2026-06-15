@@ -19,6 +19,7 @@ const Sales = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [recentSales, setRecentSales] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyTab, setHistoryTab] = useState('sales'); // 'sales' or 'cancellations'
 
   // Estados para alertas y confirmaciones personalizadas
   const [customAlert, setCustomAlert] = useState({ show: false, title: '', message: '', type: 'success' });
@@ -48,6 +49,7 @@ const Sales = () => {
   const openHistoryModal = () => {
     loadRecentSales();
     setShowHistoryModal(true);
+    setHistoryTab('sales');
   };
 
   const triggerCancelSale = (saleId) => {
@@ -201,6 +203,10 @@ const Sales = () => {
 
   const cartTotal = cart.reduce((total, item) => total + (item.price * item.cartQuantity), 0);
   const cartItemCount = cart.reduce((count, item) => count + item.cartQuantity, 0);
+
+  const activeSales = recentSales.filter(sale => !sale.is_cancelled);
+  const cancelledSales = recentSales.filter(sale => sale.is_cancelled);
+  const displayedSales = historyTab === 'sales' ? activeSales : cancelledSales;
 
   return (
     <div className="space-y-4">
@@ -610,7 +616,7 @@ const Sales = () => {
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h3 className="text-xl font-bold text-brand-900 flex items-center gap-2">
                 <History className="text-chiluda-red" size={24} />
-                Cancelación de Producto
+                Historial de Ventas y Devoluciones
               </h3>
               <button 
                 onClick={() => setShowHistoryModal(false)} 
@@ -621,66 +627,87 @@ const Sales = () => {
             </div>
             
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+              {/* Tab Selector */}
+              <div className="flex bg-brand-50/60 p-1 rounded-2xl border border-gray-100 max-w-lg">
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('sales')}
+                  className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    historyTab === 'sales'
+                      ? 'bg-chiluda-red text-white shadow-sm'
+                      : 'text-gray-500 hover:text-chiluda-red'
+                  }`}
+                >
+                  <ShoppingCart size={16} />
+                  Ventas Completadas ({activeSales.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryTab('cancellations')}
+                  className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${
+                    historyTab === 'cancellations'
+                      ? 'bg-chiluda-red text-white shadow-sm'
+                      : 'text-gray-500 hover:text-chiluda-red'
+                  }`}
+                >
+                  <Trash2 size={16} />
+                  Devoluciones / Canceladas ({cancelledSales.length})
+                </button>
+              </div>
+
               {historyLoading ? (
                 <div className="py-12 text-center text-gray-500 animate-pulse font-medium">
-                  Cargando ventas...
+                  Cargando información...
                 </div>
-              ) : recentSales.length === 0 ? (
+              ) : displayedSales.length === 0 ? (
                 <div className="py-12 text-center text-gray-400 font-medium">
-                  No hay ventas registradas recientemente.
+                  {historyTab === 'sales' 
+                    ? "No hay ventas completadas registradas recientemente." 
+                    : "No hay devoluciones o cancelaciones registradas recientemente."}
                 </div>
               ) : (
                 <div className="overflow-x-auto w-full border border-gray-100 rounded-2xl">
-                  <table className="w-full min-w-[800px] text-left border-collapse">
-                    <thead className="bg-brand-50/50 text-brand-900 text-xs uppercase tracking-wider">
-                      <tr>
-                        <th className="px-4 py-3 font-bold">Fecha / Hora</th>
-                        <th className="px-4 py-3 font-bold">Producto</th>
-                        <th className="px-4 py-3 font-bold text-center">Cant.</th>
-                        <th className="px-4 py-3 font-bold text-right">Precio Unit.</th>
-                        <th className="px-4 py-3 font-bold text-right">Total</th>
-                        <th className="px-4 py-3 font-bold text-center">Estado</th>
-                        <th className="px-4 py-3 font-bold text-center">Acción</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 text-sm">
-                      {recentSales.map((sale) => {
-                        const date = new Date(sale.created_at);
-                        const formattedDate = isNaN(date.getTime()) 
-                          ? sale.created_at.replace("T", " ").split(".")[0] 
-                          : date.toLocaleString('es-MX', { hour12: false });
-                        const total = sale.product_price * sale.quantity;
-                        
-                        // Check if current logged-in user is admin
-                        const userStr = sessionStorage.getItem('user');
-                        const userObj = userStr ? JSON.parse(userStr) : null;
-                        const isAdmin = userObj?.role === 'admin';
+                  {historyTab === 'sales' ? (
+                    <table className="w-full min-w-[800px] text-left border-collapse">
+                      <thead className="bg-brand-50/50 text-brand-900 text-xs uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3 font-bold">Fecha / Hora</th>
+                          <th className="px-4 py-3 font-bold">Producto</th>
+                          <th className="px-4 py-3 font-bold text-center">Cant.</th>
+                          <th className="px-4 py-3 font-bold text-right">Precio Unit.</th>
+                          <th className="px-4 py-3 font-bold text-right">Total</th>
+                          <th className="px-4 py-3 font-bold text-center">Estado</th>
+                          <th className="px-4 py-3 font-bold text-center">Acción</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 text-sm">
+                        {displayedSales.map((sale) => {
+                          const date = new Date(sale.created_at);
+                          const formattedDate = isNaN(date.getTime()) 
+                            ? sale.created_at.replace("T", " ").split(".")[0] 
+                            : date.toLocaleString('es-MX', { hour12: false });
+                          const total = sale.product_price * sale.quantity;
+                          
+                          // Check if current logged-in user is admin
+                          const userStr = sessionStorage.getItem('user');
+                          const userObj = userStr ? JSON.parse(userStr) : null;
+                          const isAdmin = userObj?.role === 'admin';
 
-                        return (
-                          <tr key={sale.id} className={`hover:bg-brand-50/30 ${sale.is_cancelled ? 'opacity-60 bg-gray-50/50' : ''}`}>
-                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formattedDate}</td>
-                            <td className="px-4 py-3 font-medium text-gray-800">
-                              <span>{sale.product_name}</span>
-                              {sale.is_cancelled && sale.cancel_reason && (
-                                <span className="block text-xs font-semibold text-red-500 mt-1">
-                                  Motivo: "{sale.cancel_reason}"
+                          return (
+                            <tr key={sale.id} className="hover:bg-brand-50/30">
+                              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formattedDate}</td>
+                              <td className="px-4 py-3 font-medium text-gray-800">
+                                <span>{sale.product_name}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-semibold text-gray-700">{sale.quantity}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-600">${sale.product_price.toFixed(2)}</td>
+                              <td className="px-4 py-3 text-right font-bold text-gray-900">${total.toFixed(2)}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                  Completada
                                 </span>
-                              )}
-                            </td>
-                            <td className="px-4 py-3 text-center font-semibold text-gray-700">{sale.quantity}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-gray-600">${sale.product_price.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right font-bold text-gray-900">${total.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-center">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                sale.is_cancelled 
-                                  ? 'bg-red-100 text-red-800' 
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {sale.is_cancelled ? 'Cancelada' : 'Completada'}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              {!sale.is_cancelled && (
+                              </td>
+                              <td className="px-4 py-3 text-center">
                                 <button
                                   onClick={() => triggerCancelSale(sale.id)}
                                   disabled={!isAdmin}
@@ -693,13 +720,56 @@ const Sales = () => {
                                 >
                                   Cancelar
                                 </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <table className="w-full min-w-[800px] text-left border-collapse">
+                      <thead className="bg-brand-50/50 text-brand-900 text-xs uppercase tracking-wider">
+                        <tr>
+                          <th className="px-4 py-3 font-bold">Fecha / Hora</th>
+                          <th className="px-4 py-3 font-bold">Producto</th>
+                          <th className="px-4 py-3 font-bold text-center">Cant.</th>
+                          <th className="px-4 py-3 font-bold text-right">Precio Unit.</th>
+                          <th className="px-4 py-3 font-bold text-right">Total</th>
+                          <th className="px-4 py-3 font-bold text-center">Estado</th>
+                          <th className="px-4 py-3 font-bold">Motivo de Cancelación</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 text-sm">
+                        {displayedSales.map((sale) => {
+                          const date = new Date(sale.created_at);
+                          const formattedDate = isNaN(date.getTime()) 
+                            ? sale.created_at.replace("T", " ").split(".")[0] 
+                            : date.toLocaleString('es-MX', { hour12: false });
+                          const total = sale.product_price * sale.quantity;
+
+                          return (
+                            <tr key={sale.id} className="hover:bg-brand-50/30 bg-red-50/10 opacity-90">
+                              <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formattedDate}</td>
+                              <td className="px-4 py-3 font-medium text-gray-800">
+                                <span>{sale.product_name}</span>
+                              </td>
+                              <td className="px-4 py-3 text-center font-semibold text-gray-700">{sale.quantity}</td>
+                              <td className="px-4 py-3 text-right font-semibold text-gray-600">${sale.product_price.toFixed(2)}</td>
+                              <td className="px-4 py-3 text-right font-bold text-red-600">${total.toFixed(2)}</td>
+                              <td className="px-4 py-3 text-center">
+                                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                  Cancelada
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-gray-700 font-semibold italic">
+                                {sale.cancel_reason || 'Sin motivo especificado'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
             </div>

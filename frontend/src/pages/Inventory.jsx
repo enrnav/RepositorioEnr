@@ -3,7 +3,7 @@ import { Download, Plus, Search, Edit2, Trash2, X } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fetchInventory, createProduct, updateProduct, deleteProduct, fetchSalesReport } from '../api';
+import { fetchInventory, createProduct, updateProduct, deleteProduct, fetchSalesReport, fetchReturnsReport } from '../api';
 
 const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +14,9 @@ const Inventory = () => {
   const [exportPeriod, setExportPeriod] = useState('daily');
   const [exportFormat, setExportFormat] = useState('xlsx');
   const [stockExportFormat, setStockExportFormat] = useState('xlsx');
+  const [isReturnsExportModalOpen, setIsReturnsExportModalOpen] = useState(false);
+  const [returnsExportFormat, setReturnsExportFormat] = useState('xlsx');
+  const [returnsExportPeriod, setReturnsExportPeriod] = useState('all');
   const [newProduct, setNewProduct] = useState({ name: '', barcode: '', price: '', quantity: '', entry_date: '' });
   const [editingProduct, setEditingProduct] = useState(null);
   const [success, setSuccess] = useState('');
@@ -364,6 +367,250 @@ const Inventory = () => {
     }
   };
 
+  const handleExportReturnsConfirm = async () => {
+    try {
+      const report = await fetchReturnsReport();
+      
+      if (report.length === 0) {
+        alert("No hay devoluciones para exportar");
+        return;
+      }
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      const currentDay = now.getDay();
+      const distanceToMonday = currentDay === 0 ? 6 : currentDay - 1;
+      const weekStart = new Date(todayStart.getTime() - distanceToMonday * 24 * 60 * 60 * 1000);
+      
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      
+      let filteredReport = [...report];
+      if (returnsExportPeriod === 'daily') {
+          filteredReport = report.filter(item => new Date(item.created_at) >= todayStart);
+      } else if (returnsExportPeriod === 'weekly') {
+          filteredReport = report.filter(item => new Date(item.created_at) >= weekStart);
+      } else if (returnsExportPeriod === 'monthly') {
+          filteredReport = report.filter(item => new Date(item.created_at) >= monthStart);
+      }
+
+      if (filteredReport.length === 0) {
+        alert("No hay devoluciones en el período seleccionado");
+        return;
+      }
+
+      const sortedReport = [...filteredReport].sort((a, b) => a.id - b.id);
+      
+      let exportData = sortedReport.map(item => {
+          const date = new Date(item.created_at);
+          const formattedDate = isNaN(date.getTime()) 
+            ? item.created_at.replace("T", " ").split(".")[0] 
+            : date.toLocaleString('es-MX', { hour12: false });
+          return {
+              'ID Devolución': item.id,
+              'ID Venta': item.sale_id,
+              'Fecha / Hora': formattedDate,
+              'Producto': item.product_name,
+              'Cantidad Devuelta': item.quantity,
+              'Precio Unitario ($)': item.price,
+              'Monto Devuelto ($)': item.quantity * item.price,
+              'Motivo': item.reason || 'Sin especificar'
+          };
+      });
+
+      const totalAmount = exportData.reduce((sum, item) => sum + item['Monto Devuelto ($)'], 0);
+      const totalQuantity = exportData.reduce((sum, item) => sum + item['Cantidad Devuelta'], 0);
+
+      const summaryRow = {
+          'ID Devolución': '',
+          'ID Venta': '',
+          'Fecha / Hora': '',
+          'Producto': 'TOTAL GENERAL:',
+          'Cantidad Devuelta': totalQuantity,
+          'Precio Unitario ($)': '',
+          'Monto Devuelto ($)': totalAmount,
+          'Motivo': ''
+      };
+      exportData.push(summaryRow);
+
+      const periodText = returnsExportPeriod === 'daily' ? 'Diario' : returnsExportPeriod === 'weekly' ? 'Semanal' : returnsExportPeriod === 'monthly' ? 'Mensual' : 'Completo';
+      const filename = `reporte_devoluciones_${returnsExportPeriod}.${returnsExportFormat}`;
+
+      if (returnsExportFormat === 'xlsx') {
+          const workbook = XLSX.utils.book_new();
+          const dateStr = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+
+          const aoa = [
+            ['ABARROTES ED & E'], 
+            ['Reporte de Devoluciones y Cancelaciones: ' + periodText],
+            ['Fecha de Emisión: ' + dateStr],
+            [], 
+            Object.keys(exportData[0]) 
+          ];
+          
+          exportData.forEach(obj => {
+             aoa.push(Object.values(obj));
+          });
+
+          const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+          
+          worksheet['!merges'] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 7 } },
+            { s: { r: 1, c: 0 }, e: { r: 1, c: 7 } },
+            { s: { r: 2, c: 0 }, e: { r: 2, c: 7 } }
+          ];
+
+          worksheet['A1'].s = {
+              font: { bold: true, sz: 16, color: { rgb: "FFEF4444" } }, 
+              alignment: { horizontal: "center", vertical: "center" }
+          };
+          worksheet['A2'].s = { font: { bold: true, sz: 12 }, alignment: { horizontal: "center" } };
+          worksheet['A3'].s = { font: { italic: true, sz: 10, color: { rgb: "FF6B7280" } }, alignment: { horizontal: "center" } };
+
+          const range = XLSX.utils.decode_range(worksheet['!ref']);
+          for (let c = range.s.c; c <= range.e.c; ++c) {
+              const cellRef = XLSX.utils.encode_cell({ c: c, r: 4 });
+              if (!worksheet[cellRef]) continue;
+              worksheet[cellRef].s = {
+                  fill: { fgColor: { rgb: "FFEF4444" } }, 
+                  font: { bold: true, color: { rgb: "FFFFFFFF" } }, 
+                  alignment: { horizontal: "center", vertical: "center" },
+                  border: { top: { style: "thin" }, bottom: { style: "medium" } }
+              };
+          }
+
+          for (let r = 5; r <= range.e.r; ++r) {
+              for (let c = range.s.c; c <= range.e.c; ++c) {
+                  const cellRef = XLSX.utils.encode_cell({ c: c, r: r });
+                  if (!worksheet[cellRef]) continue;
+                  
+                  if (r === range.e.r) {
+                      worksheet[cellRef].s = {
+                          font: { bold: true, color: { rgb: "FF991B1B" } }, 
+                          fill: { fgColor: { rgb: "FFFEE2E2" } }, 
+                          border: { top: { style: "medium" }, bottom: { style: "medium" } }
+                      };
+                  } else {
+                      worksheet[cellRef].s = {
+                          border: { bottom: { style: "dotted", color: { rgb: "FFCCCCCC" } } }
+                      };
+                      if (r % 2 === 0) worksheet[cellRef].s.fill = { fgColor: { rgb: "FFF9FAFB" } };
+                  }
+              }
+          }
+
+          worksheet['!cols'] = [{ wch: 15 }, { wch: 12 }, { wch: 22 }, { wch: 25 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 28 }];
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Devoluciones");
+          XLSX.writeFile(workbook, filename);
+      } else if (returnsExportFormat === 'json') {
+          const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href",     dataStr);
+          downloadAnchorNode.setAttribute("download", filename);
+          document.body.appendChild(downloadAnchorNode); 
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+      } else if (returnsExportFormat === 'csv') {
+          const worksheet = XLSX.utils.json_to_sheet(exportData);
+          const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+          const dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csvOutput);
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href",     dataStr);
+          downloadAnchorNode.setAttribute("download", filename);
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+      } else if (returnsExportFormat === 'txt') {
+          const headers = Object.keys(exportData[0]).join('|');
+          const rows = exportData.map(obj => Object.values(obj).join('|')).join('\n');
+          const txtOutput = headers + '\n' + rows;
+          const dataStr = "data:text/plain;charset=utf-8," + encodeURIComponent(txtOutput);
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href",     dataStr);
+          downloadAnchorNode.setAttribute("download", filename);
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+      } else if (returnsExportFormat === 'xml') {
+          let xmlOutput = '<?xml version="1.0" encoding="UTF-8"?>\n<reporte>\n';
+          exportData.forEach(item => {
+              xmlOutput += '  <item>\n';
+              for (const [key, value] of Object.entries(item)) {
+                  const safeKey = key.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() || 'dato';
+                  xmlOutput += `    <${safeKey}>${value}</${safeKey}>\n`;
+              }
+              xmlOutput += '  </item>\n';
+          });
+          xmlOutput += '</reporte>';
+          const dataStr = "data:text/xml;charset=utf-8," + encodeURIComponent(xmlOutput);
+          const downloadAnchorNode = document.createElement('a');
+          downloadAnchorNode.setAttribute("href",     dataStr);
+          downloadAnchorNode.setAttribute("download", filename);
+          document.body.appendChild(downloadAnchorNode);
+          downloadAnchorNode.click();
+          downloadAnchorNode.remove();
+      } else if (returnsExportFormat === 'pdf') {
+          const doc = new jsPDF();
+          const canvas = document.createElement('canvas');
+          canvas.width = 350;
+          canvas.height = 80;
+          const ctx = canvas.getContext('2d');
+           
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 28px Arial';
+          ctx.fillText('ABARROTES ED & E', 10, 40);
+           
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 14px Arial';
+          ctx.fillText('TU MERCADO DE CONFIANZA', 10, 62);
+
+          const logoData = canvas.toDataURL('image/png');
+          doc.addImage(logoData, 'PNG', 14, 10, 87.5, 20);
+          
+          doc.setFontSize(22);
+          doc.setTextColor(31, 41, 55);
+          doc.text('Reporte de Devoluciones', 14, 45);
+          
+          const dateStr = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+          
+          doc.setFontSize(11);
+          doc.setTextColor(107, 114, 128);
+          doc.text(`Período: ${periodText}   |   Fecha de Emisión: ${dateStr}`, 14, 53);
+          
+          doc.setDrawColor(229, 231, 235);
+          doc.setLineWidth(0.5);
+          doc.line(14, 58, 196, 58);
+
+          const head = [Object.keys(exportData[0])];
+          const body = exportData.map(obj => Object.values(obj));
+          
+          autoTable(doc, {
+              head: head,
+              body: body,
+              startY: 65,
+              theme: 'grid',
+              headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+              alternateRowStyles: { fillColor: [254, 242, 242] },
+              styles: { font: 'helvetica', fontSize: 8, cellPadding: 3 },
+              didParseCell: function (data) {
+                  if (data.section === 'body' && data.row.index === body.length - 1) {
+                      data.cell.styles.fontStyle = 'bold';
+                      data.cell.styles.textColor = [153, 27, 27]; 
+                      data.cell.styles.fillColor = [254, 226, 226]; 
+                  }
+              }
+          });
+          
+          doc.save(filename);
+      }
+      
+      setIsReturnsExportModalOpen(false);
+    } catch (error) {
+      console.error("Error generating returns export", error);
+      alert("Hubo un error al generar el reporte de devoluciones");
+    }
+  };
+
   const handleExportStockConfirm = async () => {
     try {
       if (inventory.length === 0) {
@@ -507,6 +754,13 @@ const Inventory = () => {
           >
             <Download size={18} />
             <span className="font-semibold text-sm">Exportar Ventas</span>
+          </button>
+          <button
+            onClick={() => setIsReturnsExportModalOpen(true)}
+            className="flex items-center space-x-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 px-5 py-2.5 rounded-full hover:bg-brand-50 hover:text-chiluda-red hover:border-chiluda-red/30 transition-all duration-200 shadow-sm hover:shadow-md"
+          >
+            <Download size={18} />
+            <span className="font-semibold text-sm">Exportar Devoluciones</span>
           </button>
           <button
             onClick={() => {
@@ -839,6 +1093,74 @@ const Inventory = () => {
                 </button>
                 <button
                   onClick={handleExportStockConfirm}
+                  className="px-4 py-2 bg-chiluda-red text-white rounded-md hover:bg-chiluda-darkred transition-colors flex items-center space-x-2"
+                >
+                  <Download size={18} />
+                  <span>Descargar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Exportar Devoluciones */}
+      {isReturnsExportModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden animate-scale-in">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <h3 className="text-lg font-semibold text-gray-800">Exportar Reporte de Devoluciones</h3>
+              <button onClick={() => setIsReturnsExportModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Periodo del Reporte</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {['daily', 'weekly', 'monthly', 'all'].map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setReturnsExportPeriod(p)}
+                      className={`px-2 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                        returnsExportPeriod === p 
+                        ? 'bg-red-50 border-chiluda-red text-chiluda-red' 
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {p === 'daily' ? 'Hoy' : p === 'weekly' ? 'Semana' : p === 'monthly' ? 'Mes' : 'Todo'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Formato de Archivo</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {['xlsx', 'csv', 'txt', 'json', 'xml', 'pdf'].map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setReturnsExportFormat(f)}
+                      className={`px-3 py-2 rounded-lg border text-sm font-medium uppercase transition-colors ${
+                        returnsExportFormat === f 
+                        ? 'bg-blue-50 border-blue-500 text-blue-700' 
+                        : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                <button
+                  onClick={() => setIsReturnsExportModalOpen(false)}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleExportReturnsConfirm}
                   className="px-4 py-2 bg-chiluda-red text-white rounded-md hover:bg-chiluda-darkred transition-colors flex items-center space-x-2"
                 >
                   <Download size={18} />

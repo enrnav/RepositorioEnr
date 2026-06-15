@@ -34,4 +34,15 @@ class SaleHistory(Base):
     is_cancelled = Column(Boolean, default=False)
     cancel_reason = Column(String, nullable=True)
 
+class ProductReturn(Base):
+    __tablename__ = "product_returns"
+    id = Column(Integer, primary_key=True, index=True)
+    sale_id = Column(Integer, index=True)
+    product_id = Column(Integer, index=True)
+    quantity = Column(Integer)
+    price = Column(Float)
+    reason = Column(String)
+    created_at = Column(String)
+
+
 

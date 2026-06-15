@@ -89,6 +89,27 @@ def run_migration():
             conn.rollback()
             print("Error agregando columna cancel_reason (tal vez ya existe):", e)
 
+        # Crear tabla product_returns si no existe
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS product_returns (
+                    id SERIAL PRIMARY KEY,
+                    sale_id INTEGER,
+                    product_id INTEGER,
+                    quantity INTEGER,
+                    price FLOAT,
+                    reason VARCHAR,
+                    created_at VARCHAR
+                );
+                CREATE INDEX IF NOT EXISTS ix_product_returns_id ON product_returns (id);
+                CREATE INDEX IF NOT EXISTS ix_product_returns_sale_id ON product_returns (sale_id);
+            """))
+            conn.commit()
+            print("Tabla 'product_returns' creada/verificada.")
+        except Exception as e:
+            conn.rollback()
+            print("Error creando la tabla product_returns:", e)
+
         try:
             cancel_proc_sql = """
             CREATE OR REPLACE FUNCTION cancelar_venta(
@@ -126,6 +147,12 @@ def run_migration():
                 UPDATE products
                 SET quantity = quantity + v_quantity,
                     sold = sold - v_quantity
+                WHERE id = v_product_id;
+
+                -- 6. Insertar registro en product_returns
+                INSERT INTO product_returns (sale_id, product_id, quantity, price, reason, created_at)
+                SELECT p_sale_id, v_product_id, v_quantity, price, p_cancel_reason, TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS')
+                FROM products
                 WHERE id = v_product_id;
             END;
             $$ LANGUAGE plpgsql;

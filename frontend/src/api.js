@@ -125,3 +125,14 @@ export const cancelSale = async (saleId, reason) => {
     }
 };
 
+export const fetchReturnsReport = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/inventory/returns_report`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching returns report:", error);
+        throw error;
+    }
+};
+
+

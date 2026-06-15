@@ -299,3 +299,38 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
         
     return {"message": f"Venta {sale_id} cancelada exitosamente"}
 
+@router.get("/inventory/returns_report", response_model=List[schemas.ReturnResponse])
+def get_returns_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+    
+    results = db.query(
+        models.ProductReturn.id,
+        models.ProductReturn.sale_id,
+        models.ProductReturn.product_id,
+        models.ProductReturn.quantity,
+        models.ProductReturn.price,
+        models.ProductReturn.reason,
+        models.ProductReturn.created_at,
+        models.Product.name.label("product_name")
+    ).join(
+        models.Product, models.Product.id == models.ProductReturn.product_id
+    ).order_by(
+        models.ProductReturn.id.desc()
+    ).all()
+    
+    return [
+        {
+            "id": r.id,
+            "sale_id": r.sale_id,
+            "product_id": r.product_id,
+            "product_name": r.product_name,
+            "quantity": r.quantity,
+            "price": r.price,
+            "reason": r.reason,
+            "created_at": r.created_at
+        }
+        for r in results
+    ]
+
+

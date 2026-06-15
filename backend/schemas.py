@@ -57,3 +57,17 @@ class TokenData(BaseModel):
 class CancelSaleRequest(BaseModel):
     reason: str
 
+class ReturnResponse(BaseModel):
+    id: int
+    sale_id: int
+    product_id: int
+    product_name: str
+    quantity: int
+    price: float
+    reason: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+

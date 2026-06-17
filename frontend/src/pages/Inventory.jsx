@@ -17,8 +17,10 @@ const Inventory = () => {
   const [isReturnsExportModalOpen, setIsReturnsExportModalOpen] = useState(false);
   const [returnsExportFormat, setReturnsExportFormat] = useState('xlsx');
   const [returnsExportPeriod, setReturnsExportPeriod] = useState('all');
-  const [newProduct, setNewProduct] = useState({ name: '', barcode: '', price: '', quantity: '', entry_date: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '' });
   const [editingProduct, setEditingProduct] = useState(null);
+  const [productVariants, setProductVariants] = useState([]);
+  const [newVariant, setNewVariant] = useState({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -57,8 +59,17 @@ const Inventory = () => {
         name: newProduct.name,
         barcode: newProduct.barcode || null,
         price: parseFloat(newProduct.price),
+        cost_price: parseFloat(newProduct.cost_price) || 0.0,
         quantity: parseInt(newProduct.quantity),
-        entry_date: newProduct.entry_date || new Date().toISOString().split('T')[0]
+        min_stock: parseInt(newProduct.min_stock) || 3,
+        entry_date: newProduct.entry_date || new Date().toISOString().split('T')[0],
+        variants: productVariants.map(v => ({
+          name: v.name,
+          barcode: v.barcode || null,
+          cost_price: v.cost_price ? parseFloat(v.cost_price) : null,
+          price: v.price ? parseFloat(v.price) : null,
+          quantity: parseInt(v.quantity) || 0
+        }))
       };
 
       if (editingProduct) {
@@ -70,7 +81,8 @@ const Inventory = () => {
       }
 
       setIsModalOpen(false);
-      setNewProduct({ name: '', barcode: '', price: '', quantity: '', entry_date: '' });
+      setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '' });
+      setProductVariants([]);
       setEditingProduct(null);
       loadData();
     } catch (err) {
@@ -85,9 +97,12 @@ const Inventory = () => {
       name: product.name,
       barcode: product.barcode || '',
       price: product.price,
+      cost_price: product.cost_price || 0,
       quantity: product.quantity,
+      min_stock: product.min_stock || 3,
       entry_date: product.entry_date || ''
     });
+    setProductVariants(product.variants || []);
     setIsModalOpen(true);
   };
 
@@ -765,7 +780,8 @@ const Inventory = () => {
           <button
             onClick={() => {
               setEditingProduct(null);
-              setNewProduct({ name: '', barcode: '', price: '', quantity: '', entry_date: '' });
+              setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '' });
+              setProductVariants([]);
               setIsModalOpen(true);
             }}
             className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:scale-105 active:scale-95 transition-all duration-300 shadow-float"
@@ -815,10 +831,20 @@ const Inventory = () => {
             <input
               type="text"
               placeholder="Buscar producto..."
-              className="w-full pl-11 pr-4 py-2.5 bg-brand-50/50 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red focus:border-transparent focus:bg-white transition-all duration-200 text-sm font-medium"
+              className="w-full pl-11 pr-10 py-2.5 bg-brand-50/50 rounded-full border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red focus:border-transparent focus:bg-white transition-all duration-200 text-sm font-medium"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyDown={(e) => e.key === 'Escape' && setSearchTerm('')}
             />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-100 rounded-full active:scale-95 transition-all"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -847,9 +873,10 @@ const Inventory = () => {
                     ${item.price.toFixed(2)}
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4 text-center">
-                    <span className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${item.quantity < 20 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                      }`}>
-                      {item.quantity} u.
+                    <span className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
+                      item.quantity <= (item.min_stock ?? 3) ? 'bg-red-105 text-red-800 animate-pulse border border-red-200' : 'bg-green-150 text-green-800'
+                    }`}>
+                      {item.quantity} u. (Min: {item.min_stock ?? 3})
                     </span>
                   </td>
                   <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
@@ -865,11 +892,21 @@ const Inventory = () => {
                   </td>
                   <td className="px-3 md:px-6 py-3 md:py-4">
                     <div className="flex items-center justify-center space-x-2 md:space-x-3">
-                      <button onClick={() => handleEdit(item)} className="text-gray-400 hover:text-blue-600 transition-colors">
-                        <Edit2 size={16} className="md:w-[18px] md:h-[18px]" />
+                      <button 
+                        type="button" 
+                        onClick={() => handleEdit(item)} 
+                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 p-2.5 rounded-xl transition-all"
+                        title="Editar"
+                      >
+                        <Edit2 size={18} className="md:w-[20px] md:h-[20px]" />
                       </button>
-                      <button onClick={() => handleDelete(item.id)} className="text-gray-400 hover:text-red-600 transition-colors">
-                        <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
+                      <button 
+                        type="button" 
+                        onClick={() => handleDelete(item.id)} 
+                        className="text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 p-2.5 rounded-xl transition-all"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={18} className="md:w-[20px] md:h-[20px]" />
                       </button>
                     </div>
                   </td>
@@ -932,7 +969,20 @@ const Inventory = () => {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio ($)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio Costo ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
+                    value={newProduct.cost_price}
+                    onChange={(e) => setNewProduct({ ...newProduct, cost_price: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio Venta ($)</label>
                   <input
                     type="number"
                     step="0.01"
@@ -944,6 +994,8 @@ const Inventory = () => {
                     placeholder="0.00"
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
                   <input
@@ -954,6 +1006,18 @@ const Inventory = () => {
                     value={newProduct.quantity}
                     onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
                     placeholder="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo (Alerta)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
+                    value={newProduct.min_stock}
+                    onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
+                    placeholder="3"
                   />
                 </div>
               </div>
@@ -967,6 +1031,88 @@ const Inventory = () => {
                 />
                 <p className="text-xs text-gray-500 mt-1">Si se deja vacío, se asignará la fecha de hoy automáticamente.</p>
               </div>
+
+              {/* GESTOR DE VARIANTES */}
+              <div className="border-t border-gray-100 pt-4 space-y-3">
+                <h4 className="text-xs font-black uppercase text-brand-900 tracking-wider">Variantes del Producto (Opcional):</h4>
+                <div className="bg-brand-50/50 p-3 rounded-2xl border border-gray-200/50 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nombre (ej. M, Fresa)"
+                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
+                      value={newVariant.name}
+                      onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Código Barras"
+                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
+                      value={newVariant.barcode}
+                      onChange={(e) => setNewVariant({ ...newVariant, barcode: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <input
+                      type="number"
+                      placeholder="Costo"
+                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
+                      value={newVariant.cost_price}
+                      onChange={(e) => setNewVariant({ ...newVariant, cost_price: e.target.value })}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Precio"
+                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
+                      value={newVariant.price}
+                      onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
+                    />
+                    <input
+                      type="number"
+                      placeholder="Stock"
+                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
+                      value={newVariant.quantity}
+                      onChange={(e) => setNewVariant({ ...newVariant, quantity: e.target.value })}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newVariant.name.trim()) {
+                        alert("Nombre de variante requerido");
+                        return;
+                      }
+                      setProductVariants([...productVariants, { ...newVariant }]);
+                      setNewVariant({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
+                    }}
+                    className="w-full py-1.5 bg-brand-900 text-white text-xs font-bold rounded-lg"
+                  >
+                    + Agregar Variante
+                  </button>
+                </div>
+
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {productVariants.map((v, idx) => (
+                    <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2 rounded-xl text-xs font-semibold shadow-sm">
+                      <div>
+                        <span className="font-extrabold text-brand-900">{v.name}</span>
+                        {v.barcode && <span className="text-[10px] text-gray-400 ml-1.5">@{v.barcode}</span>}
+                        <div className="text-[9px] text-gray-400 mt-0.5">
+                          Cost: ${v.cost_price || 'Parent'} | Price: ${v.price || 'Parent'} | Stock: {v.quantity}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setProductVariants(productVariants.filter((_, subIdx) => subIdx !== idx))}
+                        className="text-red-500 hover:text-red-700 p-1"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
                 <button
                   type="button"

@@ -115,9 +115,17 @@ export const fetchRecentSales = async () => {
     }
 };
 
-export const cancelSale = async (saleId, reason) => {
+export const cancelSale = async (saleId, reason, auth_username = null, auth_password = null, quantity = null) => {
     try {
-        const response = await axios.post(`${API_URL}/sales/${saleId}/cancel`, { reason });
+        const payload = { reason };
+        if (auth_username && auth_password) {
+            payload.auth_username = auth_username;
+            payload.auth_password = auth_password;
+        }
+        if (quantity !== null) {
+            payload.quantity = quantity;
+        }
+        const response = await axios.post(`${API_URL}/sales/${saleId}/cancel`, payload);
         return response.data;
     } catch (error) {
         console.error(`Error cancelling sale ${saleId}:`, error);
@@ -131,6 +139,82 @@ export const fetchReturnsReport = async () => {
         return response.data;
     } catch (error) {
         console.error("Error fetching returns report:", error);
+        throw error;
+    }
+};
+
+// --- SHIFTS & CASH API ENDPOINTS ---
+
+export const fetchActiveShift = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/shifts/active`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching active shift:", error);
+        throw error;
+    }
+};
+
+export const openShift = async (initialCash) => {
+    try {
+        const response = await axios.post(`${API_URL}/shifts/open`, { initial_cash: initialCash });
+        return response.data;
+    } catch (error) {
+        console.error("Error opening shift:", error);
+        throw error;
+    }
+};
+
+export const closeShift = async (finalCashReal) => {
+    try {
+        const response = await axios.post(`${API_URL}/shifts/close`, { final_cash_real: finalCashReal });
+        return response.data;
+    } catch (error) {
+        console.error("Error closing shift:", error);
+        throw error;
+    }
+};
+
+export const addCashMovement = async (type, amount, reason) => {
+    try {
+        const response = await axios.post(`${API_URL}/shifts/movement`, { type, amount, reason });
+        return response.data;
+    } catch (error) {
+        console.error("Error adding cash movement:", error);
+        throw error;
+    }
+};
+
+export const fetchShiftReport = async (shiftId) => {
+    try {
+        const response = await axios.get(`${API_URL}/shifts/${shiftId}/report`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching report for shift ${shiftId}:`, error);
+        throw error;
+    }
+};
+
+// --- CHECKOUT API ENDPOINT ---
+
+export const checkoutSales = async (checkoutData) => {
+    try {
+        const response = await axios.post(`${API_URL}/sales/checkout`, checkoutData);
+        return response.data;
+    } catch (error) {
+        console.error("Error during sales checkout:", error);
+        throw error;
+    }
+};
+
+// --- PROFIT MARGIN REPORT ---
+
+export const fetchProfitMarginReport = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/reports/profit-margin`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching profit margin report:", error);
         throw error;
     }
 };

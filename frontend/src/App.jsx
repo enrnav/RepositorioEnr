@@ -42,12 +42,12 @@ function App() {
           </ProtectedRoute>
         }>
           <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <Dashboard />
             </ProtectedRoute>
           } />
           <Route path="/inventory" element={
-            <ProtectedRoute allowedRoles={['admin']}>
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <Inventory />
             </ProtectedRoute>
           } />

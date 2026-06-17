@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Float, Boolean
+from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from database import Base
 
 class User(Base):
@@ -15,9 +16,26 @@ class Product(Base):
     name = Column(String, index=True)
     barcode = Column(String, index=True, nullable=True)
     price = Column(Float)
+    cost_price = Column(Float, default=0.0)
     quantity = Column(Integer)
+    min_stock = Column(Integer, default=3)
     sold = Column(Integer, default=0)
     entry_date = Column(String, nullable=True)
+    
+    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="joined")
+
+class ProductVariant(Base):
+    __tablename__ = "product_variants"
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), index=True)
+    name = Column(String, index=True)
+    barcode = Column(String, index=True, nullable=True)
+    cost_price = Column(Float, nullable=True)
+    price = Column(Float, nullable=True)
+    quantity = Column(Integer)
+    sold = Column(Integer, default=0)
+
+    product = relationship("Product", back_populates="variants")
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -25,14 +43,45 @@ class Notification(Base):
     message = Column(String)
     is_read = Column(Boolean, default=False)
 
+class Shift(Base):
+    __tablename__ = "shifts"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, index=True)
+    start_time = Column(String)
+    end_time = Column(String, nullable=True)
+    initial_cash = Column(Float)
+    final_cash_real = Column(Float, nullable=True)
+    final_cash_expected = Column(Float, default=0.0)
+    difference = Column(Float, nullable=True)
+    status = Column(String, default="open") # "open", "closed"
+
+class CashMovement(Base):
+    __tablename__ = "cash_movements"
+    id = Column(Integer, primary_key=True, index=True)
+    shift_id = Column(Integer, index=True)
+    type = Column(String) # "entrada", "salida", "retiro_parcial"
+    amount = Column(Float)
+    reason = Column(String)
+    created_at = Column(String)
+
 class SaleHistory(Base):
     __tablename__ = "sales_history"
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, index=True)
+    variant_id = Column(Integer, index=True, nullable=True)
+    shift_id = Column(Integer, index=True, nullable=True)
+    user_id = Column(Integer, index=True, nullable=True)
     quantity = Column(Integer)
+    price_sold = Column(Float, nullable=True) # Actual selling price
+    cost_price_sold = Column(Float, default=0.0) # Cost price at transaction time
+    discount = Column(Float, default=0.0) # Discount applied
+    payment_method = Column(String, default="efectivo") # "efectivo", "tarjeta", "mixto"
+    cash_amount = Column(Float, default=0.0)
+    card_amount = Column(Float, default=0.0)
     created_at = Column(String) # We will use ISO format string for simplicity with SQLite/Postgres compatibility
     is_cancelled = Column(Boolean, default=False)
     cancel_reason = Column(String, nullable=True)
+    authorized_by = Column(String, nullable=True)
 
 class ProductReturn(Base):
     __tablename__ = "product_returns"
@@ -42,7 +91,9 @@ class ProductReturn(Base):
     quantity = Column(Integer)
     price = Column(Float)
     reason = Column(String)
+    authorized_by = Column(String, nullable=True)
     created_at = Column(String)
+
 
 
 

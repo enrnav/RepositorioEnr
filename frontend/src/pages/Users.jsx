@@ -11,7 +11,7 @@ const Users = () => {
     username: '',
     password: '',
     full_name: '',
-    role: 'user'
+    role: 'cajero'
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -54,12 +54,7 @@ const Users = () => {
     }
   }, [success]);
 
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(''), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
+  // No auto-dismiss for errors so users have time to read detailed validation requirements
 
   const handleEditClick = (user) => {
     setEditUser(user.id);
@@ -155,7 +150,7 @@ const Users = () => {
         setSuccess(editUser ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
         setShowForm(false);
         setEditUser(null);
-        setFormData({ username: '', password: '', full_name: '', role: 'user' });
+        setFormData({ username: '', password: '', full_name: '', role: 'cajero' });
         loadUsers();
       } else {
         const data = await response.json();
@@ -177,7 +172,7 @@ const Users = () => {
           <button
             onClick={() => {
               setEditUser(null);
-              setFormData({ username: '', password: '', full_name: '', role: 'user' });
+              setFormData({ username: '', password: '', full_name: '', role: 'cajero' });
               setShowForm(true);
             }}
             className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:scale-105 active:scale-95 transition-all duration-300 shadow-float w-full md:w-auto justify-center"
@@ -188,8 +183,47 @@ const Users = () => {
         </div>
       </div>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg border border-red-200">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-3 rounded-lg border border-green-200">{success}</div>}
+      {error && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up border border-red-100">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <X size={32} />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Aviso</h3>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">{error}</p>
+              <button
+                onClick={() => setError('')}
+                className="px-6 py-2.5 bg-chiluda-red text-white font-bold rounded-md w-full hover:bg-chiluda-darkred transition-colors shadow-sm"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {success && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up border border-green-100">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">¡Éxito!</h3>
+              <p className="text-gray-600 mb-6 text-sm leading-relaxed">{success}</p>
+              <button
+                onClick={() => setSuccess('')}
+                className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-md w-full hover:bg-green-700 transition-colors shadow-sm"
+              >
+                Aceptar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -312,7 +346,8 @@ const Users = () => {
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
                 >
-                  <option value="user">Usuario (Solo Punto de Venta)</option>
+                  <option value="cajero">Cajero (Solo Punto de Venta)</option>
+                  <option value="supervisor">Supervisor (Ventas, Inventario y Cortes)</option>
                   <option value="admin">Administrador (Acceso Total)</option>
                 </select>
               </div>
@@ -358,10 +393,16 @@ const Users = () => {
                 <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.username}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`px-2.5 py-1 inline-flex items-center text-xs font-semibold rounded-full ${
-                    u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                    u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
+                    u.role === 'supervisor' ? 'bg-blue-100 text-blue-800' :
+                    'bg-green-100 text-green-800'
                   }`}>
-                    {u.role === 'admin' ? <Shield size={14} className="mr-1" /> : <User size={14} className="mr-1" />}
-                    {u.role === 'admin' ? 'Administrador' : 'Usuario'}
+                    {u.role === 'admin' && <Shield size={14} className="mr-1" />}
+                    {u.role === 'supervisor' && <Shield size={14} className="mr-1 text-blue-600" />}
+                    {u.role === 'cajero' && <User size={14} className="mr-1" />}
+                    
+                    {u.role === 'admin' ? 'Administrador' : 
+                     u.role === 'supervisor' ? 'Supervisor' : 'Cajero'}
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">

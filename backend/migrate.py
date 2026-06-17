@@ -27,6 +27,93 @@ def run_migration():
             conn.rollback()
             print("Error actualizando usuario:", e)
 
+        # Columnas adicionales para products
+        products_cols = [
+            ("cost_price", "FLOAT DEFAULT 0.0"),
+            ("min_stock", "INTEGER DEFAULT 3")
+        ]
+        for col, col_type in products_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE products ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"Columna '{col}' agregada a products.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Error agregando '{col}' a products (tal vez ya existe):", e)
+
+        # Columnas adicionales para sales_history
+        sales_history_cols = [
+            ("is_cancelled", "BOOLEAN DEFAULT FALSE"),
+            ("cancel_reason", "VARCHAR"),
+            ("variant_id", "INTEGER"),
+            ("shift_id", "INTEGER"),
+            ("user_id", "INTEGER"),
+            ("price_sold", "FLOAT"),
+            ("cost_price_sold", "FLOAT DEFAULT 0.0"),
+            ("discount", "FLOAT DEFAULT 0.0"),
+            ("payment_method", "VARCHAR(50) DEFAULT 'efectivo'"),
+            ("cash_amount", "FLOAT DEFAULT 0.0"),
+            ("card_amount", "FLOAT DEFAULT 0.0"),
+            ("authorized_by", "VARCHAR")
+        ]
+        for col, col_type in sales_history_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE sales_history ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"Columna '{col}' agregada a sales_history.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Error agregando '{col}' a sales_history (tal vez ya existe):", e)
+
+        # Backfill de datos antiguos de ventas
+        try:
+            conn.execute(text("""
+                UPDATE sales_history 
+                SET price_sold = (SELECT price FROM products WHERE products.id = sales_history.product_id)
+                WHERE price_sold IS NULL;
+            """))
+            conn.execute(text("""
+                UPDATE sales_history 
+                SET cost_price_sold = (SELECT cost_price FROM products WHERE products.id = sales_history.product_id)
+                WHERE cost_price_sold IS NULL;
+            """))
+            conn.commit()
+            print("Backfill de precios históricos completado.")
+        except Exception as e:
+            conn.rollback()
+            print("Error durante backfill de ventas:", e)
+
+        # Crear tabla product_returns si no existe
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS product_returns (
+                    id SERIAL PRIMARY KEY,
+                    sale_id INTEGER,
+                    product_id INTEGER,
+                    quantity INTEGER,
+                    price FLOAT,
+                    reason VARCHAR,
+                    authorized_by VARCHAR,
+                    created_at VARCHAR
+                );
+                CREATE INDEX IF NOT EXISTS ix_product_returns_id ON product_returns (id);
+                CREATE INDEX IF NOT EXISTS ix_product_returns_sale_id ON product_returns (sale_id);
+            """))
+            conn.commit()
+            print("Tabla 'product_returns' creada/verificada.")
+        except Exception as e:
+            conn.rollback()
+            print("Error creando la tabla product_returns:", e)
+
+        # Columna authorized_by en product_returns si la tabla ya existía sin ella
+        try:
+            conn.execute(text("ALTER TABLE product_returns ADD COLUMN authorized_by VARCHAR"))
+            conn.commit()
+            print("Columna 'authorized_by' agregada a product_returns.")
+        except Exception as e:
+            conn.rollback()
+            print("Error agregando 'authorized_by' a product_returns (tal vez ya existe):", e)
+
         try:
             stored_proc_sql = """
             CREATE OR REPLACE FUNCTION vender_producto(
@@ -72,43 +159,6 @@ def run_migration():
         except Exception as e:
             conn.rollback()
             print("Error creando la función 'vender_producto':", e)
-
-        try:
-            conn.execute(text("ALTER TABLE sales_history ADD COLUMN is_cancelled BOOLEAN DEFAULT FALSE"))
-            conn.commit()
-            print("Columna 'is_cancelled' agregada a sales_history.")
-        except Exception as e:
-            conn.rollback()
-            print("Error agregando columna is_cancelled (tal vez ya existe):", e)
-
-        try:
-            conn.execute(text("ALTER TABLE sales_history ADD COLUMN cancel_reason VARCHAR"))
-            conn.commit()
-            print("Columna 'cancel_reason' agregada a sales_history.")
-        except Exception as e:
-            conn.rollback()
-            print("Error agregando columna cancel_reason (tal vez ya existe):", e)
-
-        # Crear tabla product_returns si no existe
-        try:
-            conn.execute(text("""
-                CREATE TABLE IF NOT EXISTS product_returns (
-                    id SERIAL PRIMARY KEY,
-                    sale_id INTEGER,
-                    product_id INTEGER,
-                    quantity INTEGER,
-                    price FLOAT,
-                    reason VARCHAR,
-                    created_at VARCHAR
-                );
-                CREATE INDEX IF NOT EXISTS ix_product_returns_id ON product_returns (id);
-                CREATE INDEX IF NOT EXISTS ix_product_returns_sale_id ON product_returns (sale_id);
-            """))
-            conn.commit()
-            print("Tabla 'product_returns' creada/verificada.")
-        except Exception as e:
-            conn.rollback()
-            print("Error creando la tabla product_returns:", e)
 
         try:
             cancel_proc_sql = """

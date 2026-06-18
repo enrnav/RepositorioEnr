@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../api';
+import FloatingStoreIconsBg from '../components/FloatingStoreIconsBg';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -100,34 +101,32 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-brand-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
-      {/* Elementos decorativos de fondo envolventes */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60rem] h-[60rem] bg-red-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 animate-pulse"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[70rem] h-[70rem] bg-chiluda-red rounded-full mix-blend-multiply filter blur-[120px] opacity-20 animate-pulse" style={{ animationDelay: '2s' }}></div>
-      <div className="absolute top-[30%] left-[30%] w-[50rem] h-[50rem] bg-orange-500 rounded-full mix-blend-multiply filter blur-[100px] opacity-10 animate-pulse" style={{ animationDelay: '4s' }}></div>
+      {/* Fondo animado de iconos de tienda flotantes */}
+      <FloatingStoreIconsBg />
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-fade-in">
         <div className="flex justify-center mb-6">
-          <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-32 w-auto object-contain hover:scale-105 transition-transform duration-300" />
+          <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-32 w-auto object-contain hover:scale-105 transition-transform duration-500" />
         </div>
-        <h2 className="mt-2 text-center text-4xl font-extrabold text-brand-900 tracking-tight">
-          Abarrotes ED & E
+        <h2 className="mt-2 text-center text-4xl font-black text-brand-900 tracking-tight">
+          Abarrotes <span className="text-chiluda-red">ED & E</span>
         </h2>
-        <p className="mt-3 text-center text-sm font-medium text-gray-500">
+        <p className="mt-3 text-center text-sm font-bold text-stone-500">
           {isLogin ? 'Ingresa a tu cuenta' : 'Crea una cuenta'}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-slide-up">
-        <div className="bg-white/80 backdrop-blur-xl py-10 px-6 shadow-glass sm:rounded-3xl sm:px-12 border border-white/60">
+        <div className="bg-white/5 backdrop-blur-[2px] py-10 px-6 shadow-glass sm:rounded-[2rem] sm:px-12 border border-white/40">
           {error && (
-            <div className={`mb-4 p-2 text-sm text-center rounded ${error.includes('exitoso') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            <div className={`mb-6 p-3.5 text-xs font-bold text-center rounded-xl border ${error.includes('exitoso') ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-rose-50 border-rose-100 text-chiluda-red animate-shake'}`}>
               {error}
             </div>
           )}
           <form className="space-y-6" onSubmit={handleSubmit}>
             {!isLogin && (
               <div>
-                <label className="block text-sm font-semibold text-gray-700">
+                <label className="block text-xs font-black text-stone-500 uppercase tracking-wider">
                   Nombre completo
                 </label>
                 <div className="mt-2">
@@ -136,7 +135,7 @@ const Login = () => {
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="appearance-none block w-full px-4 py-3 bg-brand-50/50 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red focus:border-transparent focus:bg-white transition-all duration-200 sm:text-sm font-medium"
+                    className="appearance-none block w-full px-4 py-3 bg-white/50 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red focus:bg-white transition-all duration-300 sm:text-sm font-semibold text-stone-850"
                     placeholder="Ej. Juan Pérez"
                   />
                 </div>
@@ -144,7 +143,7 @@ const Login = () => {
             )}
             
             <div>
-              <label className="block text-sm font-semibold text-gray-700">
+              <label className="block text-xs font-black text-stone-500 uppercase tracking-wider">
                 Usuario
               </label>
               <div className="mt-2">
@@ -153,14 +152,14 @@ const Login = () => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3 bg-brand-50/50 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red focus:border-transparent focus:bg-white transition-all duration-200 sm:text-sm font-medium"
+                  className="appearance-none block w-full px-4 py-3 bg-white/50 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red focus:bg-white transition-all duration-300 sm:text-sm font-semibold text-stone-850"
                   placeholder="admin_abarrotes"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700">
+              <label className="block text-xs font-black text-stone-500 uppercase tracking-wider">
                 Contraseña
               </label>
               <div className="mt-2">
@@ -169,21 +168,21 @@ const Login = () => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full px-4 py-3 bg-brand-50/50 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red focus:border-transparent focus:bg-white transition-all duration-200 sm:text-sm font-medium"
+                  className="appearance-none block w-full px-4 py-3 bg-white/50 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red focus:bg-white transition-all duration-300 sm:text-sm font-semibold text-stone-850"
                   placeholder="••••••••"
                 />
               </div>
               
               {!isLogin && password && (
-                <div className="mt-2 space-y-1 animate-fade-in">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-gray-500 font-medium">Fortaleza de contraseña:</span>
-                    <span className={`font-bold ${
+                <div className="mt-3 space-y-1.5 animate-fade-in">
+                  <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-stone-500 font-bold">Fortaleza de contraseña:</span>
+                    <span className={`font-black ${
                       getPasswordStrength(password) === 1 ? 'text-red-500' :
                       getPasswordStrength(password) === 2 ? 'text-orange-500' :
                       getPasswordStrength(password) === 3 ? 'text-amber-500' :
-                      getPasswordStrength(password) === 4 ? 'text-green-600' :
-                      'text-gray-400'
+                      getPasswordStrength(password) === 4 ? 'text-emerald-600' :
+                      'text-stone-400'
                     }`}>
                       {getPasswordStrength(password) === 0 && 'Ninguna'}
                       {getPasswordStrength(password) === 1 && 'Muy débil'}
@@ -192,13 +191,13 @@ const Login = () => {
                       {getPasswordStrength(password) === 4 && 'Fuerte'}
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-stone-200 rounded-full h-1.5 overflow-hidden">
                     <div 
-                      className={`h-full transition-all duration-300 ${
+                      className={`h-full transition-all duration-500 ${
                         getPasswordStrength(password) === 1 ? 'bg-red-500 w-1/4' :
                         getPasswordStrength(password) === 2 ? 'bg-orange-500 w-2/4' :
                         getPasswordStrength(password) === 3 ? 'bg-amber-400 w-3/4' :
-                        getPasswordStrength(password) === 4 ? 'bg-green-500 w-full' :
+                        getPasswordStrength(password) === 4 ? 'bg-emerald-500 w-full' :
                         'w-0'
                       }`}
                     />
@@ -207,8 +206,8 @@ const Login = () => {
               )}
               
               {!isLogin && (
-                <p className="text-[11px] text-gray-500 leading-normal mt-2">
-                  * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
+                <p className="text-[10px] text-stone-500 leading-normal mt-2">
+                  * Requisitos: Mínimo <strong>12 caracteres</strong>, una <strong>mayúscula</strong>, un <strong>número</strong> y un <strong>carácter especial</strong>.
                 </p>
               )}
             </div>
@@ -216,7 +215,7 @@ const Login = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-float text-sm font-bold text-white bg-chiluda-red hover:bg-chiluda-darkred hover:scale-[1.02] active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-chiluda-red transition-all duration-300"
+                className="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-xl shadow-float text-sm font-black text-white bg-chiluda-red hover:bg-chiluda-darkred hover:scale-[1.02] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-chiluda-red transition-all duration-300"
               >
                 {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
               </button>
@@ -230,7 +229,7 @@ const Login = () => {
                 setIsLogin(!isLogin);
                 setError('');
               }}
-              className="text-sm text-gray-500 hover:text-chiluda-red font-semibold transition-colors"
+              className="text-xs text-stone-400 hover:text-chiluda-red font-black transition-colors uppercase tracking-wider"
             >
               {isLogin ? '¿No tienes cuenta? Regístrate aquí' : '¿Ya tienes cuenta? Inicia sesión'}
             </button>

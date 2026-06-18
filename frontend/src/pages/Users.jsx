@@ -164,7 +164,7 @@ const Users = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-8 gap-4">
-        <h2 className="text-3xl font-extrabold text-brand-900 tracking-tight animate-fade-in flex items-center">
+        <h2 className="text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center">
           <UsersIcon className="mr-3 text-chiluda-red w-8 h-8" />
           Gestión de Usuarios
         </h2>
@@ -175,10 +175,10 @@ const Users = () => {
               setFormData({ username: '', password: '', full_name: '', role: 'cajero' });
               setShowForm(true);
             }}
-            className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:scale-105 active:scale-95 transition-all duration-300 shadow-float w-full md:w-auto justify-center"
+            className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float w-full md:w-auto justify-center font-black text-xs uppercase tracking-wider"
           >
-            <UserPlus size={18} />
-            <span className="font-bold text-sm">Nuevo Usuario</span>
+            <UserPlus size={16} />
+            <span>Nuevo Usuario</span>
           </button>
         </div>
       </div>
@@ -255,7 +255,7 @@ const Users = () => {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
+          <div className="bg-white/5 backdrop-blur-[2px] rounded-[2rem] shadow-soft w-full max-w-md overflow-hidden border border-white/40 animate-slide-up">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
@@ -269,29 +269,29 @@ const Users = () => {
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Completo</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Nombre Completo</label>
                 <input
                   type="text"
                   required
                   value={formData.full_name}
                   onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                   placeholder="Ej. Juan Pérez"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Usuario</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Usuario</label>
                 <input
                   type="text"
                   required
                   value={formData.username}
                   onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                   placeholder="Ej. juanp"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
                   Contraseña
                 </label>
                 <input
@@ -299,7 +299,7 @@ const Users = () => {
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                   placeholder="••••••••"
                 />
                 
@@ -340,11 +340,11 @@ const Users = () => {
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Rol</label>
                 <select
                   value={formData.role}
                   onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
+                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                 >
                   <option value="cajero">Cajero (Solo Punto de Venta)</option>
                   <option value="supervisor">Supervisor (Ventas, Inventario y Cortes)</option>
@@ -355,13 +355,13 @@ const Users = () => {
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); setEditUser(null); }}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                  className="px-5 py-2.5 border border-gray-200 text-gray-700 rounded-full hover:bg-white hover:text-chiluda-red hover:border-chiluda-red/30 transition-all text-xs font-bold shadow-sm"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-chiluda-red text-white rounded-md hover:bg-chiluda-darkred transition-colors"
+                  className="px-5 py-2.5 bg-chiluda-red text-white rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all shadow-float text-xs font-black"
                 >
                   {editUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
                 </button>
@@ -371,68 +371,72 @@ const Users = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre</th>
-              <th className="hidden sm:table-cell px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuario</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rol</th>
-              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((u) => (
-              <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{u.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-semibold text-gray-900">{u.full_name}</div>
-                  <div className="text-xs text-gray-400 sm:hidden mt-0.5">@{u.username}</div>
-                </td>
-                <td className="hidden sm:table-cell px-6 py-4 whitespace-nowrap text-sm text-gray-500">{u.username}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`px-2.5 py-1 inline-flex items-center text-xs font-semibold rounded-full ${
-                    u.role === 'admin' ? 'bg-purple-100 text-purple-800' :
-                    u.role === 'supervisor' ? 'bg-blue-100 text-blue-800' :
-                    'bg-green-100 text-green-800'
-                  }`}>
-                    {u.role === 'admin' && <Shield size={14} className="mr-1" />}
-                    {u.role === 'supervisor' && <Shield size={14} className="mr-1 text-blue-600" />}
-                    {u.role === 'cajero' && <User size={14} className="mr-1" />}
-                    
-                    {u.role === 'admin' ? 'Administrador' : 
-                     u.role === 'supervisor' ? 'Supervisor' : 'Cajero'}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button 
-                    onClick={() => handleEditClick(u)}
-                    className="text-blue-600 hover:text-blue-900 mx-2 transition-colors"
-                    title="Editar usuario"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(u.id)}
-                    className="text-red-600 hover:text-red-900 transition-colors"
-                    title="Eliminar usuario"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {users.length === 0 && (
+      <div className="bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className="bg-brand-50/50 text-brand-900 text-[10px] md:text-xs uppercase tracking-wider">
               <tr>
-                <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
-                  <UsersIcon className="h-8 w-8 text-gray-300 mb-2" />
-                  No hay usuarios registrados o cargando...
-                </td>
+                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold rounded-tl-xl">ID</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Nombre</th>
+                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold">Usuario</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Rol</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-right rounded-tr-xl">Acciones</th>
               </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100/50">
+              {users.map((u) => (
+                <tr key={u.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
+                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-gray-600 text-sm md:text-base">#{u.id}</td>
+                  <td className="px-4 md:px-6 py-3 md:py-4">
+                    <div className="text-sm font-bold text-gray-900">{u.full_name}</div>
+                    <div className="text-xs text-gray-400 sm:hidden mt-0.5">@{u.username}</div>
+                  </td>
+                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-gray-600 text-sm md:text-base">{u.username}</td>
+                  <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                    <span className={`px-3 py-1.5 inline-flex items-center text-xs font-black rounded-full border ${
+                      u.role === 'admin' ? 'bg-purple-500/10 text-purple-800 border-purple-500/20' :
+                      u.role === 'supervisor' ? 'bg-blue-500/10 text-blue-800 border-blue-500/20' :
+                      'bg-emerald-500/10 text-emerald-800 border-emerald-500/20'
+                    }`}>
+                      {u.role === 'admin' && <Shield size={12} className="mr-1.5" />}
+                      {u.role === 'supervisor' && <Shield size={12} className="mr-1.5 text-blue-600" />}
+                      {u.role === 'cajero' && <User size={12} className="mr-1.5" />}
+                      
+                      {u.role === 'admin' ? 'Administrador' : 
+                       u.role === 'supervisor' ? 'Supervisor' : 'Cajero'}
+                    </span>
+                  </td>
+                  <td className="px-4 md:px-6 py-3 md:py-4">
+                    <div className="flex items-center justify-end space-x-2 md:space-x-3">
+                      <button 
+                        onClick={() => handleEditClick(u)}
+                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 p-2.5 rounded-xl transition-all"
+                        title="Editar usuario"
+                      >
+                        <Edit2 size={18} />
+                      </button>
+                      <button 
+                        onClick={() => handleDelete(u.id)}
+                        className="text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 p-2.5 rounded-xl transition-all"
+                        title="Eliminar usuario"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {users.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
+                    <UsersIcon className="h-8 w-8 text-gray-300 mb-2" />
+                    No hay usuarios registrados o cargando...
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

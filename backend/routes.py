@@ -116,6 +116,96 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     db.commit()
     return {"message": "Usuario eliminado exitosamente"}
 
+def search_product_image(query: str) -> Optional[str]:
+    import urllib.request
+    import urllib.parse
+    import re
+    import json
+    
+    query_clean = query.strip()
+    if not query_clean:
+        return None
+        
+    # 1. Try global OpenFoodFacts CGI search first (most accurate for grocery products)
+    try:
+        url = "https://world.openfoodfacts.org/cgi/search.pl?search_terms=" + urllib.parse.quote(query_clean) + "&search_simple=1&action=process&json=1"
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        )
+        with urllib.request.urlopen(req, timeout=2.0) as response:
+            data = json.loads(response.read().decode('utf-8'))
+        products = data.get("products", [])
+        if products:
+            for p in products:
+                img_url = p.get("image_front_url") or p.get("image_url") or p.get("image_front_small_url")
+                if img_url and img_url.startswith("http"):
+                    return img_url
+    except Exception:
+        pass
+        
+    # 2. Fall back to Bing Images search with strict filters to retrieve real retail packaging
+    try:
+        search_query = query_clean
+        # Auto-tune query for generic terms to get actual bottles/packaging
+        if any(w in query_clean.lower() for w in ["salsa", "aceite", "leche", "crema", "agua", "refresco"]):
+            search_query += " botella"
+            
+        url = "https://www.bing.com/images/search?q=" + urllib.parse.quote(search_query)
+        req = urllib.request.Request(
+            url, 
+            headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
+        )
+        with urllib.request.urlopen(req, timeout=3.0) as response:
+            html = response.read().decode('utf-8', errors='ignore')
+            
+        murls = re.findall(r'murl&quot;:&quot;(http[^&]+)&quot;', html)
+        
+        BLOCKED_DOMAINS = [
+            "freepik.com", "shutterstock.com", "pinterest.com", "pinimg.com",
+            "lovepik.com", "pngtree.com", "vecteezy.com", "depositphotos.com",
+            "dreamstime.com", "123rf.com", "alamy.com", "canva.com",
+            "vectorportal.com", "pixabay.com", "vectorstock.com", "istockphoto.com",
+            "flaticon.com", "pngwing.com", "klipartz.com", "kindpng.com",
+            "pngfind.com", "cleanpng.com", "pngegg.com", "favpng.com",
+            "subpng.com", "pngsucai.com", "mksucai.com", "699pic.com",
+            "freeimages.com", "pixy.org", "clipart", "gograph.com",
+            "canstockphoto.com", "vector.me"
+        ]
+        
+        BLOCKED_KEYWORDS = [
+            "logo", "icon", "vector", "dibujo", "clipart", "iluminacion", 
+            "background", "fondo", "ilustration", "ilustracion", "banner", 
+            "mockup", "silueta", "silhouette", "esquema"
+        ]
+        
+        MOTOR_KEYWORDS = ["motor", "transmision", "transmission", "atf", "mobil", "lubricante", "refaccionaria", "mirefaccion"]
+        
+        for u in murls:
+            u_lower = u.lower()
+            blocked_domain = any(d in u_lower for d in BLOCKED_DOMAINS)
+            blocked_kw = any(kw in u_lower for kw in BLOCKED_KEYWORDS)
+            blocked_motor = any(mk in u_lower for mk in MOTOR_KEYWORDS)
+            if not blocked_domain and not blocked_kw and not blocked_motor:
+                return u
+                
+        img_srcs = re.findall(r'src="(http[^"]+)"', html)
+        for src in img_srcs:
+            src_lower = src.lower()
+            if not any(x in src_lower for x in ["logo", "icon", "bing", "gstatic"]) and not any(d in src_lower for d in BLOCKED_DOMAINS) and not any(mk in src_lower for mk in MOTOR_KEYWORDS):
+                return src
+    except Exception:
+        pass
+        
+    return None
+
+@router.get("/inventory/search-image")
+def get_product_image_search(q: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not q or not q.strip():
+        return {"image_url": None}
+    img_url = search_product_image(q.strip())
+    return {"image_url": img_url}
+
 @router.get("/inventory/", response_model=List[schemas.ProductResponse])
 def get_inventory(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     products = db.query(models.Product).all()

@@ -8,23 +8,24 @@ export default {
     extend: {
       colors: {
         chiluda: {
-          red: '#ef4444',     // A more vibrant, modern red
-          darkred: '#dc2626',
-          lightred: '#fef2f2'
+          red: '#059669',     // A fresh Emerald Green
+          darkred: '#047857', // Deeper Emerald Green for hover
+          lightred: '#ECFDF5' // Soft mint white selection background
         },
         brand: {
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          900: '#0f172a'
+          50: '#FAF9F6',      // Soft Warm Alabaster White background
+          100: '#F5F5F4',     // Light Stone/warm grey
+          900: '#064E3B'      // Forest Green 900 for premium contrast text
         }
       },
       fontFamily: {
         sans: ['Outfit', 'sans-serif'],
       },
       boxShadow: {
-        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
-        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.03)',
-        'float': '0 12px 30px -4px rgba(239, 68, 68, 0.2)', // Red glowing shadow
+        'soft': '0 10px 30px -10px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.02)',
+        'glass': '0 8px 32px 0 rgba(5, 150, 105, 0.03)',
+        'float': '0 10px 25px -3px rgba(5, 150, 105, 0.25)', // Emerald glowing shadow
+        'card-hover': '0 20px 40px -15px rgba(0, 0, 0, 0.06), 0 10px 25px -3px rgba(5, 150, 105, 0.05)'
       },
       animation: {
         'fade-in': 'fadeIn 0.3s ease-out',

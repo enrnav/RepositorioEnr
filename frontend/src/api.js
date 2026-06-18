@@ -85,6 +85,18 @@ export const deleteProduct = async (id) => {
     }
 };
 
+export const searchProductImage = async (query) => {
+    try {
+        const response = await axios.get(`${API_URL}/inventory/search-image`, {
+            params: { q: query }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error searching product image:", error);
+        throw error;
+    }
+};
+
 export const sellProduct = async (id, quantity = 1) => {
     try {
         const response = await axios.post(`${API_URL}/inventory/${id}/sell`, { quantity });

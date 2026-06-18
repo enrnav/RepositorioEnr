@@ -30,7 +30,8 @@ def run_migration():
         # Columnas adicionales para products
         products_cols = [
             ("cost_price", "FLOAT DEFAULT 0.0"),
-            ("min_stock", "INTEGER DEFAULT 3")
+            ("min_stock", "INTEGER DEFAULT 3"),
+            ("image", "VARCHAR")
         ]
         for col, col_type in products_cols:
             try:

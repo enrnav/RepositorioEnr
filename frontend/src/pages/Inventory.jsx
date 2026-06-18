@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Download, Plus, Search, Edit2, Trash2, X } from 'lucide-react';
+import { Download, Plus, Search, Edit2, Trash2, X, Package } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { fetchInventory, createProduct, updateProduct, deleteProduct, fetchSalesReport, fetchReturnsReport } from '../api';
+import { fetchInventory, createProduct, updateProduct, deleteProduct, fetchSalesReport, fetchReturnsReport, searchProductImage } from '../api';
+
+
 
 const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,8 +19,9 @@ const Inventory = () => {
   const [isReturnsExportModalOpen, setIsReturnsExportModalOpen] = useState(false);
   const [returnsExportFormat, setReturnsExportFormat] = useState('xlsx');
   const [returnsExportPeriod, setReturnsExportPeriod] = useState('all');
-  const [newProduct, setNewProduct] = useState({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '', image: '' });
   const [editingProduct, setEditingProduct] = useState(null);
+  const [isSearchingImage, setIsSearchingImage] = useState(false);
   const [productVariants, setProductVariants] = useState([]);
   const [newVariant, setNewVariant] = useState({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
   const [success, setSuccess] = useState('');
@@ -52,6 +55,50 @@ const Inventory = () => {
     }
   }, [error]);
 
+  // Debounced auto-search for product image when name is typed
+  useEffect(() => {
+    if (!newProduct.name || newProduct.name.trim().length < 3) return;
+    if (newProduct.image && newProduct.image.trim() !== '') return;
+
+    const delayDebounceFn = setTimeout(() => {
+      if (!newProduct.image || newProduct.image.trim() === '') {
+        handleAutoSearchImage(newProduct.name);
+      }
+    }, 1000);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [newProduct.name]);
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("La imagen es demasiado grande. El límite es de 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setNewProduct(prev => ({ ...prev, image: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAutoSearchImage = async (name) => {
+    if (!name || !name.trim()) return;
+    setIsSearchingImage(true);
+    try {
+      const data = await searchProductImage(name.trim());
+      if (data && data.image_url) {
+        setNewProduct(prev => ({ ...prev, image: data.image_url }));
+      }
+    } catch (err) {
+      console.error("Failed to auto-search product image:", err);
+    } finally {
+      setIsSearchingImage(false);
+    }
+  };
+
   const handleSaveProduct = async (e) => {
     e.preventDefault();
     try {
@@ -63,6 +110,7 @@ const Inventory = () => {
         quantity: parseInt(newProduct.quantity),
         min_stock: parseInt(newProduct.min_stock) || 3,
         entry_date: newProduct.entry_date || new Date().toISOString().split('T')[0],
+        image: newProduct.image || null,
         variants: productVariants.map(v => ({
           name: v.name,
           barcode: v.barcode || null,
@@ -81,7 +129,7 @@ const Inventory = () => {
       }
 
       setIsModalOpen(false);
-      setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '' });
+      setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '', image: '' });
       setProductVariants([]);
       setEditingProduct(null);
       loadData();
@@ -100,7 +148,8 @@ const Inventory = () => {
       cost_price: product.cost_price || 0,
       quantity: product.quantity,
       min_stock: product.min_stock || 3,
-      entry_date: product.entry_date || ''
+      entry_date: product.entry_date || '',
+      image: product.image || ''
     });
     setProductVariants(product.variants || []);
     setIsModalOpen(true);
@@ -753,41 +802,41 @@ const Inventory = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:justify-between items-start md:items-center mb-8 gap-4">
-        <h2 className="text-3xl font-extrabold text-brand-900 tracking-tight animate-fade-in">Gestión de Inventario</h2>
+        <h2 className="text-3xl font-black text-brand-900 tracking-tight animate-fade-in">Gestión de Inventario</h2>
 
         <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full md:w-auto">
           <button
             onClick={() => setIsStockModalOpen(true)}
-            className="flex items-center space-x-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 px-5 py-2.5 rounded-full hover:bg-brand-50 hover:text-chiluda-red hover:border-chiluda-red/30 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-205 text-stone-600 px-5 py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-xs"
           >
-            <Download size={18} />
-            <span className="font-semibold text-sm">Exportar Stock</span>
+            <Download size={16} />
+            <span>Exportar Stock</span>
           </button>
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="flex items-center space-x-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 px-5 py-2.5 rounded-full hover:bg-brand-50 hover:text-chiluda-red hover:border-chiluda-red/30 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-205 text-stone-600 px-5 py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-xs"
           >
-            <Download size={18} />
-            <span className="font-semibold text-sm">Exportar Ventas</span>
+            <Download size={16} />
+            <span>Exportar Ventas</span>
           </button>
           <button
             onClick={() => setIsReturnsExportModalOpen(true)}
-            className="flex items-center space-x-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 px-5 py-2.5 rounded-full hover:bg-brand-50 hover:text-chiluda-red hover:border-chiluda-red/30 transition-all duration-200 shadow-sm hover:shadow-md"
+            className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-205 text-stone-600 px-5 py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-xs"
           >
-            <Download size={18} />
-            <span className="font-semibold text-sm">Exportar Devoluciones</span>
+            <Download size={16} />
+            <span>Exportar Devoluciones</span>
           </button>
           <button
             onClick={() => {
               setEditingProduct(null);
-              setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '' });
+              setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '', image: '' });
               setProductVariants([]);
               setIsModalOpen(true);
             }}
-            className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:scale-105 active:scale-95 transition-all duration-300 shadow-float"
+            className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float font-black text-xs"
           >
-            <Plus size={18} />
-            <span className="font-bold text-sm">Nuevo Producto</span>
+            <Plus size={16} />
+            <span>Nuevo Producto</span>
           </button>
         </div>
       </div>
@@ -823,7 +872,7 @@ const Inventory = () => {
         </div>
       )}
 
-      <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-soft border border-white overflow-hidden animate-slide-up">
+      <div className="bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
         {/* Toolbar */}
         <div className="p-4 md:p-6 border-b border-gray-100/50 flex flex-col md:flex-row items-start md:items-center justify-between bg-white/40 gap-4">
           <div className="relative w-full md:w-80">
@@ -863,55 +912,61 @@ const Inventory = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100/50">
-              {filteredInventory.map((item) => (
-                <tr key={item.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
-                  <td className="px-3 md:px-6 py-3 md:py-4 max-w-[120px] md:max-w-none truncate">
-                    <span className="font-medium text-gray-800 block truncate">{item.name}</span>
-                    {item.barcode && <span className="text-[10px] md:text-xs text-gray-400 mt-1 block truncate">Cód: {item.barcode}</span>}
-                  </td>
-                  <td className="px-3 md:px-6 py-3 md:py-4 text-right text-gray-600 text-sm md:text-base">
-                    ${item.price.toFixed(2)}
-                  </td>
-                  <td className="px-3 md:px-6 py-3 md:py-4 text-center">
-                    <span className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
-                      item.quantity <= (item.min_stock ?? 3) ? 'bg-red-105 text-red-800 animate-pulse border border-red-200' : 'bg-green-150 text-green-800'
-                    }`}>
-                      {item.quantity} u. (Min: {item.min_stock ?? 3})
-                    </span>
-                  </td>
-                  <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
-                    {item.entry_date || '-'}
-                  </td>
-                  <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
-                    {item.sold} u.
-                  </td>
-                  <td className="hidden lg:table-cell px-3 md:px-6 py-3 md:py-4 text-center">
-                    <span className="text-gray-500 text-sm">
-                      {Math.max(0, 50 - item.quantity)} u.
-                    </span>
-                  </td>
-                  <td className="px-3 md:px-6 py-3 md:py-4">
-                    <div className="flex items-center justify-center space-x-2 md:space-x-3">
-                      <button 
-                        type="button" 
-                        onClick={() => handleEdit(item)} 
-                        className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 p-2.5 rounded-xl transition-all"
-                        title="Editar"
-                      >
-                        <Edit2 size={18} className="md:w-[20px] md:h-[20px]" />
-                      </button>
-                      <button 
-                        type="button" 
-                        onClick={() => handleDelete(item.id)} 
-                        className="text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 p-2.5 rounded-xl transition-all"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={18} className="md:w-[20px] md:h-[20px]" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredInventory.map((item) => {
+                return (
+                  <tr key={item.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
+                    <td className="px-3 md:px-6 py-3 md:py-4 max-w-[120px] md:max-w-none truncate">
+                      <div className="flex items-center space-x-3">
+                        <div className="truncate">
+                          <span className="font-bold text-gray-950 text-sm md:text-base block truncate">{item.name}</span>
+                          {item.barcode && <span className="text-[10px] md:text-xs text-gray-400 mt-0.5 block truncate">Cód: {item.barcode}</span>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-right text-gray-600 text-sm md:text-base">
+                      ${item.price.toFixed(2)}
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-center">
+                      <span className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
+                        item.quantity <= (item.min_stock ?? 3) ? 'bg-red-105 text-red-800 animate-pulse border border-red-200' : 'bg-green-150 text-green-800'
+                      }`}>
+                        {item.quantity} u. (Min: {item.min_stock ?? 3})
+                      </span>
+                    </td>
+                    <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
+                      {item.entry_date || '-'}
+                    </td>
+                    <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
+                      {item.sold} u.
+                    </td>
+                    <td className="hidden lg:table-cell px-3 md:px-6 py-3 md:py-4 text-center">
+                      <span className="text-gray-500 text-sm">
+                        {Math.max(0, 50 - item.quantity)} u.
+                      </span>
+                    </td>
+                    <td className="px-3 md:px-6 py-3 md:py-4">
+                      <div className="flex items-center justify-center space-x-2 md:space-x-3">
+                        <button 
+                          type="button" 
+                          onClick={() => handleEdit(item)} 
+                          className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 p-2.5 rounded-xl transition-all"
+                          title="Editar"
+                        >
+                          <Edit2 size={18} className="md:w-[20px] md:h-[20px]" />
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => handleDelete(item.id)} 
+                          className="text-gray-500 hover:text-red-600 hover:bg-red-50 active:bg-red-100 p-2.5 rounded-xl transition-all"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={18} className="md:w-[20px] md:h-[20px]" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -920,8 +975,8 @@ const Inventory = () => {
       {/* Modal Nuevo/Editar Producto */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div className="bg-white/5 backdrop-blur-[2px] rounded-xl shadow-lg w-full max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-white/40 animate-slide-up">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editingProduct ? 'Modificar Producto' : 'Nuevo Producto'}
               </h3>
@@ -929,201 +984,225 @@ const Inventory = () => {
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSaveProduct} className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
-                <input
-                  type="text"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                  value={newProduct.name}
-                  onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                  placeholder="Ej. Papas Fuego"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras (Opcional)</label>
-                <input
-                  type="text"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                  value={newProduct.barcode}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    const existing = inventory.find(p => p.barcode && p.barcode === val);
-                    
-                    if (existing) {
-                      setEditingProduct(existing);
-                      setNewProduct({
-                        name: existing.name,
-                        barcode: existing.barcode,
-                        price: existing.price,
-                        quantity: '',
-                        entry_date: existing.entry_date || ''
-                      });
-                    } else {
-                      setNewProduct({ ...newProduct, barcode: val });
-                    }
-                  }}
-                  placeholder="Escanea o escribe el código"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio Costo ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                    value={newProduct.cost_price}
-                    onChange={(e) => setNewProduct({ ...newProduct, cost_price: e.target.value })}
-                    placeholder="0.00"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Precio Venta ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                    value={newProduct.price}
-                    onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                    value={newProduct.quantity}
-                    onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo (Alerta)</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                    value={newProduct.min_stock}
-                    onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
-                    placeholder="3"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Ingreso</label>
-                <input
-                  type="date"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red"
-                  value={newProduct.entry_date}
-                  onChange={(e) => setNewProduct({ ...newProduct, entry_date: e.target.value })}
-                />
-                <p className="text-xs text-gray-500 mt-1">Si se deja vacío, se asignará la fecha de hoy automáticamente.</p>
-              </div>
-
-              {/* GESTOR DE VARIANTES */}
-              <div className="border-t border-gray-100 pt-4 space-y-3">
-                <h4 className="text-xs font-black uppercase text-brand-900 tracking-wider">Variantes del Producto (Opcional):</h4>
-                <div className="bg-brand-50/50 p-3 rounded-2xl border border-gray-200/50 space-y-2">
-                  <div className="grid grid-cols-2 gap-2">
+            <form onSubmit={handleSaveProduct} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 overflow-y-auto flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                {/* Columna Izquierda: Datos del Producto */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
                     <input
                       type="text"
-                      placeholder="Nombre (ej. M, Fresa)"
-                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
-                      value={newVariant.name}
-                      onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                      value={newProduct.name}
+                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                      placeholder="Ej. Papas Fuego"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras (Opcional)</label>
                     <input
                       type="text"
-                      placeholder="Código Barras"
-                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
-                      value={newVariant.barcode}
-                      onChange={(e) => setNewVariant({ ...newVariant, barcode: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                      value={newProduct.barcode}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const existing = inventory.find(p => p.barcode && p.barcode === val);
+                        
+                        if (existing) {
+                          setEditingProduct(existing);
+                          setNewProduct({
+                            name: existing.name,
+                            barcode: existing.barcode,
+                            price: existing.price,
+                            cost_price: existing.cost_price || 0,
+                            quantity: '',
+                            min_stock: existing.min_stock || 3,
+                            entry_date: existing.entry_date || '',
+                            image: existing.image || ''
+                          });
+                        } else {
+                          setNewProduct({ ...newProduct, barcode: val });
+                        }
+                      }}
+                      placeholder="Escanea o escribe el código"
                     />
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="number"
-                      placeholder="Costo"
-                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
-                      value={newVariant.cost_price}
-                      onChange={(e) => setNewVariant({ ...newVariant, cost_price: e.target.value })}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Precio"
-                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
-                      value={newVariant.price}
-                      onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
-                    />
-                    <input
-                      type="number"
-                      placeholder="Stock"
-                      className="px-2 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold"
-                      value={newVariant.quantity}
-                      onChange={(e) => setNewVariant({ ...newVariant, quantity: e.target.value })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio Costo ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                        value={newProduct.cost_price}
+                        onChange={(e) => setNewProduct({ ...newProduct, cost_price: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio Venta ($)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                        value={newProduct.price}
+                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!newVariant.name.trim()) {
-                        alert("Nombre de variante requerido");
-                        return;
-                      }
-                      setProductVariants([...productVariants, { ...newVariant }]);
-                      setNewVariant({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
-                    }}
-                    className="w-full py-1.5 bg-brand-900 text-white text-xs font-bold rounded-lg"
-                  >
-                    + Agregar Variante
-                  </button>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
+                      <input
+                        type="number"
+                        min="0"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                        value={newProduct.quantity}
+                        onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo</label>
+                      <input
+                        type="number"
+                        min="1"
+                        required
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                        value={newProduct.min_stock}
+                        onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
+                        placeholder="3"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Ingreso</label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
+                      value={newProduct.entry_date}
+                      onChange={(e) => setNewProduct({ ...newProduct, entry_date: e.target.value })}
+                    />
+                    <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, se asignará la fecha actual.</p>
+                  </div>
+
                 </div>
 
-                <div className="space-y-1 max-h-32 overflow-y-auto">
-                  {productVariants.map((v, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2 rounded-xl text-xs font-semibold shadow-sm">
-                      <div>
-                        <span className="font-extrabold text-brand-900">{v.name}</span>
-                        {v.barcode && <span className="text-[10px] text-gray-400 ml-1.5">@{v.barcode}</span>}
-                        <div className="text-[9px] text-gray-400 mt-0.5">
-                          Cost: ${v.cost_price || 'Parent'} | Price: ${v.price || 'Parent'} | Stock: {v.quantity}
-                        </div>
+                {/* Columna Derecha: Gestor de Variantes */}
+                <div className="space-y-4 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-brand-900 tracking-wider mb-2">Variantes (Opcional):</h4>
+                    <div className="bg-brand-50/50 p-3 rounded-2xl border border-gray-200/50 space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          placeholder="Nombre (ej. M, Fresa)"
+                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
+                          value={newVariant.name}
+                          onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Cod. Barras"
+                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
+                          value={newVariant.barcode}
+                          onChange={(e) => setNewVariant({ ...newVariant, barcode: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <input
+                          type="number"
+                          placeholder="Costo"
+                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
+                          value={newVariant.cost_price}
+                          onChange={(e) => setNewVariant({ ...newVariant, cost_price: e.target.value })}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Precio"
+                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
+                          value={newVariant.price}
+                          onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Stock"
+                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
+                          value={newVariant.quantity}
+                          onChange={(e) => setNewVariant({ ...newVariant, quantity: e.target.value })}
+                        />
                       </div>
                       <button
                         type="button"
-                        onClick={() => setProductVariants(productVariants.filter((_, subIdx) => subIdx !== idx))}
-                        className="text-red-500 hover:text-red-700 p-1"
+                        onClick={() => {
+                          if (!newVariant.name.trim()) {
+                            alert("Nombre de variante requerido");
+                            return;
+                          }
+                          setProductVariants([...productVariants, { ...newVariant }]);
+                          setNewVariant({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
+                        }}
+                        className="w-full py-1.5 bg-brand-900 text-white text-xs font-bold rounded-lg hover:bg-brand-950 transition-colors"
                       >
-                        <Trash2 size={12} />
+                        + Agregar Variante
                       </button>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Lista de Variantes Agregadas */}
+                  <div className="space-y-1.5 flex-1 max-h-48 overflow-y-auto mt-2 pr-1">
+                    {productVariants.length === 0 ? (
+                      <div className="text-[11px] text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-xl">
+                        Sin variantes agregadas
+                      </div>
+                    ) : (
+                      productVariants.map((v, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2 rounded-xl text-xs font-semibold shadow-sm hover:shadow transition-shadow">
+                          <div className="overflow-hidden pr-2">
+                            <span className="font-extrabold text-brand-900 block truncate">{v.name}</span>
+                            {v.barcode && <span className="text-[9px] text-gray-400 block truncate">@{v.barcode}</span>}
+                            <div className="text-[9px] text-gray-400 mt-0.5 font-medium">
+                              Costo: ${v.cost_price || 'Padre'} | Precio: ${v.price || 'Padre'} | Stock: {v.quantity}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setProductVariants(productVariants.filter((_, subIdx) => subIdx !== idx))}
+                            className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
+
               </div>
 
-              <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
+              </div>
+              
+              {/* Botones de Acción */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-150 flex justify-end space-x-3 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-white transition-colors text-sm font-semibold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-chiluda-red text-white rounded-md hover:bg-chiluda-darkred transition-colors"
+                  className="px-4 py-2 bg-chiluda-red text-white rounded-md hover:bg-chiluda-darkred transition-colors text-sm font-bold shadow-sm"
                 >
                   {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
                 </button>

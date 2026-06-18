@@ -55,6 +55,7 @@ class ProductBase(BaseModel):
     quantity: int
     min_stock: int = 3
     entry_date: Optional[str] = None
+    image: Optional[str] = None
 
 class ProductCreate(ProductBase):
     variants: Optional[List[ProductVariantCreate]] = []

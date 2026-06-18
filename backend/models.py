@@ -21,6 +21,7 @@ class Product(Base):
     min_stock = Column(Integer, default=3)
     sold = Column(Integer, default=0)
     entry_date = Column(String, nullable=True)
+    image = Column(String, nullable=True)
     
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="joined")
 

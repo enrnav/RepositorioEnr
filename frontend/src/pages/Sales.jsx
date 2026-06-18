@@ -1,13 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { 
   Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, 
-  X, Printer, CreditCard, Banknote, History, Coins, ArrowRight, AlertCircle, Lock 
+  X, Printer, CreditCard, Banknote, History, Coins, ArrowRight, AlertCircle, Lock,
+  Package
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   fetchInventory, checkoutSales, fetchRecentSales, cancelSale, 
   fetchActiveShift, openShift, closeShift, addCashMovement, fetchShiftReport 
 } from '../api';
+
+
 
 const Sales = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -251,7 +254,8 @@ const Sales = () => {
           name,
           price,
           cost_price: cost,
-          cartQuantity: 1
+          cartQuantity: 1,
+          image: product.image || null
         }];
       }
     });
@@ -613,7 +617,7 @@ const Sales = () => {
         {/* Left Column: Products Grid */}
         <div className={`flex-1 space-y-6 ${activeTab === 'products' ? 'block' : 'hidden lg:block'}`}>
           {/* Search bar */}
-          <div className="bg-white/80 backdrop-blur-xl p-3 sm:p-4 rounded-3xl shadow-soft border border-white flex items-center animate-slide-up">
+          <div className="bg-white/5 backdrop-blur-[2px] p-3 sm:p-4 rounded-3xl shadow-soft border border-white/40 flex items-center animate-slide-up">
             <div className="relative w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input 
@@ -675,48 +679,50 @@ const Sales = () => {
           {/* Grid Products */}
           {(activeShift || isAdmin) && (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-6">
-              {filteredInventory.map((item, i) => (
-                <div 
-                  key={item.id} 
-                  onClick={() => item.quantity > 0 && handleProductSelect(item)}
-                  className={`bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm border border-gray-100/50 overflow-hidden transition-all duration-300 flex flex-col group animate-slide-up ${item.quantity > 0 ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1.5 hover:border-chiluda-red/30 active:scale-95' : 'opacity-70'}`}
-                  style={{ animationDelay: `${i * 0.02}s` }}
-                >
-                  <div className="p-3 sm:p-5 flex-1 relative flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-xs sm:text-base font-bold text-brand-900 line-clamp-2 min-h-[2rem] pr-1 leading-tight group-hover:text-chiluda-red transition-colors">{item.name}</h3>
-                      {item.variants && item.variants.length > 0 && (
-                        <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-extrabold mt-1 inline-block uppercase">Variantes ({item.variants.length})</span>
-                      )}
-                    </div>
-                    <div className="mt-3">
-                      <p className="text-base sm:text-2xl font-extrabold text-chiluda-red tracking-tight">${item.price.toFixed(2)}</p>
-                      
-                      <div className="mt-2 flex items-center justify-between text-sm">
-                        <span className={`px-2 py-0.5 rounded-full font-extrabold text-[9px] ${
-                          item.quantity > (item.min_stock ?? 3) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                          item.quantity > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100 animate-pulse' :
-                          'bg-red-50 text-red-700 border border-red-100'
-                        }`}>
-                          {item.quantity > 0 ? `Stock: ${item.quantity}` : 'Agotado'}
-                        </span>
+              {filteredInventory.map((item, i) => {
+                return (
+                  <div 
+                    key={item.id} 
+                    onClick={() => item.quantity > 0 && handleProductSelect(item)}
+                    className={`bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-sm border border-white/40 overflow-hidden transition-all duration-300 flex flex-col group animate-slide-up ${item.quantity > 0 ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1.5 hover:border-[#064e3b]/30 active:scale-95' : 'opacity-70'}`}
+                    style={{ animationDelay: `${i * 0.02}s` }}
+                  >
+                    <div className="p-3 sm:p-5 flex-1 relative flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-sm sm:text-lg font-black text-brand-900 line-clamp-2 min-h-[2.5rem] pr-1 leading-tight group-hover:text-[#064e3b] transition-colors">{item.name}</h3>
+                        {item.variants && item.variants.length > 0 && (
+                          <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-extrabold mt-1 inline-block uppercase">Variantes ({item.variants.length})</span>
+                        )}
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-base sm:text-2xl font-extrabold text-chiluda-red tracking-tight">${item.price.toFixed(2)}</p>
+                        
+                        <div className="mt-2 flex items-center justify-between text-sm">
+                          <span className={`px-2 py-0.5 rounded-full font-extrabold text-[9px] ${
+                            item.quantity > (item.min_stock ?? 3) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                            item.quantity > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100 animate-pulse' :
+                            'bg-red-50 text-red-700 border border-red-100'
+                          }`}>
+                            {item.quantity > 0 ? `Stock: ${item.quantity}` : 'Agotado'}
+                          </span>
+                        </div>
                       </div>
                     </div>
+                    <div className="p-2 sm:p-3 bg-brand-50/30 border-t border-gray-100">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleProductSelect(item); }}
+                        disabled={item.quantity <= 0}
+                        className={`w-full py-2 rounded-xl font-bold text-white transition-colors flex items-center justify-center space-x-1 sm:space-x-2 text-xs ${
+                          item.quantity > 0 ? 'bg-[#064e3b] hover:bg-[#059669]' : 'bg-gray-300 cursor-not-allowed'
+                        }`}
+                      >
+                        <Plus size={14} />
+                        <span>{item.quantity > 0 ? 'Agregar' : 'Agotado'}</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-2 sm:p-3 bg-brand-50/30 border-t border-gray-100">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleProductSelect(item); }}
-                      disabled={item.quantity <= 0}
-                      className={`w-full py-2 rounded-xl font-bold text-white transition-colors flex items-center justify-center space-x-1 sm:space-x-2 text-xs ${
-                        item.quantity > 0 ? 'bg-chiluda-red hover:bg-chiluda-darkred' : 'bg-gray-300 cursor-not-allowed'
-                      }`}
-                    >
-                      <Plus size={14} />
-                      <span>{item.quantity > 0 ? 'Agregar' : 'Agotado'}</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
               {filteredInventory.length === 0 && (
                 <div className="col-span-full py-12 text-center text-gray-500 bg-white/50 rounded-2xl border border-dashed border-gray-200">
                   No se encontraron productos coincidentes.
@@ -728,7 +734,7 @@ const Sales = () => {
 
         {/* Right Column: Shopping Cart Sidebar */}
         {(activeShift || isAdmin) && (
-          <div className={`w-full lg:w-[420px] bg-white/80 backdrop-blur-xl rounded-3xl shadow-glass border border-white flex flex-col lg:h-[calc(100vh-8rem)] lg:sticky lg:top-24 overflow-hidden animate-slide-up ${
+          <div className={`w-full lg:w-[420px] bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-glass border border-white/40 flex flex-col lg:h-[calc(100vh-8rem)] lg:sticky lg:top-24 overflow-hidden animate-slide-up ${
             activeTab === 'cart' ? 'flex h-[calc(100vh-12rem)]' : 'hidden lg:flex'
           }`} style={{ animationDelay: '0.05s' }}>
             {/* Cart Header */}
@@ -764,46 +770,50 @@ const Sales = () => {
                   <p className="font-semibold text-gray-400 text-sm">El carrito de compras está vacío</p>
                 </div>
               ) : (
-                cart.map((item) => (
-                  <div key={item.cartItemId} className="flex flex-col p-3 bg-brand-50/50 rounded-2xl border border-gray-100 group hover:border-gray-200 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex flex-col pr-2">
-                        <span className="font-extrabold text-brand-900 text-xs sm:text-sm leading-tight">{item.name}</span>
+                cart.map((item) => {
+                  return (
+                    <div key={item.cartItemId} className="flex flex-col p-3 bg-brand-50/50 rounded-2xl border border-gray-100 group hover:border-gray-200 transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex flex-col pr-2">
+                            <span className="font-black text-brand-900 text-xs sm:text-base leading-tight">{item.name}</span>
+                          </div>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => removeFromCart(item.cartItemId)}
+                          className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 active:bg-red-100 rounded-xl"
+                        >
+                          <X size={18} />
+                        </button>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => removeFromCart(item.cartItemId)}
-                        className="text-gray-400 hover:text-red-500 transition-colors p-2 hover:bg-red-50 active:bg-red-100 rounded-xl"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-chiluda-red font-bold text-sm">${item.price.toFixed(2)}</span>
                       
-                      {/* Quantity Controls */}
-                      <div className="flex items-center space-x-1 bg-white rounded-xl border border-gray-200 p-0.5">
-                        <button 
-                          type="button"
-                          onClick={() => updateCartQuantity(item.cartItemId, -1)}
-                          disabled={item.cartQuantity <= 1}
-                          className="p-2.5 text-gray-500 hover:text-chiluda-red active:bg-gray-100 disabled:opacity-30 rounded-lg transition-colors"
-                        >
-                          <Minus size={14} />
-                        </button>
-                        <span className="w-8 text-center text-xs font-black">{item.cartQuantity}</span>
-                        <button 
-                          type="button"
-                          onClick={() => updateCartQuantity(item.cartItemId, 1)}
-                          className="p-2.5 text-gray-500 hover:text-chiluda-red active:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          <Plus size={14} />
-                        </button>
+                      <div className="flex justify-between items-center">
+                        <span className="text-chiluda-red font-bold text-sm">${item.price.toFixed(2)}</span>
+                        
+                        {/* Quantity Controls */}
+                        <div className="flex items-center space-x-1 bg-white rounded-xl border border-gray-200 p-0.5">
+                          <button 
+                            type="button"
+                            onClick={() => updateCartQuantity(item.cartItemId, -1)}
+                            disabled={item.cartQuantity <= 1}
+                            className="p-2.5 text-gray-500 hover:text-chiluda-red active:bg-gray-100 disabled:opacity-30 rounded-lg transition-colors"
+                          >
+                            <Minus size={14} />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black">{item.cartQuantity}</span>
+                          <button 
+                            type="button"
+                            onClick={() => updateCartQuantity(item.cartItemId, 1)}
+                            className="p-2.5 text-gray-500 hover:text-chiluda-red active:bg-gray-100 rounded-lg transition-colors"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -1184,7 +1194,7 @@ const Sales = () => {
               </button>
             </div>
             
-            <div className="p-6 overflow-y-auto flex-1 font-mono text-[11px] text-gray-800 print:overflow-visible">
+            <div className="p-6 overflow-y-auto flex-1 min-h-0 font-mono text-[11px] text-gray-800 print:overflow-visible">
               <div className="text-center mb-4 flex flex-col items-center">
                 <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">Abarrotes ED & E</h2>
                 <p className="text-[9px] text-gray-500 font-semibold tracking-wide uppercase">Tu mercado de confianza</p>
@@ -1478,8 +1488,8 @@ const Sales = () => {
 
       {/* Sales History and Return Modal */}
       {showHistoryModal && (
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] p-2 sm:p-4 overflow-y-auto">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-[95vw] lg:w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[90vh] my-4">
+        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-3 sm:p-6">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[85vh] sm:max-h-[90vh]">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h3 className="text-xl font-bold text-brand-900 flex items-center gap-2">
                 <History className="text-chiluda-red" size={24} />
@@ -1490,7 +1500,7 @@ const Sales = () => {
               </button>
             </div>
             
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
               <div className="flex bg-brand-50/60 p-1 rounded-2xl border border-gray-100 max-w-md">
                 <button
                   type="button"

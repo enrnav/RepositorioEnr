@@ -78,10 +78,10 @@ const Layout = () => {
   }, []);
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin', 'supervisor'] },
-    { name: 'Products', path: '/sales', icon: ShoppingCart, allowedRoles: ['admin', 'supervisor', 'cajero'] },
-    { name: 'Inventory', path: '/inventory', icon: Package, allowedRoles: ['admin', 'supervisor'] },
-    { name: 'Customers', path: '/users', icon: Users, allowedRoles: ['admin'] },
+    { name: 'Panel', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin', 'supervisor'] },
+    { name: 'Punto de Venta', path: '/sales', icon: ShoppingCart, allowedRoles: ['admin', 'supervisor', 'cajero'] },
+    { name: 'Inventario', path: '/inventory', icon: Package, allowedRoles: ['admin', 'supervisor'] },
+    { name: 'Usuarios', path: '/users', icon: Users, allowedRoles: ['admin'] },
   ];
 
   const renderHotkeys = () => {
@@ -234,7 +234,7 @@ const Layout = () => {
                 }`}
               >
                 <Icon size={18} className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
-                <span className="font-bold text-sm tracking-wide">{item.name}</span>
+                <span className="font-bold text-sm tracking-wide uppercase">{item.name}</span>
                 {isActive && (
                   <span className="absolute left-1.5 top-1/3 bottom-1/3 w-1 bg-white rounded-full"></span>
                 )}

@@ -755,7 +755,7 @@ const Sales = () => {
                   </button>
                 )}
                 <span className="bg-chiluda-red text-white text-xs font-black px-3 py-1.5 rounded-full shadow-sm">
-                  {cartItemCount} items
+                  {cartItemCount} prod.
                 </span>
               </div>
             </div>

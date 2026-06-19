@@ -16,6 +16,12 @@ body {
 }
 
 @layer base {
+  button {
+    text-transform: uppercase;
+  }
+  h2 {
+    text-transform: uppercase;
+  }
   button:not(:disabled) {
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   }

@@ -807,7 +807,7 @@ const Inventory = () => {
           Gestión de Inventario
         </h2>
 
-        <div className="flex flex-row flex-nowrap overflow-x-auto pb-2 lg:pb-0 gap-3 items-center animate-fade-in w-full lg:w-auto justify-start lg:justify-end shrink-0">
+        <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full lg:w-auto justify-start lg:justify-end shrink-0">
           <button
             onClick={() => setIsStockModalOpen(true)}
             className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-205 text-stone-600 px-5 py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-xs"

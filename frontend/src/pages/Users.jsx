@@ -168,7 +168,7 @@ const Users = () => {
           <UsersIcon className="mr-3 text-chiluda-red w-8 h-8" />
           Gestión de Usuarios
         </h2>
-        <div className="flex flex-row flex-nowrap overflow-x-auto pb-2 lg:pb-0 gap-3 items-center animate-fade-in w-full lg:w-auto justify-start lg:justify-end shrink-0">
+        <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full lg:w-auto justify-start lg:justify-end shrink-0">
           <button
             onClick={() => {
               setEditUser(null);

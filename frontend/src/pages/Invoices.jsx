@@ -355,7 +355,7 @@ const Invoices = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Columna izquierda: Buscar y Detalles */}
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-3xl p-6 shadow-soft border border-stone-150 relative overflow-hidden">
+            <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl p-6 shadow-soft relative overflow-hidden">
               <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase mb-4">Buscar Ticket de Venta</h3>
               <form onSubmit={handleSearchTicket} className="flex gap-3">
                 <div className="relative flex-1">
@@ -381,7 +381,7 @@ const Invoices = () => {
 
             {/* Detalles del ticket si se encontró */}
             {ticketDetails && (
-              <div className="bg-white rounded-3xl p-6 shadow-soft border border-stone-150 space-y-5 animate-slide-up">
+              <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-5 animate-slide-up">
                 <div className="flex justify-between items-center border-b border-stone-100 pb-3">
                   <div>
                     <h4 className="text-sm font-black text-brand-900 uppercase">Detalles de Ticket #{ticketDetails.ticket_id}</h4>
@@ -464,7 +464,7 @@ const Invoices = () => {
           {/* Columna derecha: Datos fiscales y Botón Facturar */}
           <div className="lg:col-span-1 space-y-6">
             {ticketDetails && !ticketDetails.invoice && !ticketDetails.is_cancelled && (
-              <div className="bg-white rounded-3xl p-6 shadow-soft border border-stone-150 space-y-5 animate-slide-up">
+              <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-5 animate-slide-up">
                 <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Receptor (Datos Fiscales)</h3>
 
                 {!showProfileForm ? (
@@ -617,7 +617,7 @@ const Invoices = () => {
       {activeTab === 'global' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-3xl p-6 shadow-soft border border-stone-150 space-y-4">
+            <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-4">
               <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Consolidación de Tickets de Venta</h3>
               <p className="text-stone-500 text-xs font-semibold leading-relaxed">
                 Genera la factura global diaria, semanal o mensual del Público en General. Introduce los números de ticket separados por comas para agruparlos en un único CFDI estructurado.
@@ -645,7 +645,7 @@ const Invoices = () => {
             </div>
 
             {globalTicketDetails && (
-              <div className="bg-white rounded-3xl p-6 shadow-soft border border-stone-150 space-y-5 animate-slide-up">
+              <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-5 animate-slide-up">
                 <h4 className="text-sm font-black text-brand-900 uppercase border-b border-stone-100 pb-3">Vista Previa de Factura Global</h4>
                 
                 {/* Consolidated items */}
@@ -702,7 +702,7 @@ const Invoices = () => {
 
           <div className="lg:col-span-1 space-y-6">
             {globalTicketDetails && (
-              <div className="bg-white rounded-3xl p-6 shadow-soft border border-stone-150 space-y-5 animate-slide-up">
+              <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-5 animate-slide-up">
                 <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Generar Factura SAT</h3>
                 
                 <div className="p-4 bg-stone-50 border border-stone-200 rounded-2xl space-y-2 text-xs font-semibold text-stone-600">
@@ -746,7 +746,7 @@ const Invoices = () => {
 
       {/* TAB CONTENT: HISTORIAL FISCAL */}
       {activeTab === 'history' && (
-        <div className="bg-white rounded-3xl shadow-soft border border-stone-150 overflow-hidden animate-slide-up">
+        <div className="bg-white/5 backdrop-blur-[2px] border border-white/40 rounded-3xl shadow-soft overflow-hidden animate-slide-up">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs md:text-sm">
               <thead className="bg-stone-50 text-stone-500 uppercase font-black text-[10px] tracking-wider border-b border-stone-150">

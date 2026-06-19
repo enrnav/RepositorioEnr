@@ -168,14 +168,14 @@ const Users = () => {
           <UsersIcon className="mr-3 text-chiluda-red w-8 h-8" />
           Gestión de Usuarios
         </h2>
-        <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full xl:w-auto justify-start xl:justify-end shrink-0">
+        <div className="flex flex-wrap gap-2.5 sm:gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0">
           <button
             onClick={() => {
               setEditUser(null);
               setFormData({ username: '', password: '', full_name: '', role: 'cajero' });
               setShowForm(true);
             }}
-            className="flex items-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float w-full md:w-auto justify-center font-black text-xs uppercase tracking-wider"
+            className="flex items-center space-x-2 bg-chiluda-red text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float w-full md:w-auto justify-center font-black text-[11px] sm:text-xs uppercase tracking-wider"
           >
             <UserPlus size={16} />
             <span>Nuevo Usuario</span>

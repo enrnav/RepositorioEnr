@@ -306,7 +306,7 @@ const Invoices = () => {
           FACTURACIÓN ELECTRÓNICA CFDI 4.0
         </h2>
         {/* Subtitle / single-row badges */}
-        <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full xl:w-auto justify-start xl:justify-end shrink-0">
+        <div className="flex flex-wrap gap-2.5 sm:gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0">
           <span className="hidden sm:inline-flex px-3.5 py-1.5 bg-emerald-500/10 text-emerald-800 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest">
             Entorno Sandbox PAC
           </span>

@@ -163,12 +163,12 @@ const Users = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+      <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
         <h2 className="text-2xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center whitespace-nowrap">
           <UsersIcon className="mr-3 text-chiluda-red w-8 h-8" />
           Gestión de Usuarios
         </h2>
-        <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full lg:w-auto justify-start lg:justify-end shrink-0">
+        <div className="flex flex-wrap gap-3 items-center animate-fade-in w-full xl:w-auto justify-start xl:justify-end shrink-0">
           <button
             onClick={() => {
               setEditUser(null);

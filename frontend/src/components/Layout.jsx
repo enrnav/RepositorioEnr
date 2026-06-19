@@ -142,7 +142,7 @@ const Layout = () => {
   if (!isStaff) {
     // Layout for normal Cajero (no sidebar, full screen POS)
     return (
-      <div className="flex flex-col h-screen bg-brand-50 font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
+      <div className="flex flex-col h-screen w-screen max-w-full overflow-hidden bg-brand-50 font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
         {/* Background floating store icons animation */}
         <FloatingStoreIconsBg />
 
@@ -188,7 +188,7 @@ const Layout = () => {
 
   // Layout for Staff (Admin and Supervisor, includes sidebar and notifications)
   return (
-    <div className="flex h-screen bg-brand-50 font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
+    <div className="flex h-screen w-screen max-w-full overflow-hidden bg-brand-50 font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
       {/* Background floating store icons animation */}
       <FloatingStoreIconsBg />
 

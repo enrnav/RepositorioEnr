@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, lazyload
 from jose import JWTError, jwt
@@ -8,6 +9,10 @@ import schemas
 import auth
 from typing import List, Optional
 from datetime import datetime, timedelta
+import os
+import uuid
+from services import facturacion
+
 
 router = APIRouter()
 
@@ -885,5 +890,341 @@ def get_profit_margin_report(db: Session = Depends(get_db), current_user: models
         },
         "products": report
     }
+
+# --- FACTURACIÓN ELECTRÓNICA ENDPOINTS ---
+
+@router.get("/billing/profiles", response_model=List[schemas.BillingProfileResponse])
+def get_billing_profiles(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    query = db.query(models.BillingProfile)
+    if q:
+        query = query.filter(
+            (models.BillingProfile.rfc.ilike(f"%{q}%")) |
+            (models.BillingProfile.razon_social.ilike(f"%{q}%"))
+        )
+    return query.all()
+
+@router.post("/billing/profiles", response_model=schemas.BillingProfileResponse)
+def create_billing_profile(profile: schemas.BillingProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    existing = db.query(models.BillingProfile).filter(models.BillingProfile.rfc == profile.rfc.upper().strip()).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un perfil de facturación con este RFC")
+        
+    db_profile = models.BillingProfile(
+        rfc=profile.rfc.upper().strip(),
+        razon_social=profile.razon_social.upper().strip(),
+        regimen_fiscal=profile.regimen_fiscal,
+        codigo_postal=profile.codigo_postal,
+        correo=profile.correo.lower().strip()
+    )
+    db.add(db_profile)
+    db.commit()
+    db.refresh(db_profile)
+    return db_profile
+
+@router.put("/billing/profiles/{profile_id}", response_model=schemas.BillingProfileResponse)
+def update_billing_profile(profile_id: int, profile: schemas.BillingProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    db_profile = db.query(models.BillingProfile).filter(models.BillingProfile.id == profile_id).first()
+    if not db_profile:
+        raise HTTPException(status_code=404, detail="Perfil de facturación no encontrado")
+        
+    db_profile.rfc = profile.rfc.upper().strip()
+    db_profile.razon_social = profile.razon_social.upper().strip()
+    db_profile.regimen_fiscal = profile.regimen_fiscal
+    db_profile.codigo_postal = profile.codigo_postal
+    db_profile.correo = profile.correo.lower().strip()
+    
+    db.commit()
+    db.refresh(db_profile)
+    return db_profile
+
+@router.get("/billing/tickets/{ticket_id}")
+def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # Buscamos la línea de venta de referencia
+    ref_sale = db.query(models.SaleHistory).filter(models.SaleHistory.id == ticket_id).first()
+    if not ref_sale:
+        raise HTTPException(status_code=404, detail="Ticket de venta no encontrado")
+        
+    # Agrupamos todas las ventas que comparten la misma fecha (created_at) y cajero
+    sales = db.query(
+        models.SaleHistory.id,
+        models.SaleHistory.product_id,
+        models.SaleHistory.variant_id,
+        models.SaleHistory.quantity,
+        models.SaleHistory.price_sold,
+        models.SaleHistory.discount,
+        models.SaleHistory.created_at,
+        models.SaleHistory.payment_method,
+        models.SaleHistory.invoice_id,
+        models.SaleHistory.is_cancelled,
+        models.Product.name.label("product_name"),
+        models.Product.sat_key.label("product_sat_key"),
+        models.Product.sat_unit_key.label("product_sat_unit_key")
+    ).join(
+        models.Product, models.Product.id == models.SaleHistory.product_id
+    ).filter(
+        models.SaleHistory.created_at == ref_sale.created_at
+    ).all()
+    
+    if not sales:
+        raise HTTPException(status_code=404, detail="No se encontraron artículos para este ticket")
+        
+    items = []
+    subtotal = 0.0
+    discount_total = 0.0
+    
+    for s in sales:
+        price = s.price_sold or 0.0
+        item_subtotal = price * s.quantity
+        subtotal += item_subtotal
+        discount_total += s.discount or 0.0
+        
+        items.append({
+            "sale_id": s.id,
+            "product_id": s.product_id,
+            "product_name": s.product_name,
+            "quantity": s.quantity,
+            "price": price,
+            "discount": s.discount,
+            "total": item_subtotal - s.discount,
+            "sat_key": s.product_sat_key,
+            "sat_unit_key": s.product_sat_unit_key,
+            "is_cancelled": s.is_cancelled
+        })
+        
+    taxes_total = round((subtotal - discount_total) - ((subtotal - discount_total) / 1.16), 2)
+    total = round(subtotal - discount_total, 2)
+    
+    # Comprobar si ya está facturada
+    invoice_id = sales[0].invoice_id
+    invoice = None
+    if invoice_id:
+        inv_record = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+        if inv_record:
+            invoice = {
+                "id": inv_record.id,
+                "uuid": inv_record.uuid,
+                "created_at": inv_record.created_at,
+                "status": inv_record.status
+            }
+            
+    return {
+        "ticket_id": ticket_id,
+        "created_at": ref_sale.created_at,
+        "payment_method": ref_sale.payment_method,
+        "items": items,
+        "subtotal": round((subtotal - discount_total) / 1.16, 2),
+        "discount": discount_total,
+        "taxes": taxes_total,
+        "total": total,
+        "invoice": invoice,
+        "is_cancelled": any(s.is_cancelled for s in sales)
+    }
+
+@router.post("/billing/invoice", response_model=schemas.InvoiceResponse)
+def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # 1. Obtener los registros de venta (sale_history) que se van a facturar
+    sale_ids = []
+    if req.sale_id:
+        sale_ids.append(req.sale_id)
+    if req.sale_ids:
+        sale_ids.extend(req.sale_ids)
+        
+    if not sale_ids:
+        raise HTTPException(status_code=400, detail="Debe especificar al menos un ID de venta para facturar")
+        
+    # Obtener las ventas físicas de la BD
+    sales = db.query(models.SaleHistory).filter(models.SaleHistory.id.in_(sale_ids)).all()
+    if not sales:
+        raise HTTPException(status_code=404, detail="No se encontraron registros de venta para facturar")
+        
+    # Validar que ninguna venta esté ya facturada
+    for s in sales:
+        if s.invoice_id:
+            raise HTTPException(status_code=400, detail=f"La venta con ID {s.id} ya se encuentra asociada a una factura activa.")
+        if s.is_cancelled:
+            raise HTTPException(status_code=400, detail=f"La venta con ID {s.id} está cancelada y no se puede facturar.")
+            
+    # 2. Resolver Perfil Fiscal
+    billing_profile = None
+    if req.billing_profile_id:
+        profile_record = db.query(models.BillingProfile).filter(models.BillingProfile.id == req.billing_profile_id).first()
+        if not profile_record:
+            raise HTTPException(status_code=404, detail="Perfil de facturación no encontrado")
+        billing_profile = {
+            "rfc": profile_record.rfc,
+            "razon_social": profile_record.razon_social,
+            "regimen_fiscal": profile_record.regimen_fiscal,
+            "codigo_postal": profile_record.codigo_postal,
+            "correo": profile_record.correo
+        }
+    elif req.new_billing_profile:
+        # Registrar perfil al vuelo
+        profile_data = req.new_billing_profile
+        existing = db.query(models.BillingProfile).filter(models.BillingProfile.rfc == profile_data.rfc.upper().strip()).first()
+        if existing:
+            # Reutilizar existente
+            profile_record = existing
+        else:
+            profile_record = models.BillingProfile(
+                rfc=profile_data.rfc.upper().strip(),
+                razon_social=profile_data.razon_social.upper().strip(),
+                regimen_fiscal=profile_data.regimen_fiscal,
+                codigo_postal=profile_data.codigo_postal,
+                correo=profile_data.correo.lower().strip()
+            )
+            db.add(profile_record)
+            db.commit()
+            db.refresh(profile_record)
+            
+        billing_profile = {
+            "rfc": profile_record.rfc,
+            "razon_social": profile_record.razon_social,
+            "regimen_fiscal": profile_record.regimen_fiscal,
+            "codigo_postal": profile_record.codigo_postal,
+            "correo": profile_record.correo
+        }
+    else:
+        # Asumir Público en General
+        billing_profile = {
+            "rfc": "XAXX010101000",
+            "razon_social": "PÚBLICO EN GENERAL",
+            "regimen_fiscal": "616",  # Sin obligaciones fiscales
+            "codigo_postal": "64000",
+            "correo": "ventas@abarrotesede.com"
+        }
+        
+    # 3. Preparar lista de conceptos para el generador
+    items = []
+    subtotal = 0.0
+    discount_total = 0.0
+    
+    for s in sales:
+        prod = db.query(models.Product).filter(models.Product.id == s.product_id).first()
+        name = prod.name if prod else "PRODUCTO DESCONOCIDO"
+        sat_key = (prod.sat_key if prod else "01010101") or "01010101"
+        sat_unit_key = (prod.sat_unit_key if prod else "H87") or "H87"
+        
+        price = s.price_sold or 0.0
+        subtotal += price * s.quantity
+        discount_total += s.discount or 0.0
+        
+        items.append({
+            "name": name,
+            "quantity": s.quantity,
+            "price": price,
+            "sat_key": sat_key,
+            "sat_unit_key": sat_unit_key
+        })
+        
+    total = round(subtotal - discount_total, 2)
+    
+    # 4. Generar metadatos del Timbre
+    invoice_uuid = str(uuid.uuid4()).upper()
+    timestamp_str = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S')
+    
+    # Directorio para almacenar los archivos locales
+    invoices_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "invoices")
+    os.makedirs(invoices_dir, exist_ok=True)
+    
+    xml_path = os.path.join(invoices_dir, f"{invoice_uuid}.xml")
+    pdf_path = os.path.join(invoices_dir, f"{invoice_uuid}.pdf")
+    
+    # Generar archivos físicos
+    try:
+        # Generar XML
+        xml_content = facturacion.generate_cfdi_xml(
+            sale_info={"payment_method": sales[0].payment_method, "discount": discount_total},
+            billing_profile=billing_profile,
+            items=items,
+            invoice_uuid=invoice_uuid,
+            timestamp_str=timestamp_str
+        )
+        with open(xml_path, "w", encoding="utf-8") as f:
+            f.write(xml_content)
+            
+        # Generar PDF
+        facturacion.generate_cfdi_pdf(
+            pdf_path=pdf_path,
+            sale_info={"payment_method": sales[0].payment_method, "discount": discount_total},
+            billing_profile=billing_profile,
+            items=items,
+            invoice_uuid=invoice_uuid,
+            timestamp_str=timestamp_str
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al generar los documentos fiscales: {str(e)}")
+        
+    # 5. Guardar en Base de Datos
+    db_invoice = models.Invoice(
+        uuid=invoice_uuid,
+        monto_total=total,
+        xml_url=f"/api/billing/invoices/{invoice_uuid}/xml",
+        pdf_url=f"/api/billing/invoices/{invoice_uuid}/pdf",
+        created_at=timestamp_str,
+        status="active"
+    )
+    db.add(db_invoice)
+    db.commit()
+    db.refresh(db_invoice)
+    
+    # Vincular los SaleHistory
+    for s in sales:
+        s.invoice_id = db_invoice.id
+    db.commit()
+    
+    return db_invoice
+
+@router.get("/billing/invoices", response_model=List[schemas.InvoiceResponse])
+def get_invoices(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    return db.query(models.Invoice).order_by(models.Invoice.id.desc()).all()
+
+@router.get("/billing/invoices/{invoice_uuid}/xml")
+def download_invoice_xml(invoice_uuid: str, db: Session = Depends(get_db)):
+    invoice = db.query(models.Invoice).filter(models.Invoice.uuid == invoice_uuid).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+        
+    invoices_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "invoices")
+    file_path = os.path.join(invoices_dir, f"{invoice_uuid}.xml")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="El archivo XML de la factura no existe en el servidor")
+        
+    return FileResponse(file_path, media_type="application/xml", filename=f"CFDI_{invoice_uuid}.xml")
+
+@router.get("/billing/invoices/{invoice_uuid}/pdf")
+def download_invoice_pdf(invoice_uuid: str, db: Session = Depends(get_db)):
+    invoice = db.query(models.Invoice).filter(models.Invoice.uuid == invoice_uuid).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+        
+    invoices_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "invoices")
+    file_path = os.path.join(invoices_dir, f"{invoice_uuid}.pdf")
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="El archivo PDF de la factura no existe en el servidor")
+        
+    return FileResponse(file_path, media_type="application/pdf", filename=f"Factura_{invoice_uuid}.pdf")
+
+@router.post("/billing/invoices/{invoice_id}/cancel", response_model=schemas.InvoiceResponse)
+def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ["admin", "supervisor"]:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes para cancelar facturas")
+        
+    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+        
+    if invoice.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Esta factura ya se encuentra cancelada")
+        
+    # Cambiar estatus de la factura
+    invoice.status = "cancelled"
+    
+    # Desvincular ventas asociadas (o dejarlas marcadas, pero para permitir volver a facturarlas, ponemos su invoice_id en NULL!)
+    db.query(models.SaleHistory).filter(models.SaleHistory.invoice_id == invoice.id).update({models.SaleHistory.invoice_id: None})
+    
+    db.commit()
+    db.refresh(invoice)
+    return invoice
+
 
 

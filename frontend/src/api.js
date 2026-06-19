@@ -231,4 +231,79 @@ export const fetchProfitMarginReport = async () => {
     }
 };
 
+// --- BILLING & INVOICING API ---
+
+export const fetchBillingProfiles = async (query = '') => {
+    try {
+        const response = await axios.get(`${API_URL}/billing/profiles`, {
+            params: query ? { q: query } : {}
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching billing profiles:", error);
+        throw error;
+    }
+};
+
+export const createBillingProfile = async (profileData) => {
+    try {
+        const response = await axios.post(`${API_URL}/billing/profiles`, profileData);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating billing profile:", error);
+        throw error;
+    }
+};
+
+export const updateBillingProfile = async (profileId, profileData) => {
+    try {
+        const response = await axios.put(`${API_URL}/billing/profiles/${profileId}`, profileData);
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating billing profile ${profileId}:`, error);
+        throw error;
+    }
+};
+
+export const fetchTicketDetails = async (ticketId) => {
+    try {
+        const response = await axios.get(`${API_URL}/billing/tickets/${ticketId}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching ticket details ${ticketId}:`, error);
+        throw error;
+    }
+};
+
+export const createInvoice = async (invoiceData) => {
+    try {
+        const response = await axios.post(`${API_URL}/billing/invoice`, invoiceData);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating invoice:", error);
+        throw error;
+    }
+};
+
+export const fetchInvoices = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/billing/invoices`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching invoices:", error);
+        throw error;
+    }
+};
+
+export const cancelInvoice = async (invoiceId) => {
+    try {
+        const response = await axios.post(`${API_URL}/billing/invoices/${invoiceId}/cancel`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error cancelling invoice ${invoiceId}:`, error);
+        throw error;
+    }
+};
+
+
 

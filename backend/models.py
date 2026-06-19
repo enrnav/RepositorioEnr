@@ -22,6 +22,8 @@ class Product(Base):
     sold = Column(Integer, default=0)
     entry_date = Column(String, nullable=True)
     image = Column(String, nullable=True)
+    sat_key = Column(String, default="01010101")
+    sat_unit_key = Column(String, default="H87")
     
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="joined")
 
@@ -35,6 +37,8 @@ class ProductVariant(Base):
     price = Column(Float, nullable=True)
     quantity = Column(Integer)
     sold = Column(Integer, default=0)
+    sat_key = Column(String, default="01010101")
+    sat_unit_key = Column(String, default="H87")
 
     product = relationship("Product", back_populates="variants")
 
@@ -83,6 +87,7 @@ class SaleHistory(Base):
     is_cancelled = Column(Boolean, default=False)
     cancel_reason = Column(String, nullable=True)
     authorized_by = Column(String, nullable=True)
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), index=True, nullable=True)
 
 class ProductReturn(Base):
     __tablename__ = "product_returns"
@@ -94,6 +99,27 @@ class ProductReturn(Base):
     reason = Column(String)
     authorized_by = Column(String, nullable=True)
     created_at = Column(String)
+
+
+class BillingProfile(Base):
+    __tablename__ = "billing_profiles"
+    id = Column(Integer, primary_key=True, index=True)
+    rfc = Column(String, unique=True, index=True)
+    razon_social = Column(String, index=True)
+    regimen_fiscal = Column(String)
+    codigo_postal = Column(String)
+    correo = Column(String)
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+    id = Column(Integer, primary_key=True, index=True)
+    uuid = Column(String, unique=True, index=True)
+    monto_total = Column(Float)
+    xml_url = Column(String, nullable=True)
+    pdf_url = Column(String, nullable=True)
+    created_at = Column(String)
+    status = Column(String, default="active") # "active", "cancelled"
 
 
 

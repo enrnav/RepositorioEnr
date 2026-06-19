@@ -34,6 +34,8 @@ class ProductVariantBase(BaseModel):
     cost_price: Optional[float] = None
     price: Optional[float] = None
     quantity: int
+    sat_key: Optional[str] = "01010101"
+    sat_unit_key: Optional[str] = "H87"
 
 class ProductVariantCreate(ProductVariantBase):
     pass
@@ -56,6 +58,8 @@ class ProductBase(BaseModel):
     min_stock: int = 3
     entry_date: Optional[str] = None
     image: Optional[str] = None
+    sat_key: Optional[str] = "01010101"
+    sat_unit_key: Optional[str] = "H87"
 
 class ProductCreate(ProductBase):
     variants: Optional[List[ProductVariantCreate]] = []
@@ -152,6 +156,42 @@ class CheckoutRequest(BaseModel):
     card_amount: float = 0.0
     discount: float = 0.0
     shift_id: Optional[int] = None
+
+
+# Billing & Invoice Schemas
+class BillingProfileBase(BaseModel):
+    rfc: str
+    razon_social: str
+    regimen_fiscal: str
+    codigo_postal: str
+    correo: str
+
+class BillingProfileCreate(BillingProfileBase):
+    pass
+
+class BillingProfileResponse(BillingProfileBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+class InvoiceCreateRequest(BaseModel):
+    sale_id: Optional[int] = None
+    sale_ids: Optional[List[int]] = None
+    billing_profile_id: Optional[int] = None
+    new_billing_profile: Optional[BillingProfileCreate] = None
+
+class InvoiceResponse(BaseModel):
+    id: int
+    uuid: str
+    monto_total: float
+    xml_url: Optional[str] = None
+    pdf_url: Optional[str] = None
+    created_at: str
+    status: str
+
+    class Config:
+        from_attributes = True
 
 
 

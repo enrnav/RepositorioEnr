@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Bell, LogOut, ShoppingCart, Users, Menu, X, Leaf, Keyboard } from 'lucide-react';
+import { LayoutDashboard, Package, Bell, LogOut, ShoppingCart, Users, Menu, X, Leaf, Keyboard, Receipt } from 'lucide-react';
 import { fetchInventory, fetchActiveShift } from '../api';
 import FloatingStoreIconsBg from './FloatingStoreIconsBg';
+
 
 const CustomLeaf = ({ className }) => (
   <svg 
@@ -81,6 +82,7 @@ const Layout = () => {
     { name: 'Panel', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin', 'supervisor'] },
     { name: 'Punto de Venta', path: '/sales', icon: ShoppingCart, allowedRoles: ['admin', 'supervisor', 'cajero'] },
     { name: 'Inventario', path: '/inventory', icon: Package, allowedRoles: ['admin', 'supervisor'] },
+    { name: 'Facturación', path: '/billing', icon: Receipt, allowedRoles: ['admin', 'supervisor'] },
     { name: 'Usuarios', path: '/users', icon: Users, allowedRoles: ['admin'] },
   ];
 

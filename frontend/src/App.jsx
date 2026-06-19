@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Sales from './pages/Sales';
 import Users from './pages/Users';
+import Invoices from './pages/Invoices';
+
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const userStr = sessionStorage.getItem('user');
@@ -49,6 +51,11 @@ function App() {
           <Route path="/inventory" element={
             <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <Inventory />
+            </ProtectedRoute>
+          } />
+          <Route path="/billing" element={
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+              <Invoices />
             </ProtectedRoute>
           } />
           <Route path="/users" element={

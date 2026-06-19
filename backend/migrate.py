@@ -39,7 +39,9 @@ def run_migration():
             ("cost_price", "FLOAT DEFAULT 0.0"),
             ("min_stock", "INTEGER DEFAULT 3"),
             ("image", "VARCHAR"),
-            ("entry_date", "VARCHAR")
+            ("entry_date", "VARCHAR"),
+            ("sat_key", "VARCHAR DEFAULT '01010101'"),
+            ("sat_unit_key", "VARCHAR DEFAULT 'H87'")
         ]
         for col, col_type in products_cols:
             try:
@@ -49,6 +51,20 @@ def run_migration():
             except Exception as e:
                 conn.rollback()
                 print(f"Error agregando '{col}' a products (tal vez ya existe):", e)
+
+        # Columnas adicionales para product_variants
+        variants_cols = [
+            ("sat_key", "VARCHAR DEFAULT '01010101'"),
+            ("sat_unit_key", "VARCHAR DEFAULT 'H87'")
+        ]
+        for col, col_type in variants_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE product_variants ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"Columna '{col}' agregada a product_variants.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Error agregando '{col}' a product_variants (tal vez ya existe):", e)
 
         # Columnas adicionales para sales_history
         sales_history_cols = [
@@ -63,7 +79,8 @@ def run_migration():
             ("payment_method", "VARCHAR(50) DEFAULT 'efectivo'"),
             ("cash_amount", "FLOAT DEFAULT 0.0"),
             ("card_amount", "FLOAT DEFAULT 0.0"),
-            ("authorized_by", "VARCHAR")
+            ("authorized_by", "VARCHAR"),
+            ("invoice_id", "INTEGER")
         ]
         for col, col_type in sales_history_cols:
             try:

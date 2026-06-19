@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Bell, LogOut, ShoppingCart, Users, Menu, X, Leaf } from 'lucide-react';
+import { LayoutDashboard, Package, Bell, LogOut, ShoppingCart, Users, Menu, X, Leaf, Keyboard } from 'lucide-react';
 import { fetchInventory, fetchActiveShift } from '../api';
 import FloatingStoreIconsBg from './FloatingStoreIconsBg';
 
@@ -84,6 +84,34 @@ const Layout = () => {
     { name: 'Customers', path: '/users', icon: Users, allowedRoles: ['admin'] },
   ];
 
+  const renderHotkeys = () => {
+    if (location.pathname !== '/sales') return null;
+    return (
+      <div className="hidden xl:flex items-center gap-4 bg-stone-50 border border-stone-200/60 px-3.5 py-1.5 rounded-full text-[11px] text-stone-500 shadow-sm mr-4 select-none">
+        <span className="font-extrabold tracking-wider uppercase text-[9px] text-stone-400 flex items-center gap-1.5">
+          <Keyboard size={13} className="text-stone-400" />
+          Teclas Rápidas:
+        </span>
+        <div className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded shadow-sm font-mono font-bold text-[9px] text-stone-600">F1</kbd>
+          <span>Buscar</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded shadow-sm font-mono font-bold text-[9px] text-stone-600">F2</kbd>
+          <span>Cobrar</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded shadow-sm font-mono font-bold text-[9px] text-stone-600">F4</kbd>
+          <span>Limpiar</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <kbd className="px-1.5 py-0.5 bg-white border border-stone-200 rounded shadow-sm font-mono font-bold text-[9px] text-stone-600">Esc</kbd>
+          <span>Cerrar</span>
+        </div>
+      </div>
+    );
+  };
+
   const renderShiftBadge = () => {
     if (activeShift) {
       return (
@@ -126,6 +154,7 @@ const Layout = () => {
           </div>
           
           <div className="flex items-center">
+            {renderHotkeys()}
             {renderShiftBadge()}
             
             <div className="flex flex-col items-end mr-4 text-right">
@@ -254,6 +283,7 @@ const Layout = () => {
           </div>
           
           <div className="flex-1 flex justify-end items-center relative">
+            {renderHotkeys()}
             {renderShiftBadge()}
 
             <button 

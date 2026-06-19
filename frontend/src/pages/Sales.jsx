@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { 
   Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, 
   X, Printer, CreditCard, Banknote, History, Coins, ArrowRight, AlertCircle, Lock,
-  Package
+  Package, Keyboard
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 

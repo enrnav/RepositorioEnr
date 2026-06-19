@@ -1,7 +1,14 @@
 from database import engine
 from sqlalchemy import text
+import models
 
 def run_migration():
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        print("Tablas creadas/verificadas desde modelos con Base.metadata.create_all.")
+    except Exception as e:
+        print("Advertencia o error al crear tablas base (puede que ya existan):", e)
+
     with engine.connect() as conn:
         try:
             conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'user'"))

@@ -170,13 +170,16 @@ def search_product_image(query: str) -> Optional[str]:
             "pngfind.com", "cleanpng.com", "pngegg.com", "favpng.com",
             "subpng.com", "pngsucai.com", "mksucai.com", "699pic.com",
             "freeimages.com", "pixy.org", "clipart", "gograph.com",
-            "canstockphoto.com", "vector.me"
+            "canstockphoto.com", "vector.me", "tnaflix.com", "xvideos.com",
+            "pornhub.com", "redtube.com", "youporn.com", "xnxx.com", "spankbang.com",
+            "eporner.com", "tube8.com", "porn.com"
         ]
         
         BLOCKED_KEYWORDS = [
             "logo", "icon", "vector", "dibujo", "clipart", "iluminacion", 
             "background", "fondo", "ilustration", "ilustracion", "banner", 
-            "mockup", "silueta", "silhouette", "esquema"
+            "mockup", "silueta", "silhouette", "esquema", "porn", "tnaflix",
+            "xxx", "adult", "sexy", "naked", "nude", "erotic"
         ]
         
         MOTOR_KEYWORDS = ["motor", "transmision", "transmission", "atf", "mobil", "lubricante", "refaccionaria", "mirefaccion"]

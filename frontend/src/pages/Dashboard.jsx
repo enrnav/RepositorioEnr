@@ -228,10 +228,29 @@ const Dashboard = () => {
             transition: background-color 0.4s ease, border-color 0.3s ease;
           }
 
+          .orion-canvas-container::before {
+            content: "" !important;
+            position: absolute !important;
+            inset: 0 !important;
+            background-image: 
+              linear-gradient(to right, rgba(120, 113, 108, 0.04) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(120, 113, 108, 0.04) 1px, transparent 1px) !important;
+            background-size: 30px 30px !important;
+            background-position: center !important;
+            pointer-events: none !important;
+            z-index: 0 !important;
+          }
+
           .dark .orion-canvas-container {
             background: rgba(28, 25, 23, 0.25) !important;
             border-color: rgba(63, 63, 70, 0.2) !important;
             box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.4), 0 10px 25px -3px rgba(16, 185, 129, 0.08);
+          }
+
+          .dark .orion-canvas-container::before {
+            background-image: 
+              linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px) !important;
           }
 
           .sphere {
@@ -251,9 +270,48 @@ const Dashboard = () => {
             box-shadow: 0 0 50px rgba(210, 20, 58, 0.45), inset -10px -10px 25px rgba(0,0,0,0.8), inset 10px 10px 20px rgba(255,255,255,0.4) !important;
           }
 
+          .sphere-sun-gradient:hover {
+            box-shadow: 0 0 65px rgba(210, 20, 58, 0.65), inset -10px -10px 25px rgba(0,0,0,0.8), inset 10px 10px 20px rgba(255,255,255,0.4) !important;
+          }
+
+          .sphere-sun-glow {
+            position: absolute !important;
+            width: 160px !important;
+            height: 160px !important;
+            background: radial-gradient(circle, rgba(210, 20, 58, 0.22) 0%, transparent 70%) !important;
+            border-radius: 50% !important;
+            filter: blur(10px) !important;
+            z-index: 15 !important;
+            pointer-events: none !important;
+            animation: pulse-glow 4s ease-in-out infinite !important;
+          }
+
+          @keyframes pulse-glow {
+            0%, 100% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.15); opacity: 1; }
+          }
+
+          @keyframes radar-sweep-rotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+
+          .radar-sweep {
+            width: 100%;
+            height: 100%;
+            background: conic-gradient(from 0deg, rgba(6, 182, 212, 0.22) 0deg, rgba(16, 185, 129, 0.04) 90deg, transparent 180deg, transparent 360deg);
+            border-radius: 50%;
+            transform-origin: center;
+            animation: radar-sweep-rotate 20s linear infinite;
+          }
+
           .sphere-kpis-color {
             background: radial-gradient(circle at 35% 30%, #60a5fa 0%, #2563eb 45%, #1e3a8a 85%, #0f172a 100%) !important;
             box-shadow: 0 0 35px rgba(37, 99, 235, 0.4), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+          }
+
+          .sphere-kpis-color:hover {
+            box-shadow: 0 0 50px rgba(37, 99, 235, 0.6), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
           }
 
           .sphere-goal-color {
@@ -261,9 +319,17 @@ const Dashboard = () => {
             box-shadow: 0 0 35px rgba(16, 185, 129, 0.45), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
           }
 
+          .sphere-goal-color:hover {
+            box-shadow: 0 0 50px rgba(16, 185, 129, 0.65), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+          }
+
           .sphere-chart-color {
             background: radial-gradient(circle at 35% 30%, #c084fc 0%, #7e22ce 45%, #4c0519 85%, #2e0014 100%) !important;
             box-shadow: 0 0 35px rgba(168, 85, 247, 0.4), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+          }
+
+          .sphere-chart-color:hover {
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.6), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
           }
 
           .sphere-dist-color {
@@ -271,10 +337,19 @@ const Dashboard = () => {
             box-shadow: 0 0 35px rgba(217, 119, 6, 0.4), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.4) !important;
           }
 
+          .sphere-dist-color:hover {
+            box-shadow: 0 0 50px rgba(217, 119, 6, 0.6), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.4) !important;
+          }
+
           .sphere-table-color {
             background: radial-gradient(circle at 35% 30%, #22d3ee 0%, #0891b2 45%, #083344 85%, #022c22 100%) !important;
             box-shadow: 0 0 35px rgba(6, 182, 212, 0.4), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
           }
+
+          .sphere-table-color:hover {
+            box-shadow: 0 0 50px rgba(6, 182, 212, 0.6), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+          }
+
 
           .orbit-wrapper {
             position: absolute !important;
@@ -395,6 +470,108 @@ const Dashboard = () => {
             }
           }
 
+          .layout-selector-container {
+            background: rgba(255, 255, 255, 0.2) !important;
+            border: 1px solid rgba(231, 229, 228, 0.3) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02) !important;
+            transition: all 0.3s ease !important;
+          }
+
+          .dark .layout-selector-container {
+            background: rgba(28, 25, 23, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+          }
+
+          .layout-selector-btn {
+            color: #78716c !important; /* stone-500 */
+            background: transparent !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: none !important;
+            transform: none !important;
+          }
+
+          .dark .layout-selector-btn {
+            color: #a8a29e !important; /* stone-400 */
+          }
+
+          .layout-selector-btn.active {
+            color: #064e3b !important; /* brand-900 */
+            background: rgba(255, 255, 255, 0.75) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05) !important;
+          }
+
+          .dark .layout-selector-btn.active {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.12) !important;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
+          }
+
+          .layout-selector-btn:hover:not(.active) {
+            color: #44403c !important;
+            background: rgba(0, 0, 0, 0.03) !important;
+          }
+
+          .dark .layout-selector-btn:hover:not(.active) {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.05) !important;
+          }
+
+          .orion-zoom-controls {
+            background: rgba(255, 255, 255, 0.2) !important;
+            border: 1px solid rgba(231, 229, 228, 0.3) !important;
+            backdrop-filter: blur(16px) !important;
+            -webkit-backdrop-filter: blur(16px) !important;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.03) !important;
+            transition: all 0.3s ease !important;
+          }
+
+          .dark .orion-zoom-controls {
+            background: rgba(28, 25, 23, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.2) !important;
+          }
+
+          .orion-zoom-btn {
+            color: #78716c !important; /* stone-500 */
+            background: transparent !important;
+            border-radius: 9999px !important;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            box-shadow: none !important;
+            transform: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 2.25rem !important;
+            height: 2.25rem !important;
+            border: none !important;
+          }
+
+          .dark .orion-zoom-btn {
+            color: #a8a29e !important; /* stone-400 */
+          }
+
+          .orion-zoom-btn:hover {
+            color: #064e3b !important; /* brand-900 */
+            background: rgba(6, 78, 59, 0.08) !important;
+            transform: scale(1.1) !important;
+            box-shadow: none !important;
+          }
+
+          .dark .orion-zoom-btn:hover {
+            color: #ffffff !important;
+            background: rgba(255, 255, 255, 0.08) !important;
+            box-shadow: none !important;
+          }
+
+          .orion-zoom-btn:active {
+            transform: scale(0.9) !important;
+            box-shadow: none !important;
+          }
+
+
           @keyframes cardFadeIn {
             0% { opacity: 0; transform: scale(0.95) translateY(10px); }
             100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -410,14 +587,12 @@ const Dashboard = () => {
         
         <div className="flex flex-wrap items-center gap-3">
           {/* Selector de Layout */}
-          <div className="flex items-center gap-1 bg-stone-100 dark:bg-stone-800 p-1 rounded-2xl border border-stone-200/50 text-xs font-bold text-stone-600 dark:text-stone-400">
+          <div className="flex items-center gap-1 p-1 rounded-2xl text-xs font-bold layout-selector-container shadow-sm">
             <button
               type="button"
               onClick={() => { setLayout('standard'); setActiveCard(null); }}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                layout === 'standard' 
-                  ? 'bg-white dark:bg-stone-700 shadow-sm text-brand-900 dark:text-stone-100' 
-                  : 'hover:text-stone-800 dark:hover:text-stone-200'
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 layout-selector-btn ${
+                layout === 'standard' ? 'active' : 'hover:opacity-85'
               }`}
             >
               <LayoutGrid size={14} />
@@ -426,13 +601,11 @@ const Dashboard = () => {
             <button
               type="button"
               onClick={() => { setLayout('orion'); setActiveCard(null); }}
-              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                layout === 'orion' 
-                  ? 'bg-white dark:bg-stone-700 shadow-sm text-brand-900 dark:text-stone-100' 
-                  : 'hover:text-stone-800 dark:hover:text-stone-200'
+              className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 layout-selector-btn ${
+                layout === 'orion' ? 'active' : 'hover:opacity-85'
               }`}
             >
-              <Activity size={14} className={layout === 'orion' ? 'text-chiluda-red' : ''} />
+              <Activity size={14} />
               <span>Orion</span>
             </button>
           </div>
@@ -446,26 +619,50 @@ const Dashboard = () => {
       {layout === 'orion' && (
         <div id="orion-layout-container" className="relative w-full">
           {/* ZOOM CONTROLS (Capsule style) */}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-stone-900/90 dark:bg-stone-950/95 p-3 rounded-full border border-stone-200/10 dark:border-white/5 z-20 text-stone-300 text-xs shadow-xl">
-            <button type="button" onClick={() => adjustZoom(1.15)} className="p-1.5 hover:text-white hover:scale-110 active:scale-95 transition-all text-stone-400 hover:text-stone-100" title="Zoom In"><Plus size={16} /></button>
-            <button type="button" onClick={() => adjustZoom(0.85)} className="p-1.5 hover:text-white hover:scale-110 active:scale-95 transition-all text-stone-400 hover:text-stone-100" title="Zoom Out"><Minus size={16} /></button>
-            <button type="button" onClick={resetZoom} className="p-1.5 hover:text-white hover:scale-110 active:scale-95 transition-all text-stone-400 hover:text-stone-100" title="Restablecer"><Target size={16} /></button>
+          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 p-1.5 rounded-full z-20 transition-all orion-zoom-controls">
+            <button type="button" onClick={() => adjustZoom(1.15)} className="orion-zoom-btn" title="Zoom In"><Plus size={16} /></button>
+            <button type="button" onClick={() => adjustZoom(0.85)} className="orion-zoom-btn" title="Zoom Out"><Minus size={16} /></button>
+            <button type="button" onClick={resetZoom} className="orion-zoom-btn" title="Restablecer"><Target size={16} /></button>
           </div>
 
           {/* SOLAR SYSTEM CANVAS (Themed card background style) */}
           <div className="relative w-full h-[580px] md:h-[780px] orion-canvas-container overflow-hidden flex items-center justify-center p-6 bg-stone-50/50 dark:bg-stone-950/40 border border-stone-200/80 dark:border-white/5 rounded-[3rem] shadow-soft">
+            {/* Ambient depth glow points */}
+            <div className="absolute top-12 left-12 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/5 rounded-full filter blur-[80px] pointer-events-none" />
+            <div className="absolute bottom-12 right-12 w-80 h-80 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full filter blur-[100px] pointer-events-none" />
+
             {/* Background floating store icons animation specific to Orion container */}
             <FloatingStoreIconsBg className="absolute inset-0 opacity-40 pointer-events-none" />
+
+            {/* Radar sweep scanner */}
+            <div className="absolute w-[648px] h-[648px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full overflow-hidden pointer-events-none z-0 opacity-[0.25] dark:opacity-[0.15]">
+              <div className="w-full h-full radar-sweep" />
+            </div>
 
             {/* Responsive wrapper to automatically scale down the solar system on smaller screens */}
             <div className="absolute inset-0 flex items-center justify-center scale-[0.58] sm:scale-[0.8] md:scale-95 lg:scale-100 origin-center pointer-events-none">
               
-              {/* SVG Orbit Lines (Responsive stroke colors) */}
-              <svg className="absolute w-[500px] h-[500px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-stone-200 dark:text-stone-800 opacity-30" viewBox="0 0 500 500">
-                <line x1="50" y1="250" x2="450" y2="250" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 8" />
-                <line x1="250" y1="50" x2="250" y2="450" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 8" />
+              {/* SVG Orbit Lines (Responsive stroke colors & compass labels) */}
+              <svg className="absolute w-[720px] h-[720px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-stone-200 dark:text-stone-800 opacity-40" viewBox="0 0 720 720">
+                {/* Axes lines */}
+                <line x1="40" y1="360" x2="680" y2="360" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 12" />
+                <line x1="360" y1="40" x2="360" y2="680" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 12" />
 
-                <circle cx="250" cy="250" r="120" stroke="currentColor" strokeWidth="1.2" fill="none" strokeDasharray="3 5" />
+                {/* Concentric Orbit Paths */}
+                {/* Orbit 1: Radius 120 (KPIs and Goal) */}
+                <circle cx="360" cy="360" r="120" stroke="rgba(16, 185, 129, 0.18)" strokeWidth="1.2" fill="none" strokeDasharray="3 5" />
+                
+                {/* Orbit 2: Radius 222 (Chart and Projection) */}
+                <circle cx="360" cy="360" r="222" stroke="rgba(139, 92, 246, 0.18)" strokeWidth="1.2" fill="none" strokeDasharray="4 6" />
+                
+                {/* Orbit 3: Radius 324 (POS Table) */}
+                <circle cx="360" cy="360" r="324" stroke="rgba(6, 182, 212, 0.18)" strokeWidth="1.2" fill="none" strokeDasharray="2 8" />
+
+                {/* Technical Compass Degree Markings */}
+                <text x="360" y="28" textAnchor="middle" className="text-[8px] font-mono fill-stone-400 dark:fill-stone-600 font-extrabold uppercase tracking-widest">000° (N)</text>
+                <text x="694" y="363" textAnchor="start" className="text-[8px] font-mono fill-stone-400 dark:fill-stone-600 font-extrabold uppercase tracking-widest">090° (E)</text>
+                <text x="360" y="700" textAnchor="middle" className="text-[8px] font-mono fill-stone-400 dark:fill-stone-600 font-extrabold uppercase tracking-widest">180° (S)</text>
+                <text x="24" y="363" textAnchor="end" className="text-[8px] font-mono fill-stone-400 dark:fill-stone-600 font-extrabold uppercase tracking-widest">270° (W)</text>
               </svg>
 
               {/* Planets and Sun Wrapper */}
@@ -473,6 +670,8 @@ const Dashboard = () => {
               
               {/* Central Sun (Toggles Didactic Assistant) */}
               <div className="absolute z-20 flex items-center justify-center">
+                {/* Radiant solar glow */}
+                <div className="sphere-sun-glow" />
                 <button
                   type="button"
                   onClick={() => togglePlanet('assistant')}

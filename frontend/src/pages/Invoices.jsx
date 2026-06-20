@@ -302,9 +302,9 @@ const Invoices = () => {
     <div className="space-y-6">
       {/* Title block */}
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
-        <h2 className="text-2xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center whitespace-nowrap">
-          <Receipt className="mr-3 text-chiluda-red w-8 h-8" />
-          FACTURACIÓN ELECTRÓNICA CFDI 4.0
+        <h2 className="text-xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center gap-2">
+          <Receipt className="text-chiluda-red w-8 h-8 shrink-0" />
+          <span>FACTURACIÓN ELECTRÓNICA CFDI 4.0</span>
         </h2>
         {/* Subtitle / single-row badges */}
         <div className="flex flex-wrap gap-2.5 sm:gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0">

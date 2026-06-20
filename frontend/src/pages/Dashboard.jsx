@@ -56,9 +56,9 @@ const Dashboard = () => {
   return (
     <div className="space-y-8">
       <div className="flex items-center space-x-3 mb-6 animate-fade-in">
-        <h2 className="text-3xl font-black text-brand-900 tracking-tight flex items-center">
-          <TrendingUp className="mr-3 text-chiluda-red w-8 h-8" />
-          Panel de Control Financiero
+        <h2 className="text-xl sm:text-3xl font-black text-brand-900 tracking-tight flex items-center gap-2">
+          <TrendingUp className="text-chiluda-red w-8 h-8 shrink-0" />
+          <span>Panel de Control Financiero</span>
         </h2>
       </div>
 

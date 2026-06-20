@@ -804,9 +804,9 @@ const Inventory = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
-        <h2 className="text-2xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center whitespace-nowrap">
-          <Package className="mr-3 text-chiluda-red w-8 h-8 shrink-0" />
-          Gestión de Inventario
+        <h2 className="text-xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center gap-2">
+          <Package className="text-chiluda-red w-8 h-8 shrink-0" />
+          <span>Gestión de Inventario</span>
         </h2>
 
         <div className="flex flex-wrap sm:flex-nowrap gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0 relative">

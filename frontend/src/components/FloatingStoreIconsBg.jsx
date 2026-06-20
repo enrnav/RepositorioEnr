@@ -125,7 +125,7 @@ const STORE_ICONS = [
 
 const ICONS_COUNT = 70;
 
-export default function FloatingStoreIconsBg() {
+export default function FloatingStoreIconsBg({ className = "fixed inset-0" }) {
   const [particles, setParticles] = useState([]);
 
   useEffect(() => {
@@ -153,7 +153,7 @@ export default function FloatingStoreIconsBg() {
   }, []);
 
   return (
-    <div className="fixed inset-0 overflow-hidden pointer-events-none z-0 select-none">
+    <div className={`${className} overflow-hidden pointer-events-none z-0 select-none`}>
       {particles.map((p) => {
         const IconComponent = STORE_ICONS[p.iconIndex];
         return (

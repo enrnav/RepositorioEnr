@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Orion Data Visualisation - Abarrotes ED & E</title>
+  
+  <!-- Google Fonts Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* VARIABLES DE DISEÑO PRINCIPALES DE LA PALETA ORION */
+    :root {
+      --bg-orion: #050512;
+      --card-bg: rgba(14, 14, 34, 0.7);
+      --card-border: rgba(255, 255, 255, 0.05);
+      --neon-magenta: #ff2d75;
+      --neon-purple: #8b5cf6;
+      --neon-cyan: #06b6d4;
+    }
+
+    body {
+      background-color: var(--bg-orion);
+      color: #ffffff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* GRADIENTES Y GLOWS DEL FONDO */
+    .bg-orion-glow {
+      position: fixed;
+      inset: 0;
+      z-index: -20;
+      background: radial-gradient(circle at 50% 50%, rgba(139, 92, 246, 0.04) 0%, transparent 60%),
+                  radial-gradient(circle at 10% 20%, rgba(255, 45, 117, 0.02) 0%, transparent 40%),
+                  radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.02) 0%, transparent 40%);
+    }
+
+    /* CARDS GLASSMORPHIC CON BORDES GLOW */
+    .orion-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .orion-card:hover {
+      border-color: rgba(139, 92, 246, 0.25);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(139, 92, 246, 0.05);
+      transform: translateY(-2px);
+    }
+
+    /* ESTILO 3D SÚPER REALISTA DE LAS ESFERAS (BULLAS) */
+    .sphere {
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Custom sizing utilities for spheres that are not defined in default Tailwind */
+    .w-22 { width: 5.5rem !important; }
+    .h-22 { height: 5.5rem !important; }
+    .w-26 { width: 6.5rem !important; }
+    .h-26 { height: 6.5rem !important; }
+
+    /* Esfera Roja/Rosa (Investments, Design, etc.) */
+    .sphere-pink {
+      background: radial-gradient(circle at 35% 30%, #ff5b94 0%, #e10057 45%, #600021 85%, #21000b 100%);
+      box-shadow: 0 0 45px rgba(255, 45, 117, 0.4),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.8),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.4);
+    }
+    .sphere-pink:hover {
+      box-shadow: 0 0 60px rgba(255, 45, 117, 0.6),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.8),
+                  inset 8px 8px 18px rgba(255, 255, 255, 0.5);
+      transform: scale(1.05);
+    }
+
+    /* Esfera Púrpura/Azul (Finance, Development, etc.) */
+    .sphere-purple {
+      background: radial-gradient(circle at 35% 30%, #a78bfa 0%, #6d28d9 45%, #2e1065 85%, #0f0521 100%);
+      box-shadow: 0 0 45px rgba(139, 92, 246, 0.35),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.8),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.35);
+    }
+    .sphere-purple:hover {
+      box-shadow: 0 0 60px rgba(139, 92, 246, 0.55),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.8),
+                  inset 8px 8px 18px rgba(255, 255, 255, 0.45);
+      transform: scale(1.05);
+    }
+
+    /* Esfera Pequeña Flotante decorativa */
+    .sphere-decor {
+      background: radial-gradient(circle at 35% 30%, #c084fc 0%, #7e22ce 50%, #3b0764 90%);
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.3),
+                  inset -4px -4px 10px rgba(0, 0, 0, 0.8),
+                  inset 4px 4px 8px rgba(255, 255, 255, 0.3);
+      filter: blur(0.5px);
+    }
+
+    /* ANIMACIÓN DE FLOTACIÓN (DRIFTING PARALLAX) */
+    @keyframes float1 {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(5px, -10px) scale(1.02); }
+      100% { transform: translate(0, 0) scale(1); }
+    }
+    @keyframes float2 {
+      0% { transform: translate(0, 0); }
+      50% { transform: translate(-10px, 8px) scale(0.97); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes rotateClockwise {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .anim-float-1 { animation: float1 8s infinite ease-in-out; }
+    .anim-float-2 { animation: float2 10s infinite ease-in-out; }
+    .anim-rotate-slow { animation: rotateClockwise 80s infinite linear; }
+
+    /* FILTRO SELECCIONADO GLOW */
+    .time-filter-btn.active {
+      background: #3b82f6;
+      box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+      border-color: #60a5fa;
+      color: #ffffff;
+    }
+
+    /* SPARKLINE ANIMATION */
+    .sparkline-path {
+      stroke-dasharray: 100;
+      stroke-dashoffset: 100;
+      animation: drawLine 2s forwards ease-in-out;
+    }
+    @keyframes drawLine {
+      to { stroke-dashoffset: 0; }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-stone-100 flex flex-col justify-between p-4 sm:p-6 md:p-8">
+
+  <!-- FONDO DE NEBULOSA Y GLOWS -->
+  <div class="bg-orion-glow"></div>
+
+  <!-- CONTENEDOR MAESTRO -->
+  <div class="max-w-7xl mx-auto w-full flex flex-col justify-between flex-1 gap-6">
+
+    <!-- HEADER / NAVBAR -->
+    <header class="flex flex-col md:flex-row items-center justify-between gap-4 pb-4 border-b border-white/5">
+      <!-- Logo y Search -->
+      <div class="flex items-center justify-between w-full md:w-auto gap-8">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+            <span class="font-outfit font-black text-white text-sm">O</span>
+          </div>
+          <span class="font-outfit font-black text-lg tracking-wider uppercase text-white">ORION</span>
+        </div>
+
+        <!-- Buscador -->
+        <div class="relative hidden sm:block">
+          <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500"></i>
+          <input type="text" placeholder="Buscar métrica o reporte..." class="pl-10 pr-4 py-2 w-64 bg-stone-900/50 border border-white/5 rounded-full text-xs outline-none focus:border-blue-500 transition-colors">
+        </div>
+      </div>
+
+      <!-- Links de Navegación -->
+      <nav class="flex items-center gap-6 text-xs font-bold text-stone-400">
+        <a href="#" class="hover:text-stone-100 transition-colors">Statistics</a>
+        <a href="#" class="text-white relative pb-1 border-b-2 border-blue-500 hover:text-stone-100 transition-colors">Overview</a>
+        <a href="#" class="hover:text-stone-100 transition-colors">Dashboard</a>
+        <a href="#" class="hover:text-stone-100 transition-colors">Analytics</a>
+      </nav>
+
+      <!-- Perfil / Controles -->
+      <div class="flex items-center gap-4">
+        <button class="p-2 bg-stone-900/50 border border-white/5 rounded-full hover:border-white/10 transition-colors">
+          <i data-lucide="bell" class="w-4 h-4 text-stone-300"></i>
+        </button>
+        <button class="p-2 bg-stone-900/50 border border-white/5 rounded-full hover:border-white/10 transition-colors">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-stone-300"></i>
+        </button>
+        <div class="w-8 h-8 rounded-full bg-stone-700 border border-white/10 overflow-hidden flex items-center justify-center">
+          <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=100&auto=format&fit=crop" alt="User profile" class="w-full h-full object-cover">
+        </div>
+      </div>
+    </header>
+
+    <!-- CUERPO PRINCIPAL (2 COLUMNAS: SIDEBAR IZQUIERDO Y VISUALIZADOR CENTRAL) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 flex-1 items-stretch py-4">
+      
+      <!-- COLUMNA IZQUIERDA: ESTADÍSTICAS Y KPI CARDS (col-span-3) -->
+      <div class="lg:col-span-3 flex flex-col gap-6 justify-between">
+        <h2 class="font-outfit font-extrabold text-2xl tracking-tight text-white mb-2">Statistics</h2>
+
+        <!-- CARD 1: DONUT MULTIANILLO Y SPARK LINES -->
+        <div class="orion-card p-5 rounded-[1.75rem] flex flex-col justify-between flex-1 gap-4">
+          
+          <!-- Anillo circular múltiple SVG -->
+          <div class="flex flex-col items-center justify-center relative py-4">
+            <svg class="w-36 h-36 transform -rotate-95 overflow-visible" viewBox="0 0 100 100">
+              <!-- Círculo interior (Research - Cyan) -->
+              <circle cx="50" cy="50" r="28" stroke="rgba(255,255,255,0.02)" stroke-width="5" fill="none" />
+              <circle cx="50" cy="50" r="28" stroke="#06b6d4" stroke-width="5" stroke-dasharray="175" stroke-dashoffset="65" fill="none" stroke-linecap="round" />
+              
+              <!-- Círculo intermedio (Development - Pink/Magenta) -->
+              <circle cx="50" cy="50" r="36" stroke="rgba(255,255,255,0.02)" stroke-width="5" fill="none" />
+              <circle cx="50" cy="50" r="36" stroke="#ff2d75" stroke-width="5" stroke-dasharray="226" stroke-dashoffset="85" fill="none" stroke-linecap="round" />
+
+              <!-- Círculo exterior (Presentation - Yellow/Amber) -->
+              <circle cx="50" cy="50" r="44" stroke="rgba(255,255,255,0.02)" stroke-width="5" fill="none" />
+              <circle cx="50" cy="50" r="44" stroke="#eab308" stroke-width="5" stroke-dasharray="276" stroke-dashoffset="90" fill="none" stroke-linecap="round" />
+            </svg>
+            
+            <!-- Texto central del donut -->
+            <div class="absolute text-center flex flex-col items-center justify-center">
+              <span class="text-[9px] font-bold text-stone-400 uppercase tracking-widest leading-none mb-1">Earning</span>
+              <span class="text-base font-outfit font-black text-white leading-none">$12,875</span>
+              <span class="text-[9px] font-black text-emerald-500 mt-1 flex items-center leading-none">
+                <i data-lucide="arrow-up-right" class="w-2.5 h-2.5"></i> 2%
+              </span>
+            </div>
+          </div>
+
+          <!-- Tabla de Categorías con minicharts (Sparklines) -->
+          <div class="space-y-3.5 text-xs">
+            <!-- Item 1 -->
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+                <span class="font-semibold text-stone-300">Presentation</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-bold">862</span>
+                <!-- Sparkline Amarillo -->
+                <svg class="w-12 h-4 overflow-visible" viewBox="0 0 40 10">
+                  <path d="M 0,8 Q 8,2 15,6 T 30,3 T 40,7" fill="none" stroke="#eab308" stroke-width="1.5" class="sparkline-path" />
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Item 2 -->
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-pink-500"></span>
+                <span class="font-semibold text-stone-300">Development</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-bold">753</span>
+                <!-- Sparkline Rosa -->
+                <svg class="w-12 h-4 overflow-visible" viewBox="0 0 40 10">
+                  <path d="M 0,4 Q 10,9 18,3 T 32,7 T 40,2" fill="none" stroke="#ff2d75" stroke-width="1.5" class="sparkline-path" />
+                </svg>
+              </div>
+            </div>
+
+            <!-- Item 3 -->
+            <div class="flex justify-between items-center">
+              <div class="flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-cyan-500"></span>
+                <span class="font-semibold text-stone-300">Research</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="font-bold">553</span>
+                <!-- Sparkline Cyan -->
+                <svg class="w-12 h-4 overflow-visible" viewBox="0 0 40 10">
+                  <path d="M 0,6 Q 8,9 15,3 T 30,7 T 40,4" fill="none" stroke="#06b6d4" stroke-width="1.5" class="sparkline-path" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: TOTAL EARNING Y VENTAS KPI -->
+        <div class="orion-card p-5 rounded-[1.75rem] space-y-4">
+          <div>
+            <p class="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">Total Earning</p>
+            <div class="flex items-baseline justify-between">
+              <h3 id="earn-val" class="text-2xl font-outfit font-black text-white">$12,875</h3>
+              <span class="text-[10px] font-bold text-emerald-500 flex items-center gap-0.5"><i data-lucide="arrow-up-right" class="w-3 h-3"></i> 10%</span>
+            </div>
+            <p class="text-[8px] text-stone-500 mt-1 uppercase font-bold">Comparado a los $11,490 del año pasado</p>
+          </div>
+
+          <div class="border-t border-white/5 pt-4">
+            <p class="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">Sales Report</p>
+            <div class="flex items-baseline justify-between">
+              <h3 id="sales-val" class="text-2xl font-outfit font-black text-white">$43,123</h3>
+              <span class="text-[10px] font-bold text-emerald-500 flex items-center gap-0.5"><i data-lucide="arrow-up-right" class="w-3 h-3"></i> 12%</span>
+            </div>
+            <p class="text-[8px] text-stone-500 mt-1 uppercase font-bold">Comparado a los $38,490 del año pasado</p>
+          </div>
+        </div>
+
+        <!-- CARD 3: LISTADO DE CATEGORÍAS CON ICONOS DE TENDENCIA -->
+        <div class="orion-card p-5 rounded-[1.75rem] text-xs font-semibold space-y-3">
+          <!-- Row 1 -->
+          <div class="flex justify-between items-center text-stone-300">
+            <span>Travel</span>
+            <div class="flex items-center gap-3">
+              <span class="text-stone-400 font-bold">750</span>
+              <span class="font-extrabold text-white w-10 text-right">2,540</span>
+              <span class="text-emerald-500 bg-emerald-500/10 p-0.5 rounded"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i></span>
+            </div>
+          </div>
+          <!-- Row 2 -->
+          <div class="flex justify-between items-center text-stone-300">
+            <span>Presentation</span>
+            <div class="flex items-center gap-3">
+              <span class="text-stone-400 font-bold">650</span>
+              <span class="font-extrabold text-white w-10 text-right">2,304</span>
+              <span class="text-red-500 bg-red-500/10 p-0.5 rounded"><i data-lucide="trending-down" class="w-3.5 h-3.5"></i></span>
+            </div>
+          </div>
+          <!-- Row 3 -->
+          <div class="flex justify-between items-center text-stone-300">
+            <span>Business</span>
+            <div class="flex items-center gap-3">
+              <span class="text-stone-400 font-bold">612</span>
+              <span class="font-extrabold text-white w-10 text-right">2,140</span>
+              <span class="text-emerald-500 bg-emerald-500/10 p-0.5 rounded"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i></span>
+            </div>
+          </div>
+          <!-- Row 4 -->
+          <div class="flex justify-between items-center text-stone-300">
+            <span>Finance</span>
+            <div class="flex items-center gap-3">
+              <span class="text-stone-400 font-bold">598</span>
+              <span class="font-extrabold text-white w-10 text-right">1,976</span>
+              <span class="text-emerald-500 bg-emerald-500/10 p-0.5 rounded"><i data-lucide="trending-up" class="w-3.5 h-3.5"></i></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- VISUALIZADOR CENTRAL DE CONSTELACIONES EN 3D (col-span-9) -->
+      <div class="lg:col-span-9 flex flex-col justify-between relative min-h-[500px] lg:min-h-0">
+        
+        <!-- TIMELINE SELECTOR EN LA PARTE SUPERIOR CENTRAL -->
+        <div class="absolute top-2 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-1.5">
+          <span class="text-[8px] font-black tracking-widest text-stone-500 uppercase">TIMELINE</span>
+          <div class="flex items-center gap-1 bg-stone-900/60 p-1 rounded-full border border-white/5 text-[10px] font-extrabold text-stone-400">
+            <button onclick="updateTimeFilter('1W', this)" class="time-filter-btn px-3 py-1 rounded-full hover:text-stone-200 transition-all">1W</button>
+            <button onclick="updateTimeFilter('1M', this)" class="time-filter-btn px-3 py-1 rounded-full hover:text-stone-200 transition-all">1M</button>
+            <button onclick="updateTimeFilter('3M', this)" class="time-filter-btn active px-3 py-1 rounded-full transition-all">3M</button>
+            <button onclick="updateTimeFilter('1Y', this)" class="time-filter-btn px-3 py-1 rounded-full hover:text-stone-200 transition-all">1Y</button>
+            <button onclick="updateTimeFilter('ALL', this)" class="time-filter-btn px-3 py-1 rounded-full hover:text-stone-200 transition-all">ALL</button>
+          </div>
+        </div>
+
+        <!-- ÁREA CENTRAL DE RENDER DE ÓRBITAS Y ESFERAS -->
+        <div class="flex-1 w-full relative flex items-center justify-center overflow-visible">
+          
+          <!-- ÓRBITAS DE FONDO CON RINGS SVG (ROTATIVOS) -->
+          <svg class="absolute w-[90%] h-[90%] pointer-events-none anim-rotate-slow opacity-60" viewBox="0 0 500 500">
+            <!-- Anillo interior punteado -->
+            <circle cx="250" cy="250" r="110" stroke="rgba(255, 45, 117, 0.08)" stroke-width="1.5" fill="none" stroke-dasharray="4 6" />
+            <!-- Anillo intermedio continuo -->
+            <circle cx="250" cy="250" r="170" stroke="rgba(139, 92, 246, 0.06)" stroke-width="1.2" fill="none" />
+            <!-- Anillo exterior punteado -->
+            <circle cx="250" cy="250" r="220" stroke="rgba(255, 255, 255, 0.03)" stroke-width="1" fill="none" stroke-dasharray="8 8" />
+          </svg>
+
+          <!-- TEXTO DE FONDO DIFUMINADO "Data visualisation" -->
+          <div class="absolute font-outfit font-black text-4xl sm:text-7xl uppercase text-white/5 select-none pointer-events-none tracking-widest text-center">
+            Data visualisation
+          </div>
+
+          <!-- ESFERAS FLOTANTES DE FONDO CON PARALLAX (decorativas) -->
+          <div class="absolute w-7 h-7 rounded-full sphere-decor top-[15%] left-[28%] anim-float-1"></div>
+          <div class="absolute w-5 h-5 rounded-full sphere-decor top-[35%] left-[12%] anim-float-2" style="animation-delay: -3s;"></div>
+          <div class="absolute w-12 h-12 rounded-full sphere-decor top-[22%] right-[10%] anim-float-1" style="animation-delay: -2s;"></div>
+          <div class="absolute w-9 h-9 rounded-full sphere-decor bottom-[25%] left-[18%] anim-float-2" style="animation-delay: -5s;"></div>
+          <div class="absolute w-6 h-6 rounded-full sphere-decor bottom-[20%] right-[15%] anim-float-1" style="animation-delay: -1s;"></div>
+          
+          <!-- PEQUEÑAS CHISPAS ROJAS FLOTANTES (DETALLES DEL SCREENSHOT) -->
+          <div class="absolute w-2 h-2 rounded-full bg-pink-500/80 shadow-[0_0_10px_#ff2d75] top-[26%] left-[45%] anim-float-2"></div>
+          <div class="absolute w-2 h-2 rounded-full bg-pink-500/80 shadow-[0_0_10px_#ff2d75] bottom-[38%] left-[38%] anim-float-1" style="animation-delay: -4s;"></div>
+          <div class="absolute w-2.5 h-2.5 rounded-full bg-pink-500/80 shadow-[0_0_10px_#ff2d75] bottom-[42%] right-[32%] anim-float-2" style="animation-delay: -2s;"></div>
+
+          <!-- ================= ESFERAS PRINCIPALES ================= -->
+          <div class="relative w-full h-full min-h-[460px] flex items-center justify-center">
+
+            <!-- 1. ESFERA CENTRAL: INVESTMENTS (Grande - Rosa) -->
+            <div id="sphere-investments" class="sphere sphere-pink w-36 h-36 sm:w-44 sm:h-44 absolute z-15 anim-float-1" style="animation-duration: 9s;">
+              <span class="text-[8px] sm:text-[10px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1.5">Investments</span>
+              <span class="text-lg sm:text-2xl font-outfit font-black text-white leading-none">$76,644</span>
+              <span class="text-[8px] sm:text-[10px] font-bold text-white/50 uppercase mt-1 leading-none">3 Month</span>
+            </div>
+
+            <!-- 2. ESFERA ABAJO IZQ: DESIGN (Mediana - Rosa) -->
+            <div id="sphere-design" class="sphere sphere-pink w-28 h-28 sm:w-32 sm:h-32 absolute -translate-x-[110px] translate-y-[100px] sm:-translate-x-[130px] sm:translate-y-[110px] z-10 anim-float-2" style="animation-duration: 7s;">
+              <span class="text-[8px] sm:text-[9px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1">Design</span>
+              <span class="text-sm sm:text-lg font-outfit font-black text-white leading-none">$32,982</span>
+              <span class="text-[8px] font-bold text-white/50 uppercase mt-0.5 leading-none">3 Month</span>
+            </div>
+
+            <!-- 3. ESFERA ARRIBA IZQ: DEVELOPMENT (Mediana - Rosa) -->
+            <div id="sphere-development" class="sphere sphere-pink w-24 h-24 sm:w-28 sm:h-28 absolute -translate-x-[120px] -translate-y-[60px] sm:-translate-x-[140px] sm:translate-y-[-70px] z-10 anim-float-1" style="animation-duration: 6s; animation-delay: -1s;">
+              <span class="text-[8px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1">Development</span>
+              <span class="text-xs sm:text-base font-outfit font-black text-white leading-none">$31,857</span>
+            </div>
+
+            <!-- 4. ESFERA ARRIBA DER: FINANCE (Mediana - Rosa) -->
+            <div id="sphere-finance" class="sphere sphere-pink w-24 h-24 sm:w-26 sm:h-26 absolute translate-x-[90px] -translate-y-[100px] sm:translate-x-[110px] sm:-translate-y-[110px] z-10 anim-float-2" style="animation-duration: 8s; animation-delay: -2s;">
+              <span class="text-[8px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1">Finance</span>
+              <span class="text-xs sm:text-base font-outfit font-black text-white leading-none">$23,657</span>
+            </div>
+
+            <!-- 5. ESFERA MEDIANA DER: BUSINESS (Mediana - Rosa) -->
+            <div id="sphere-business" class="sphere sphere-pink w-22 h-22 sm:w-26 sm:h-26 absolute translate-x-[120px] translate-y-[20px] sm:translate-x-[140px] sm:translate-y-[30px] z-10 anim-float-1" style="animation-duration: 7.5s; animation-delay: -4s;">
+              <span class="text-[8px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1">Business</span>
+              <span class="text-xs sm:text-base font-outfit font-black text-white leading-none">$21,887</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- BARRA FLOTANTE DERECHA DE CONTROLES (Zonas de control de Zoom/Filtro del screenshot) -->
+        <div class="absolute right-0 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-stone-900/60 p-2 rounded-2xl border border-white/5 z-20 text-stone-400">
+          <button onclick="adjustZoom(1.1)" class="p-2 hover:text-white transition-colors" title="Zoom In"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          <button onclick="adjustZoom(0.9)" class="p-2 hover:text-white transition-colors" title="Zoom Out"><i data-lucide="minus" class="w-4 h-4"></i></button>
+          <button onclick="resetZoom()" class="p-2 hover:text-white transition-colors" title="Focus Center"><i data-lucide="target" class="w-4 h-4"></i></button>
+          <div class="border-t border-white/5 my-1"></div>
+          <button class="p-2 hover:text-white transition-colors"><i data-lucide="git-branch" class="w-4 h-4"></i></button>
+          <button class="p-2 hover:text-white transition-colors"><i data-lucide="share-2" class="w-4 h-4"></i></button>
+          <button class="p-2 hover:text-white transition-colors"><i data-lucide="music" class="w-4 h-4"></i></button>
+        </div>
+
+        <!-- SECCIÓN DE KPI COMPACTOS EN LA BASE DE LA CONSTELACIÓN -->
+        <div class="grid grid-cols-3 gap-4 text-center mt-4">
+          <!-- KPI 1 -->
+          <div class="orion-card p-4 rounded-[1.25rem]">
+            <div class="flex justify-center mb-1 text-stone-400"><i data-lucide="eye" class="w-4 h-4"></i></div>
+            <p class="text-[8px] font-black text-stone-400 uppercase tracking-widest mb-0.5">Trend Goods</p>
+            <span id="trend-goods-val" class="text-2xl font-outfit font-black text-white">204</span>
+          </div>
+
+          <!-- KPI 2 -->
+          <div class="orion-card p-4 rounded-[1.25rem]">
+            <div class="flex justify-center mb-1 text-stone-400"><i data-lucide="layers" class="w-4 h-4"></i></div>
+            <p class="text-[8px] font-black text-stone-400 uppercase tracking-widest mb-0.5">Shopping Views</p>
+            <span id="shopping-views-val" class="text-2xl font-outfit font-black text-white">65,540</span>
+          </div>
+
+          <!-- KPI 3 -->
+          <div class="orion-card p-4 rounded-[1.25rem]">
+            <div class="flex justify-center mb-1 text-stone-400"><i data-lucide="bar-chart-2" class="w-4 h-4"></i></div>
+            <p class="text-[8px] font-black text-stone-400 uppercase tracking-widest mb-0.5">Store Dynamics</p>
+            <span id="store-dynamics-val" class="text-2xl font-outfit font-black text-white">324</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="flex items-center justify-between text-[8px] sm:text-[10px] font-black uppercase text-stone-500 tracking-widest pt-4 border-t border-white/5">
+      <span>Orion Data Visualisation</span>
+      <span>ED & E Abarrotes © 2026</span>
+    </footer>
+
+  </div>
+
+  <script>
+    // ESTADO DE LA VISTA
+    let currentZoom = 1;
+    
+    // DATA SETS DINÁMICOS PARA LA TIMELINE
+    const timelineData = {
+      '1W': {
+        earn: '$3,200',
+        sales: '$11,400',
+        investments: { val: '$18,412', term: '7 Days' },
+        design: { val: '$7,230', term: '7 Days' },
+        development: '$6,850',
+        finance: '$5,120',
+        business: '$4,920',
+        trendGoods: '84',
+        shoppingViews: '12,410',
+        storeDynamics: '98'
+      },
+      '1M': {
+        earn: '$7,840',
+        sales: '$26,180',
+        investments: { val: '$45,820', term: '30 Days' },
+        design: { val: '$18,650', term: '30 Days' },
+        development: '$19,250',
+        finance: '$14,920',
+        business: '$13,240',
+        trendGoods: '142',
+        shoppingViews: '34,920',
+        storeDynamics: '210'
+      },
+      '3M': { // Default
+        earn: '$12,875',
+        sales: '$43,123',
+        investments: { val: '$76,644', term: '3 Month' },
+        design: { val: '$32,982', term: '3 Month' },
+        development: '$31,857',
+        finance: '$23,657',
+        business: '$21,887',
+        trendGoods: '204',
+        shoppingViews: '65,540',
+        storeDynamics: '324'
+      },
+      '1Y': {
+        earn: '$54,920',
+        sales: '$186,450',
+        investments: { val: '$286,400', term: '1 Year' },
+        design: { val: '$124,900', term: '1 Year' },
+        development: '$115,800',
+        finance: '$95,430',
+        business: '$84,190',
+        trendGoods: '956',
+        shoppingViews: '286,420',
+        storeDynamics: '1,420'
+      },
+      'ALL': {
+        earn: '$124,500',
+        sales: '$498,900',
+        investments: { val: '$684,000', term: 'All Time' },
+        design: { val: '$324,800', term: 'All Time' },
+        development: '$286,700',
+        finance: '$234,200',
+        business: '$210,500',
+        trendGoods: '2,840',
+        shoppingViews: '896,410',
+        storeDynamics: '3,840'
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+    });
+
+    // FUNCIÓN PARA ACTUALIZAR DATOS CON FILTRO TEMPORAL (ANIMADO)
+    function updateTimeFilter(period, btnEl) {
+      // 1. Activar botón visual
+      document.querySelectorAll('.time-filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        btn.style.boxShadow = 'none';
+        btn.style.backgroundColor = 'transparent';
+      });
+      btnEl.classList.add('active');
+      btnEl.style.backgroundColor = '#3b82f6';
+      btnEl.style.boxShadow = '0 0 15px rgba(59, 130, 246, 0.6)';
+
+      const data = timelineData[period];
+      
+      // 2. Animar y cambiar valores en Sidebar
+      fadeTextUpdate('earn-val', data.earn);
+      fadeTextUpdate('sales-val', data.sales);
+
+      // 3. Animar y cambiar valores en las esferas
+      updateSphere('sphere-investments', 'Investments', data.investments.val, data.investments.term);
+      updateSphere('sphere-design', 'Design', data.design.val, data.design.term);
+      updateSphere('sphere-development', 'Development', data.development, null);
+      updateSphere('sphere-finance', 'Finance', data.finance, null);
+      updateSphere('sphere-business', 'Business', data.business, null);
+
+      // 4. Animar indicadores inferiores
+      fadeTextUpdate('trend-goods-val', data.trendGoods);
+      fadeTextUpdate('shopping-views-val', data.shoppingViews);
+      fadeTextUpdate('store-dynamics-val', data.storeDynamics);
+
+      // 5. Reiniciar animación de sparkline paths
+      const paths = document.querySelectorAll('.sparkline-path');
+      paths.forEach(p => {
+        p.style.animation = 'none';
+        p.offsetHeight; // Trigger reflow
+        p.style.animation = 'drawLine 2s forwards ease-in-out';
+      });
+    }
+
+    function fadeTextUpdate(id, newText) {
+      const el = document.getElementById(id);
+      el.style.opacity = 0;
+      el.style.transform = 'translateY(5px)';
+      setTimeout(() => {
+        el.innerText = newText;
+        el.style.opacity = 1;
+        el.style.transform = 'translateY(0)';
+      }, 250);
+      el.style.transition = 'all 0.3s ease';
+    }
+
+    function updateSphere(id, name, val, term) {
+      const sphere = document.getElementById(id);
+      
+      // Efecto escala al cambiar datos
+      sphere.style.transform += ' scale(0.85)';
+      sphere.style.opacity = 0.6;
+      
+      setTimeout(() => {
+        if (term) {
+          sphere.innerHTML = `
+            <span class="text-[8px] sm:text-[10px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1.5">${name}</span>
+            <span class="text-lg sm:text-2xl font-outfit font-black text-white leading-none">${val}</span>
+            <span class="text-[8px] sm:text-[10px] font-bold text-white/50 uppercase mt-1 leading-none">${term}</span>
+          `;
+        } else {
+          sphere.innerHTML = `
+            <span class="text-[8px] font-bold text-white/70 uppercase tracking-widest leading-none mb-1">${name}</span>
+            <span class="text-xs sm:text-base font-outfit font-black text-white leading-none">${val}</span>
+          `;
+        }
+        
+        sphere.style.opacity = 1;
+        // Restaurar animación de flotación
+        const isFloat1 = sphere.classList.contains('anim-float-1');
+        sphere.style.transform = '';
+      }, 300);
+    }
+
+    // ZOOM CONTROLS PARA LA CONSTELACIÓN CENTRAL
+    function adjustZoom(factor) {
+      currentZoom = Math.min(Math.max(currentZoom * factor, 0.6), 1.5);
+      const container = document.querySelector('#dashboard-grid > div:last-child > div:first-of-type');
+      container.style.transform = `scale(${currentZoom})`;
+      container.style.transition = 'transform 0.4s ease';
+    }
+
+    function resetZoom() {
+      currentZoom = 1;
+      const container = document.querySelector('#dashboard-grid > div:last-child > div:first-of-type');
+      container.style.transform = 'scale(1)';
+      container.style.transition = 'transform 0.4s ease';
+    }
+  </script>
+</body>
+</html>

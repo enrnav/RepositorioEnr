@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Demostración - Panel de Control Financiero</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Outfit -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js for charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #FAF9F6;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.03) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.03) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+
+    .glass-card {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(229, 231, 235, 0.8);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .glass-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.05), 0 10px 25px -3px rgba(5, 150, 105, 0.04);
+    }
+
+    /* Glows custom styling */
+    .glow-blue:hover {
+      border-color: rgba(59, 130, 246, 0.3);
+      box-shadow: 0 20px 40px -15px rgba(59, 130, 246, 0.1);
+    }
+    .glow-emerald:hover {
+      border-color: rgba(16, 185, 129, 0.3);
+      box-shadow: 0 20px 40px -15px rgba(16, 185, 129, 0.1);
+    }
+    .glow-purple:hover {
+      border-color: rgba(168, 85, 247, 0.3);
+      box-shadow: 0 20px 40px -15px rgba(168, 85, 247, 0.1);
+    }
+    .glow-amber:hover {
+      border-color: rgba(245, 158, 11, 0.3);
+      box-shadow: 0 20px 40px -15px rgba(245, 158, 11, 0.1);
+    }
+
+    /* Animation pulse */
+    .pulse-glow {
+      position: relative;
+    }
+    .pulse-glow::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: inherit;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+      opacity: 0;
+      animation: pulse-animation 2s infinite;
+    }
+    @keyframes pulse-animation {
+      0% { opacity: 0; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+      100% { opacity: 0; transform: scale(1.05); }
+    }
+  </style>
+</head>
+<body class="p-6 md:p-12 text-[#064E3B]">
+
+  <div class="max-w-7xl mx-auto space-y-8">
+    
+    <!-- Header Page -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/50 pb-6">
+      <div class="flex items-center space-x-3">
+        <div class="p-3 bg-red-500 text-white rounded-2xl shadow-md">
+          <i data-lucide="trending-up" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h1 class="text-2xl sm:text-4xl font-black tracking-tight text-brand-900 uppercase">Panel de Control Financiero</h1>
+          <p class="text-xs text-stone-500 font-bold uppercase mt-1">Simulación Interactiva Didáctica</p>
+        </div>
+      </div>
+      
+      <span class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-550/10 text-emerald-800 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest self-start sm:self-auto shadow-sm">
+        <span class="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse"></span>
+        Monitoreo en Tiempo Real
+      </span>
+    </div>
+
+    <!-- DAILY GOAL BANNER -->
+    <div id="goalBanner" class="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 backdrop-blur-[2px] p-6 rounded-[2rem] border border-emerald-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
+      <div class="space-y-3 flex-1 w-full">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2 text-emerald-800">
+            <i data-lucide="sparkles" class="w-5 h-5 text-emerald-600 animate-spin-slow"></i>
+            <span class="text-xs font-black tracking-widest uppercase">Meta de Ventas Diaria</span>
+          </div>
+          
+          <div class="flex items-center space-x-2">
+            <!-- Normal state -->
+            <div id="goalView" class="flex items-center space-x-1.5">
+              <span class="text-xs font-bold text-emerald-700">Objetivo: <strong id="goalText" class="text-emerald-950 font-black">$5,000</strong></span>
+              <button onclick="toggleGoalEdit(true)" class="p-1.5 bg-white/80 rounded-lg text-emerald-600 hover:bg-white hover:text-emerald-800 border border-emerald-500/10 shadow-sm transition-all">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+            <!-- Edit State -->
+            <div id="goalEdit" class="hidden flex items-center space-x-1">
+              <input
+                id="goalInput"
+                type="number"
+                class="w-24 px-2 py-1 text-xs border border-emerald-350 rounded-lg text-brand-900 font-extrabold focus:outline-none focus:ring-1 focus:ring-emerald-500 shadow-inner"
+                value="5000"
+                onkeydown="if(event.key === 'Enter') saveGoal()"
+              />
+              <button onclick="saveGoal()" class="p-1 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors">
+                <i data-lucide="check" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="relative">
+          <div class="flex justify-between items-center text-xs font-black text-emerald-900 mb-1">
+            <span>Procesado hoy: <strong id="revenueProgressText" class="text-emerald-950 font-black">$4,250.00</strong></span>
+            <span id="percentageText">85.0%</span>
+          </div>
+          <div class="w-full bg-stone-200/50 rounded-full h-3.5 overflow-hidden p-0.5 border border-white/20">
+            <div 
+              id="progressBar"
+              class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-1000 ease-out shadow-inner"
+              style="width: 85%"
+            ></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="p-4 bg-white/90 rounded-2xl border border-emerald-500/15 text-center shrink-0 w-full md:w-auto shadow-sm">
+        <p class="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1.5">Estado del Negocio</p>
+        <span id="healthBadge" class="inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-teal-50 text-teal-800 shadow-sm border border-teal-200/30">
+          Excelente Ritmo 🚀
+        </span>
+      </div>
+    </div>
+
+    <!-- STATS CARDS -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      
+      <!-- Card 1: Ingresos Totales -->
+      <div class="glass-card glow-blue p-6 rounded-[2rem] flex flex-col justify-between group cursor-default">
+        <div class="flex justify-between items-start mb-6">
+          <p class="text-stone-400 font-black tracking-widest text-[10px] uppercase">Ingresos Totales</p>
+          <div class="bg-blue-500/10 p-2.5 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <i data-lucide="dollar-sign" class="w-5 h-5 text-blue-600"></i>
+          </div>
+        </div>
+        <div>
+          <p id="cardRevenueText" class="text-3xl font-black text-brand-900 tracking-tight leading-none">$4,250.00</p>
+          <p class="text-[10px] font-bold text-gray-400 mt-2">Ventas brutas acumuladas</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Ganancia Neta -->
+      <div class="glass-card glow-emerald p-6 rounded-[2rem] flex flex-col justify-between group cursor-default">
+        <div class="flex justify-between items-start mb-6">
+          <p class="text-stone-400 font-black tracking-widest text-[10px] uppercase">Ganancia Neta</p>
+          <div class="bg-emerald-500/10 p-2.5 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <i data-lucide="coins" class="w-5 h-5 text-emerald-600"></i>
+          </div>
+        </div>
+        <div>
+          <p id="cardProfitText" class="text-3xl font-black text-emerald-600 tracking-tight leading-none">$1,105.00</p>
+          <p class="text-[10px] font-bold text-emerald-700/60 mt-2">Ingresos menos costo de mercancía</p>
+        </div>
+      </div>
+
+      <!-- Card 3: Margen Promedio -->
+      <div class="glass-card glow-purple p-6 rounded-[2rem] flex flex-col justify-between group cursor-default">
+        <div class="flex justify-between items-start mb-6">
+          <p class="text-stone-400 font-black tracking-widest text-[10px] uppercase">Margen Promedio</p>
+          <div class="bg-purple-500/10 p-2.5 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <i data-lucide="percent" class="w-5 h-5 text-purple-600"></i>
+          </div>
+        </div>
+        <div>
+          <p id="cardMarginText" class="text-3xl font-black text-purple-600 tracking-tight leading-none">26.0%</p>
+          <p class="text-[10px] font-bold text-purple-700/60 mt-2">Rentabilidad de productos vendidos</p>
+        </div>
+      </div>
+
+      <!-- Card 4: Alertas de Stock -->
+      <div class="glass-card glow-amber p-6 rounded-[2rem] flex flex-col justify-between group cursor-default">
+        <div class="flex justify-between items-start mb-6">
+          <p class="text-stone-400 font-black tracking-widest text-[10px] uppercase">Alertas de Stock</p>
+          <div class="bg-amber-500/10 p-2.5 rounded-xl group-hover:scale-110 transition-transform duration-300">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 animate-pulse"></i>
+          </div>
+        </div>
+        <div>
+          <p id="cardAlertsText" class="text-3xl font-black text-amber-600 tracking-tight leading-none">2 productos</p>
+          <p class="text-[10px] font-bold text-amber-600/70 mt-2">Por debajo del stock de seguridad</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CHARTS SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Interactive Area Chart -->
+      <div class="lg:col-span-2 glass-card p-6 sm:p-8 rounded-[2rem] flex flex-col justify-between shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b border-stone-100 pb-4">
+          <div>
+            <h3 class="text-lg font-black text-brand-900 uppercase">Rentabilidad por Producto (Top 5)</h3>
+            <p class="text-[10px] text-stone-400 font-bold uppercase mt-0.5">Interactúa con las píldoras de abajo para encender/apagar datos</p>
+          </div>
+          
+          <!-- Interactive Series Filter Pills -->
+          <div class="flex flex-wrap gap-1.5 text-[9px] uppercase tracking-wider font-extrabold select-none">
+            <button
+              id="pillIngresos"
+              onclick="toggleSeries('Ingresos')"
+              class="px-3.5 py-1.5 rounded-full font-black border transition-all duration-200 active:scale-95 bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
+            >
+              Ingresos
+            </button>
+            <button
+              id="pillCostos"
+              onclick="toggleSeries('Costos')"
+              class="px-3.5 py-1.5 rounded-full font-black border transition-all duration-200 active:scale-95 bg-red-50 border-red-200 text-red-700 shadow-sm"
+            >
+              Costos
+            </button>
+            <button
+              id="pillGanancia"
+              onclick="toggleSeries('Ganancia')"
+              class="px-3.5 py-1.5 rounded-full font-black border transition-all duration-200 active:scale-95 bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm"
+            >
+              Ganancia
+            </button>
+          </div>
+        </div>
+        
+        <!-- Canvas area for Chart.js -->
+        <div class="h-80 relative">
+          <canvas id="profitChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Pie Chart cost distribution -->
+      <div class="glass-card p-6 sm:p-8 rounded-[2rem] flex flex-col shadow-sm">
+        <div class="mb-6 border-b border-stone-100 pb-4 flex justify-between items-center">
+          <div>
+            <h3 class="text-lg font-black text-brand-900 uppercase">Distribución de Ingresos</h3>
+            <p class="text-[10px] text-stone-400 font-bold uppercase mt-0.5">Costo total vs ganancia neta</p>
+          </div>
+          <span class="px-2.5 py-1 bg-stone-150 text-stone-600 text-[9px] font-black uppercase tracking-wider rounded-full">Proporción</span>
+        </div>
+        
+        <div class="h-80 flex items-center justify-center relative">
+          <canvas id="distributionChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- DIDACTIC ASSISTANT -->
+    <div class="glass-card p-6 sm:p-8 rounded-[2.5rem] border border-stone-200/50 shadow-sm">
+      <div class="flex items-center space-x-2 text-brand-900 mb-4 border-b border-stone-100 pb-3">
+        <i data-lucide="activity" class="text-red-500 w-5 h-5"></i>
+        <h3 class="text-base font-black uppercase tracking-wider">Asistente Didáctico Financiero (Análisis de Hoy)</h3>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-xs leading-relaxed font-semibold text-stone-600">
+        
+        <!-- Tip 1: Margin -->
+        <div class="p-5 bg-stone-50 border border-stone-200/40 rounded-2xl flex flex-col justify-between relative overflow-hidden group">
+          <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-120 transition-transform">
+            <i data-lucide="percent" class="w-16 h-16 text-brand-900"></i>
+          </div>
+          <div class="relative z-10 space-y-2">
+            <h4 class="font-extrabold text-[#064E3B] uppercase tracking-wider text-[10px] mb-1">Márgenes de Utilidad</h4>
+            <p id="didacticMarginText">
+              Tu margen promedio es excelente (26.0%). El negocio genera retornos sólidos sobre los costos de adquisición de tus productos.
+            </p>
+          </div>
+        </div>
+
+        <!-- Tip 2: Inventory -->
+        <div class="p-5 bg-stone-50 border border-stone-200/40 rounded-2xl flex flex-col justify-between relative overflow-hidden group">
+          <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-120 transition-transform">
+            <i data-lucide="package" class="w-16 h-16 text-brand-900"></i>
+          </div>
+          <div class="relative z-10 space-y-2">
+            <h4 class="font-extrabold text-[#064E3B] uppercase tracking-wider text-[10px] mb-1">Eficiencia de Inventario</h4>
+            <p id="didacticAlertText">
+              Alerta: Tienes 2 productos con stock bajo. El desabastecimiento prolongado provoca una pérdida directa en las ventas estimadas de hoy.
+            </p>
+          </div>
+        </div>
+
+        <!-- Tip 3: Conversion -->
+        <div class="p-5 bg-stone-50 border border-stone-200/40 rounded-2xl flex flex-col justify-between relative overflow-hidden group">
+          <div class="absolute right-0 top-0 p-4 opacity-5 group-hover:scale-120 transition-transform">
+            <i data-lucide="trending-up" class="w-16 h-16 text-brand-900"></i>
+          </div>
+          <div class="relative z-10 space-y-2">
+            <h4 class="font-extrabold text-[#064E3B] uppercase tracking-wider text-[10px] mb-1">Rotación Comercial</h4>
+            <p id="didacticConversionText">
+              La ganancia neta representa el 26.0% de tus ingresos totales. Mantener este ratio permite reinvertir de forma saludable en el crecimiento de Abarrotes ED & E.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Lucide icons initialization
+    lucide.createIcons();
+
+    // Raw financial values
+    let revenueToday = 4250;
+    let costToday = 3145;
+    let profitToday = revenueToday - costToday;
+    let marginToday = (profitToday / revenueToday) * 100;
+    let lowStockCount = 2;
+    let dailyGoal = 5000;
+
+    // Series visibility
+    const visibleSeries = {
+      Ingresos: true,
+      Costos: true,
+      Ganancia: true
+    };
+
+    // Product Data
+    const products = ['Papas Sabritas', 'Refresco Cola 600ml', 'Leche Entera 1L', 'Galletas Fresa', 'Aceite Vegetal 1L'];
+    const revenueByProduct = [1500, 1200, 750, 500, 300];
+    const costByProduct = [1100, 900, 580, 360, 205];
+    const profitByProduct = revenueByProduct.map((r, i) => r - costByProduct[i]);
+
+    // Chart.js Area Chart Setup
+    const chartContext = document.getElementById('profitChart').getContext('2d');
+    
+    // Gradients definitions
+    const blueGradient = chartContext.createLinearGradient(0, 0, 0, 300);
+    blueGradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+    blueGradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+
+    const redGradient = chartContext.createLinearGradient(0, 0, 0, 300);
+    redGradient.addColorStop(0, 'rgba(210, 20, 58, 0.3)');
+    redGradient.addColorStop(1, 'rgba(210, 20, 58, 0)');
+
+    const greenGradient = chartContext.createLinearGradient(0, 0, 0, 300);
+    greenGradient.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+    greenGradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+
+    const chartConfig = {
+      type: 'line',
+      data: {
+        labels: products,
+        datasets: [
+          {
+            label: 'Ingresos',
+            data: revenueByProduct,
+            borderColor: '#3B82F6',
+            backgroundColor: blueGradient,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: 'Costos',
+            data: costByProduct,
+            borderColor: '#D2143A',
+            backgroundColor: redGradient,
+            borderWidth: 3,
+            fill: true,
+            tension: 0.3
+          },
+          {
+            label: 'Ganancia',
+            data: profitByProduct,
+            borderColor: '#10B981',
+            backgroundColor: greenGradient,
+            borderWidth: 3.5,
+            fill: true,
+            tension: 0.3
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false // We use our custom HTML pills instead
+          },
+          tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#1c1917',
+            bodyColor: '#44403c',
+            borderWidth: 1,
+            borderColor: '#ffe4e6',
+            borderRadius: 16,
+            padding: 12,
+            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)',
+            callbacks: {
+              label: function(context) {
+                return ' ' + context.dataset.label + ': $' + context.raw.toFixed(2);
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: '#78716c', font: { family: 'Outfit', weight: 'bold', size: 10 } }
+          },
+          y: {
+            grid: { color: '#f5f5f4' },
+            ticks: { color: '#78716c', font: { family: 'Outfit', weight: 'bold', size: 10 } }
+          }
+        }
+      }
+    };
+
+    const profitChart = new Chart(chartContext, chartConfig);
+
+    // Distribution Pie Chart
+    const pieContext = document.getElementById('distributionChart').getContext('2d');
+    const pieChart = new Chart(pieContext, {
+      type: 'doughnut',
+      data: {
+        labels: ['Costo Total ($)', 'Ganancia Neta ($)'],
+        datasets: [{
+          data: [costToday, profitToday],
+          backgroundColor: ['#D2143A', '#10B981'],
+          borderWidth: 0,
+          hoverOffset: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              boxWidth: 12,
+              font: { family: 'Outfit', weight: 'bold', size: 11 },
+              color: '#44403c'
+            }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(255, 255, 255, 0.95)',
+            titleColor: '#1c1917',
+            bodyColor: '#44403c',
+            borderColor: '#ffe4e6',
+            borderWidth: 1,
+            borderRadius: 16,
+            padding: 10
+          }
+        }
+      }
+    });
+
+    // Goal Logic functions
+    function toggleGoalEdit(show) {
+      document.getElementById('goalView').classList.toggle('hidden', show);
+      document.getElementById('goalEdit').classList.toggle('hidden', !show);
+      if (show) {
+        document.getElementById('goalInput').focus();
+      }
+    }
+
+    function saveGoal() {
+      const inputVal = parseFloat(document.getElementById('goalInput').value);
+      if (!isNaN(inputVal) && inputVal > 0) {
+        dailyGoal = inputVal;
+        updateDashboardView();
+      }
+      toggleGoalEdit(false);
+    }
+
+    function updateDashboardView() {
+      // Progress calculation
+      const progressPercent = Math.min(100, (revenueToday / dailyGoal) * 100);
+      
+      // Update UI texts
+      document.getElementById('goalText').innerText = '$' + dailyGoal.toLocaleString();
+      document.getElementById('percentageText').innerText = progressPercent.toFixed(1) + '%';
+      document.getElementById('progressBar').style.width = progressPercent + '%';
+
+      // Update Health Badge and color layout dynamically
+      const healthBadge = document.getElementById('healthBadge');
+      const goalBanner = document.getElementById('goalBanner');
+      
+      if (progressPercent >= 100) {
+        healthBadge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 shadow-sm border border-emerald-200/30 animate-bounce";
+        healthBadge.innerHTML = '¡Meta Superada! 🎉';
+        goalBanner.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+      } else if (progressPercent >= 75) {
+        healthBadge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-teal-50 text-teal-800 shadow-sm border border-teal-200/30";
+        healthBadge.innerHTML = 'Excelente Ritmo 🚀';
+        goalBanner.style.borderColor = 'rgba(20, 184, 166, 0.25)';
+      } else if (progressPercent >= 50) {
+        healthBadge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-blue-50 text-blue-800 shadow-sm border border-blue-200/30";
+        healthBadge.innerHTML = 'Buen Avance 📈';
+        goalBanner.style.borderColor = 'rgba(59, 130, 246, 0.25)';
+      } else {
+        healthBadge.className = "inline-flex items-center px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider bg-amber-50 text-amber-800 shadow-sm border border-amber-200/30";
+        healthBadge.innerHTML = 'Iniciando el Día ☕';
+        goalBanner.style.borderColor = 'rgba(245, 158, 11, 0.25)';
+      }
+
+      // Dynamic Assistant Updates based on status
+      const didacticMargin = document.getElementById('didacticMarginText');
+      if (marginToday >= 25) {
+        didacticMargin.innerText = `Tu margen promedio es excelente (${marginToday.toFixed(1)}%). El negocio genera retornos sólidos sobre los costos de adquisición de tus productos.`;
+      } else {
+        didacticMargin.innerText = `Tu margen promedio (${marginToday.toFixed(1)}%) está por debajo del 25%. Intenta renegociar precios de costo con tus proveedores.`;
+      }
+
+      const didacticAlert = document.getElementById('didacticAlertText');
+      if (lowStockCount > 0) {
+        didacticAlert.innerText = `Alerta: Tienes ${lowStockCount} productos con stock bajo. El desabastecimiento prolongado provoca una pérdida directa en las ventas estimadas de hoy.`;
+      } else {
+        didacticAlert.innerText = `¡Felicidades! Todo el inventario se mantiene arriba del stock de seguridad, asegurando la satisfacción al cliente y continuidad comercial.`;
+      }
+
+      const didacticConversion = document.getElementById('didacticConversionText');
+      didacticConversion.innerText = `La ganancia neta representa el ${((profitToday/revenueToday)*100).toFixed(1)}% de tus ingresos totales. Mantener este ratio permite reinvertir de forma saludable en el crecimiento de Abarrotes ED & E.`;
+    }
+
+    // Toggle chart datasets from custom pills
+    function toggleSeries(seriesName) {
+      visibleSeries[seriesName] = !visibleSeries[seriesName];
+      
+      const pill = document.getElementById('pill' + seriesName);
+      
+      let index = 0;
+      let activeColorBg = '';
+      let activeColorText = '';
+      let activeBorder = '';
+      
+      if (seriesName === 'Ingresos') {
+        index = 0;
+        activeColorBg = 'bg-blue-50';
+        activeColorText = 'text-blue-700';
+        activeBorder = 'border-blue-200';
+      } else if (seriesName === 'Costos') {
+        index = 1;
+        activeColorBg = 'bg-red-50';
+        activeColorText = 'text-red-700';
+        activeBorder = 'border-red-200';
+      } else if (seriesName === 'Ganancia') {
+        index = 2;
+        activeColorBg = 'bg-emerald-50';
+        activeColorText = 'text-emerald-700';
+        activeBorder = 'border-emerald-200';
+      }
+
+      if (visibleSeries[seriesName]) {
+        // Enable series representation
+        pill.className = `px-3.5 py-1.5 rounded-full font-black border transition-all duration-200 active:scale-95 ${activeColorBg} ${activeBorder} ${activeColorText} shadow-sm`;
+        profitChart.show(index);
+      } else {
+        // Disable series representation
+        pill.className = `px-3.5 py-1.5 rounded-full font-black border transition-all duration-200 active:scale-95 bg-stone-50 border-stone-200 text-stone-400`;
+        profitChart.hide(index);
+      }
+    }
+
+    // Run initial rendering updates
+    updateDashboardView();
+  </script>
+</body>
+</html>

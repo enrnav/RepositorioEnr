@@ -1,0 +1,2220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Interactivo Pro - Abarrotes ED & E</title>
+  
+  <!-- Google Fonts Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* VARIABLES DE DISEÑO Y TEMAS CSS */
+    
+    /* 1. TEMA CLARO: Bosque Esmeralda (Orgánico) */
+    .theme-emerald {
+      --bg-color: #FAF9F6;
+      --card-bg: rgba(255, 255, 255, 0.75);
+      --card-border: rgba(6, 78, 59, 0.08);
+      --text-main: #064E3B;
+      --text-muted: #4b5563;
+      --accent-color: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.15);
+      --gradient-bg: radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.05) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.03) 0px, transparent 50%);
+      --orbit-line-color: rgba(6, 78, 59, 0.16);
+      --gravity-line-color: rgba(6, 78, 59, 0.35);
+    }
+
+    /* 2. TEMA OSCURO: Oro y Negro (Premium/Luxury) */
+    .theme-luxury {
+      --bg-color: #0b0f17;
+      --card-bg: rgba(20, 27, 45, 0.75);
+      --card-border: rgba(212, 163, 89, 0.18);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent-color: #d4a359;
+      --accent-glow: rgba(212, 163, 89, 0.25);
+      --gradient-bg: radial-gradient(at 0% 0%, rgba(212, 163, 89, 0.08) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
+      --orbit-line-color: rgba(212, 163, 89, 0.22);
+      --gravity-line-color: rgba(212, 163, 89, 0.45);
+    }
+
+    /* 3. TEMA DIFUMINADO: Aurora Glow (Glassmorphism) */
+    .theme-aurora {
+      --bg-color: #f1f5f9;
+      --card-bg: rgba(255, 255, 255, 0.45);
+      --card-border: rgba(255, 255, 255, 0.5);
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --accent-color: #3b82f6;
+      --accent-glow: rgba(59, 130, 246, 0.2);
+      --gradient-bg: none;
+      --orbit-line-color: rgba(59, 130, 246, 0.22);
+      --gravity-line-color: rgba(59, 130, 246, 0.45);
+    }
+
+    /* 4. TEMA RETRO: Brutalista (Alto Contraste) */
+    .theme-brutalist {
+      --bg-color: #fef08a; /* Yellow bg */
+      --card-bg: #ffffff;
+      --card-border: #000000;
+      --text-main: #000000;
+      --text-muted: #374151;
+      --accent-color: #000000;
+      --accent-glow: transparent;
+      --gradient-bg: none;
+      --orbit-line-color: rgba(0, 0, 0, 0.3);
+      --gravity-line-color: rgba(0, 0, 0, 0.55);
+    }
+
+    /* 5. TEMA NEÓN: Cyberpunk (Dark Synthwave) */
+    .theme-cyberpunk {
+      --bg-color: #070514;
+      --card-bg: rgba(14, 11, 36, 0.8);
+      --card-border: rgba(236, 72, 153, 0.3);
+      --text-main: #fcf6fa;
+      --text-muted: #f472b6;
+      --accent-color: #ec4899;
+      --accent-glow: rgba(236, 72, 153, 0.45);
+      --gradient-bg: radial-gradient(at 0% 0%, rgba(236, 72, 153, 0.1) 0px, transparent 50%),
+                    radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+      --orbit-line-color: rgba(236, 72, 153, 0.28);
+      --gravity-line-color: rgba(236, 72, 153, 0.55);
+    }
+
+    body {
+      background-color: var(--bg-color);
+      background-image: var(--gradient-bg);
+      background-attachment: fixed;
+      color: var(--text-main);
+      transition: background-color 0.4s ease, color 0.3s ease, background-image 0.4s ease;
+      overflow-x: hidden;
+    }
+
+    /* ESTILOS DE TARJETAS (VENTANITAS) EN MODO GRILA ESTÁNDAR */
+    .grid-card {
+      position: relative;
+    }
+    
+    /* A. Cristal / Glassmorphism */
+    .style-glass .grid-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.03);
+      border-radius: 1.75rem;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .style-glass .grid-card:hover:not(.dragging) {
+      transform: translateY(-4px);
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.06), 0 0 20px var(--accent-glow);
+      border-color: var(--accent-color);
+    }
+
+    /* B. Relieve / Neumorphism */
+    .style-neumorphic .grid-card {
+      background: var(--bg-color);
+      border: none;
+      box-shadow: 7px 7px 20px rgba(0, 0, 0, 0.07), -7px -7px 20px rgba(255, 255, 255, 0.9);
+      border-radius: 1.75rem;
+      transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    .style-neumorphic.theme-luxury .grid-card {
+      box-shadow: 7px 7px 20px rgba(0, 0, 0, 0.4), -7px -7px 20px rgba(255, 255, 255, 0.02);
+    }
+    .style-neumorphic.theme-cyberpunk .grid-card {
+      box-shadow: 7px 7px 20px rgba(0, 0, 0, 0.6), -7px -7px 20px rgba(236, 72, 153, 0.02);
+    }
+    .style-neumorphic .grid-card:hover:not(.dragging) {
+      transform: translateY(-2px);
+      box-shadow: 10px 10px 25px rgba(0, 0, 0, 0.09), -10px -10px 25px rgba(255, 255, 255, 0.95);
+    }
+
+    /* C. Plana / Minimalist */
+    .style-borderless .grid-card {
+      background: transparent;
+      border: 1px solid rgba(128, 128, 128, 0.15);
+      border-radius: 1rem;
+      box-shadow: none;
+      transition: all 0.2s ease;
+    }
+    .style-borderless .grid-card:hover:not(.dragging) {
+      border-color: var(--accent-color);
+      background: rgba(128, 128, 128, 0.02);
+    }
+
+    /* D. Brutalista Overrides */
+    .theme-brutalist .grid-card {
+      background: #ffffff !important;
+      border: 3px solid #000000 !important;
+      border-radius: 0px !important;
+      box-shadow: 8px 8px 0px #000000 !important;
+      transform: none !important;
+      transition: all 0.15s ease !important;
+    }
+    .theme-brutalist .grid-card:hover:not(.dragging) {
+      box-shadow: 12px 12px 0px #000000 !important;
+      transform: translate(-4px, -4px) !important;
+    }
+
+    /* CAPA DE FONDO AURORA ANIMADA */
+    .aurora-backdrop {
+      position: fixed;
+      inset: 0;
+      filter: blur(120px);
+      opacity: 0.55;
+      z-index: -10;
+      pointer-events: none;
+      display: none;
+    }
+    .aurora-blob {
+      position: absolute;
+      border-radius: 50%;
+      animation: orbit 22s infinite alternate ease-in-out;
+    }
+    @keyframes orbit {
+      0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+      50% { transform: translate(8%, 12%) scale(1.15) rotate(120deg); }
+      100% { transform: translate(-8%, -8%) scale(0.9) rotate(240deg); }
+    }
+
+    /* MICROANIMACIÓN FLOAT PARA POS */
+    .floating-gain {
+      position: fixed;
+      font-weight: 900;
+      font-size: 1.6rem;
+      color: #10b981;
+      pointer-events: none;
+      z-index: 100;
+      animation: floatUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      text-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+    }
+    @keyframes floatUp {
+      0% { opacity: 0; transform: translateY(15px) scale(0.85); }
+      20% { opacity: 1; transform: translateY(0) scale(1.1); }
+      100% { opacity: 0; transform: translateY(-70px) scale(1); }
+    }
+
+    /* MODO DISEÑADOR (DRAG & DROP EN MODO CLÁSICO) */
+    .designer-active .grid-card {
+      border: 2px dashed #d4a359 !important;
+      cursor: grab;
+      position: relative;
+    }
+    .designer-active .grid-card.dragging {
+      opacity: 0.3;
+      cursor: grabbing;
+      transform: scale(0.95);
+      border-color: #ef4444 !important;
+    }
+    .designer-active .grid-card.drag-over {
+      background: rgba(212, 163, 89, 0.08) !important;
+      border-color: #3b82f6 !important;
+      transform: scale(0.98);
+    }
+
+    /* Hide scrollbar */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* ============================================================ */
+    /* ESTILOS DE ESFERAS 3D DINÁMICAS (DISEÑO ORION / SISTEMA SOLAR) */
+    /* ============================================================ */
+    .sphere {
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    /* Custom sizing utilities for spheres that are not defined in default Tailwind */
+    .w-26 { width: 6.5rem !important; }
+    .h-26 { height: 6.5rem !important; }
+    .w-30 { width: 7.5rem !important; }
+    .h-30 { height: 7.5rem !important; }
+    /* 1. Esferas Bosque Esmeralda (Emerald) - Sol */
+    .theme-emerald .sphere-sun-gradient {
+      background: radial-gradient(circle at 35% 30%, #a7f3d0 0%, #10b981 40%, #047857 80%, #022c22 100%);
+      box-shadow: 0 0 55px rgba(16, 185, 129, 0.6), inset -10px -10px 25px rgba(0,0,0,0.8), inset 10px 10px 20px rgba(255,255,255,0.4);
+    }
+    
+    /* 2. Esferas Oro y Carbón (Luxury) - Sol */
+    .theme-luxury .sphere-sun-gradient {
+      background: radial-gradient(circle at 35% 30%, #fde68a 0%, #fbbf24 40%, #b45309 80%, #451a03 100%);
+      box-shadow: 0 0 55px rgba(212, 163, 89, 0.65), inset -10px -10px 25px rgba(0,0,0,0.8), inset 10px 10px 20px rgba(255,255,255,0.45);
+    }
+
+    /* 3. Esferas Aurora (Efecto Cristal) - Sol */
+    .theme-aurora .sphere-sun-gradient {
+      background: radial-gradient(circle at 35% 30%, #bfdbfe 0%, #3b82f6 45%, #1d4ed8 85%, #0f172a 100%);
+      box-shadow: 0 0 50px rgba(59, 130, 246, 0.45), inset -10px -10px 25px rgba(0,0,0,0.8), inset 10px 10px 20px rgba(255,255,255,0.4);
+    }
+
+    /* 4. Esferas Retro Brutalistas (Sobrescribe todas) */
+    .theme-brutalist .sphere {
+      background: #ffffff !important;
+      border: 3px solid #000000 !important;
+      box-shadow: 6px 6px 0px #000000 !important;
+      border-radius: 50% !important;
+      transform: none !important;
+    }
+    .theme-brutalist .sphere span { color: #000000 !important; }
+
+    /* 5. Esferas Cyberpunk - Sol */
+    .theme-cyberpunk .sphere-sun-gradient {
+      background: radial-gradient(circle at 35% 30%, #fbcfe8 0%, #ec4899 40%, #a21caf 80%, #500724 100%);
+      box-shadow: 0 0 55px rgba(236, 72, 153, 0.7), inset -10px -10px 25px rgba(0,0,0,0.8), inset 10px 10px 20px rgba(255,255,255,0.5);
+    }
+
+    /* ============================================================ */
+    /* COLORES INDIVIDUALES PARA CADA PLANETA (SISTEMA SOLAR COLORIDO) */
+    /* ============================================================ */
+    
+    /* KPIs: Azul Profundo (Efecto Zafiro) */
+    .sphere-kpis-color {
+      background: radial-gradient(circle at 35% 30%, #60a5fa 0%, #2563eb 45%, #1e3a8a 85%, #0f172a 100%) !important;
+      box-shadow: 0 0 35px rgba(37, 99, 235, 0.4),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.75),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+    }
+    
+    /* Meta: Verde Esmeralda (Efecto Jade) */
+    .sphere-goal-color {
+      background: radial-gradient(circle at 35% 30%, #34d399 0%, #059669 45%, #064e3b 85%, #022c22 100%) !important;
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.45),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.75),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+    }
+
+    /* Gráfica: Violeta/Púrpura (Efecto Amatista) */
+    .sphere-chart-color {
+      background: radial-gradient(circle at 35% 30%, #c084fc 0%, #7e22ce 45%, #4c0519 85%, #2e0014 100%) !important;
+      box-shadow: 0 0 35px rgba(168, 85, 247, 0.4),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.75),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+    }
+
+    /* Proyección: Ámbar Dorado (Efecto Topacio/Oro) */
+    .sphere-margin-color {
+      background: radial-gradient(circle at 35% 30%, #fbbf24 0%, #d97706 45%, #78350f 85%, #451a03 100%) !important;
+      box-shadow: 0 0 35px rgba(217, 119, 6, 0.4),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.75),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.4) !important;
+    }
+
+    /* Registrar: Turquesa/Cian Brillante (Efecto Aguamarina) */
+    .sphere-pos-color {
+      background: radial-gradient(circle at 35% 30%, #22d3ee 0%, #0891b2 45%, #083344 85%, #022c22 100%) !important;
+      box-shadow: 0 0 35px rgba(6, 182, 212, 0.4),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.75),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important;
+    }
+
+    /* Agenda: Magenta Neón (Efecto Rubí) */
+    .sphere-todo-color {
+      background: radial-gradient(circle at 35% 30%, #f472b6 0%, #db2777 45%, #831843 85%, #500724 100%) !important;
+      box-shadow: 0 0 35px rgba(219, 39, 119, 0.4),
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.75),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.45) !important;
+    }.5);
+    }
+
+    /* Esferas de fondo decorativas */
+    .sphere-decor {
+      background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 50%, transparent 90%);
+      box-shadow: inset -3px -3px 8px rgba(0,0,0,0.4), inset 3px 3px 6px rgba(255,255,255,0.1);
+      filter: blur(1px);
+    }
+
+    /* ANIMACIONES DE FLOTACIÓN INTERNA DE ESFERAS */
+    @keyframes float1 {
+      0% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(3px, -6px) scale(1.015); }
+      100% { transform: translate(0, 0) scale(1); }
+    }
+    @keyframes float2 {
+      0% { transform: translate(0, 0); }
+      50% { transform: translate(-6px, 4px) scale(0.985); }
+      100% { transform: translate(0, 0); }
+    }
+    @keyframes rotateClockwise {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .anim-float-1 { animation: float1 7s infinite ease-in-out; }
+    .anim-float-2 { animation: float2 9s infinite ease-in-out; }
+    .anim-rotate-slow { animation: rotateClockwise 100s infinite linear; }
+
+    /* ============================================================ */
+    /* ANIMACIONES DE TRASLACIÓN ORBITAL (SISTEMA SOLAR EN ACCIÓN) */
+    /* ============================================================ */
+    .orbit-wrapper {
+      position: absolute !important;
+      left: 50% !important;
+      top: 50% !important;
+      transform: translate(-50%, -50%);
+      will-change: transform;
+    }
+
+    /* Desactivar animaciones CSS de órbita para controlarlas por JS */
+    .orbit-kpis-anim,
+    .orbit-goal-anim,
+    .orbit-chart-anim,
+    .orbit-margin-anim,
+    .orbit-pos-anim,
+    .orbit-todo-anim {
+      animation: none !important;
+    }
+
+    /* Estado de arrastre para esferas */
+    .dragging-planet {
+      box-shadow: 0 0 50px var(--accent-color), 
+                  inset -8px -8px 20px rgba(0, 0, 0, 0.6),
+                  inset 8px 8px 15px rgba(255, 255, 255, 0.45) !important;
+      transform: scale(1.08) !important;
+      cursor: grabbing !important;
+      z-index: 40 !important;
+    }
+
+    /* Control de pausa al interactuar */
+    .orbit-wrapper.orbit-paused {
+      /* La clase funciona como indicador de estado pausado para el bucle de JS */
+    }
+
+    /* Contenedor del sistema solar (Orion Canvas) */
+    .orion-canvas-container {
+      background: var(--card-bg) !important;
+      border: 1px solid var(--card-border) !important;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+      transition: background-color 0.4s ease, border-color 0.3s ease;
+    }
+
+    /* REGLAS CSS PARA EL MODO ORION ACTIVO: ABSOLUTO COCKPIT */
+    @media (min-width: 1024px) {
+      body.layout-orion-active .grid-card {
+        position: absolute !important;
+        z-index: 50;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 25px var(--accent-glow) !important;
+        border-color: var(--accent-color) !important;
+        max-height: 460px;
+        overflow-y: auto;
+        animation: cardFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      
+      /* Posicionamiento específico flotando al lado de cada planeta */
+      body.layout-orion-active #kpis-container {
+        top: 6%;
+        right: 4%;
+        width: 370px;
+      }
+      body.layout-orion-active #kpis-container .grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+      }
+      
+      body.layout-orion-active #goal-card {
+        top: 48%;
+        right: 4%;
+        width: 480px;
+        overflow: hidden;
+      }
+      
+      body.layout-orion-active #chart-card {
+        top: 6%;
+        left: 4%;
+        width: 450px;
+      }
+      
+      body.layout-orion-active #margin-card {
+        top: 52%;
+        left: 4%;
+        width: 440px;
+      }
+      
+      body.layout-orion-active #sim-card {
+        top: 24%;
+        left: 36%;
+        width: 330px;
+      }
+      
+      body.layout-orion-active #todo-card {
+        top: 24%;
+        right: 36%;
+        width: 330px;
+      }
+      
+      body.layout-orion-active #activity-card {
+        top: 46%;
+        left: 36%;
+        width: 330px;
+      }
+    }
+
+    @keyframes cardFadeIn {
+      0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+  </style>
+</head>
+<body class="theme-emerald style-glass min-h-screen font-sans">
+
+  <!-- CAPA DE FONDO AURORA (SOLO ACTIVA EN TEMA AURORA) -->
+  <div id="aurora-backdrop" class="aurora-backdrop">
+    <div class="aurora-blob w-[45rem] h-[45rem] bg-emerald-300/40 -top-20 -left-20"></div>
+    <div class="aurora-blob w-[40rem] h-[40rem] bg-blue-300/40 top-1/3 -right-20" style="animation-delay: -5s; animation-duration: 25s;"></div>
+    <div class="aurora-blob w-[38rem] h-[38rem] bg-pink-300/30 -bottom-20 left-1/4" style="animation-delay: -10s; animation-duration: 18s;"></div>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    
+    <!-- ENCABEZADO Y CONTROLES DIVERSOS -->
+    <header class="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-8 pb-6 border-b border-stone-200/10">
+      <div>
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-emerald-700 flex items-center justify-center text-white font-black text-xl shadow-lg shadow-emerald-500/20">E</div>
+          <div>
+            <h1 class="text-2xl font-extrabold tracking-tight uppercase flex items-center gap-2">
+              Abarrotes <span id="header-accent" class="text-emerald-500 transition-all">ED & E</span>
+            </h1>
+            <p class="text-[10px] font-black tracking-wider text-stone-400 uppercase">Panel Central de Ventas y Diseño</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- MENU DE CONTROL TOTALMENTE INTERACTIVO -->
+      <div class="flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center w-full xl:w-auto text-xs">
+        
+        <!-- SELECTOR DE TEMAS -->
+        <div class="flex flex-wrap gap-1 items-center bg-stone-500/5 p-1 rounded-2xl border border-stone-200/10">
+          <span class="text-[9px] font-black uppercase px-2 text-stone-400">Temas:</span>
+          <button onclick="setTheme('emerald')" id="btn-theme-emerald" class="px-2 py-1 rounded-lg font-bold transition-all bg-white shadow-sm text-emerald-700">🌿 Bosque</button>
+          <button onclick="setTheme('luxury')" id="btn-theme-luxury" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-200">👑 Oro</button>
+          <button onclick="setTheme('aurora')" id="btn-theme-aurora" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-600">🌈 Aurora</button>
+          <button onclick="setTheme('brutalist')" id="btn-theme-brutalist" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-900">⚡ Retro</button>
+          <button onclick="setTheme('cyberpunk')" id="btn-theme-cyberpunk" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-pink-500">🔮 Cyber</button>
+        </div>
+
+        <!-- SELECTOR DE DISEÑO DE CARD / VENTANA -->
+        <div class="flex flex-wrap gap-1 items-center bg-stone-500/5 p-1 rounded-2xl border border-stone-200/10">
+          <span class="text-[9px] font-black uppercase px-2 text-stone-400">Ventana:</span>
+          <button onclick="setCardStyle('glass')" id="btn-style-glass" class="px-2.5 py-1 rounded-lg font-bold transition-all bg-white shadow-sm text-emerald-700">🔮 Cristal</button>
+          <button onclick="setCardStyle('neumorphic')" id="btn-style-neumorphic" class="px-2.5 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-600">🔘 Relieve</button>
+          <button onclick="setCardStyle('borderless')" id="btn-style-borderless" class="px-2.5 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300">⬜ Plana</button>
+        </div>
+
+        <!-- SELECTOR DE DISTRIBUCIONES -->
+        <div class="flex flex-wrap gap-1 items-center bg-stone-500/5 p-1 rounded-2xl border border-stone-200/10">
+          <span class="text-[9px] font-black uppercase px-2 text-stone-400">Distribución:</span>
+          <button onclick="applyPreset('standard')" id="btn-preset-standard" class="px-2 py-1 rounded-lg font-bold transition-all bg-white shadow-sm text-emerald-700">📊 Clásica</button>
+          <button onclick="applyPreset('asymmetric')" id="btn-preset-asymmetric" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300">🌀 Asimétrica</button>
+          <button onclick="applyPreset('chart-focus')" id="btn-preset-chart-focus" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300">📈 Gráfico</button>
+          <button onclick="applyPreset('pos-focus')" id="btn-preset-pos-focus" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300">🛒 Operaciones</button>
+          <button onclick="applyPreset('orion')" id="btn-preset-orion" class="px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300">🔮 Orion (Esferas)</button>
+        </div>
+
+        <!-- BOTÓN MODO DISEÑADOR (DRAG AND DROP DIRECTO) -->
+        <button onclick="toggleDesignerMode()" id="btn-designer-mode" class="px-3.5 py-1.5 rounded-xl font-bold bg-amber-500 text-stone-900 border border-amber-400 shadow-md shadow-amber-500/10 flex items-center gap-1.5 hover:bg-amber-400 transition-all">
+          <i data-lucide="layout-template" class="w-4 h-4"></i>
+          <span>Organizar Posiciones</span>
+        </button>
+
+      </div>
+    </header>
+
+    <!-- MENSAJE DE INDICACIONES DEL MODO DISEÑADOR -->
+    <div id="designer-alert" class="hidden bg-gradient-to-r from-amber-500/10 to-amber-600/5 border border-amber-500/20 p-4 rounded-2xl mb-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <i data-lucide="info" class="w-5 h-5 text-amber-500 animate-pulse"></i>
+        <p class="text-xs font-bold text-amber-600">
+          <strong>Modo Diseñador Activo:</strong> Arrastra y suelta cualquiera de las tarjetas ("ventanitas") por todo el tablero para ordenarlas en la posición que más te guste.
+        </p>
+      </div>
+      <button onclick="toggleDesignerMode()" class="text-xs font-black text-amber-600 underline">Guardar Distribución</button>
+    </div>
+
+    <!-- DISTRIBUCIÓN 1: CARDS TRADICIONALES (ENVOLTURA) -->
+    <div id="standard-layout-container">
+      <main id="dashboard-grid" class="grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all duration-500">
+        
+        <!-- 1. META DE VENTAS DIARIA (GOAL BANNER) -->
+        <div id="goal-card" class="grid-card p-6 lg:col-span-3 flex flex-col justify-between" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Meta Diaria
+          </div>
+          
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div class="flex-1 w-full space-y-2">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2 font-black uppercase text-xs">
+                  <i data-lucide="sparkles" class="w-4 h-4 text-amber-500 animate-spin"></i>
+                  <span>Cumplimiento de Meta Diaria</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-stone-400">Meta:</span>
+                  <div class="flex items-center gap-1.5">
+                    <span id="goal-val-display" class="font-extrabold text-sm">$3,500.00</span>
+                    <button onclick="editGoal()" class="p-1 hover:text-amber-500 transition-colors"><i data-lucide="edit-3" class="w-3.5 h-3.5"></i></button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- ProgressBar -->
+              <div class="relative pt-1">
+                <div class="flex justify-between items-center text-xs font-bold mb-1">
+                  <span id="processed-val-display">Procesado: $2,120.00</span>
+                  <span id="percentage-display" class="font-black text-emerald-500">60.5%</span>
+                </div>
+                <div class="w-full bg-stone-200/20 rounded-full h-3 overflow-hidden p-0.5 border border-white/5">
+                  <div id="goal-progress-bar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-1000 ease-out" style="width: 60.5%"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div id="goal-badge" class="px-5 py-3.5 bg-white/10 rounded-2xl border border-white/5 text-center shrink-0 w-full md:w-auto">
+              <p class="text-[9px] font-black text-stone-400 uppercase tracking-widest mb-1">Estado Operativo</p>
+              <span id="goal-status-text" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-500/10 text-emerald-600">
+                Buen Avance 🚀
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. GRUPO KPIs (MÉTRICAS CLAVE EN FORMATO MÚLTIPLE O COMPACTO) -->
+        <div id="kpis-container" class="grid-card p-4 lg:col-span-3" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Resumen Métricas
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- KPI 1: Ingresos -->
+            <div class="p-4 bg-stone-500/5 rounded-2xl border border-stone-200/5 flex flex-col justify-between h-28">
+              <div class="flex justify-between items-start">
+                <p class="text-[9px] font-black text-stone-400 uppercase">Ingresos Totales</p>
+                <div class="p-1.5 bg-blue-500/10 rounded-xl"><i data-lucide="dollar-sign" class="w-4 h-4 text-blue-500"></i></div>
+              </div>
+              <div>
+                <h3 id="metric-revenue" class="text-2xl font-black leading-none">$2,120.00</h3>
+                <p class="text-[9px] text-stone-400 mt-1 font-semibold flex items-center gap-1">
+                  <i data-lucide="trending-up" class="w-3 h-3 text-emerald-500"></i>
+                  <span class="text-emerald-500 font-bold">+12.4%</span> vs ayer
+                </p>
+              </div>
+            </div>
+            
+            <!-- KPI 2: Ganancias -->
+            <div class="p-4 bg-stone-500/5 rounded-2xl border border-stone-200/5 flex flex-col justify-between h-28">
+              <div class="flex justify-between items-start">
+                <p class="text-[9px] font-black text-stone-400 uppercase">Ganancia Neta</p>
+                <div class="p-1.5 bg-emerald-500/10 rounded-xl"><i data-lucide="coins" class="w-4 h-4 text-emerald-500"></i></div>
+              </div>
+              <div>
+                <h3 id="metric-profit" class="text-2xl font-black leading-none text-emerald-500">$598.00</h3>
+                <p class="text-[9px] text-stone-400 mt-1 font-semibold flex items-center gap-1">
+                  <i data-lucide="activity" class="w-3 h-3 text-emerald-500"></i>
+                  Margen neto <span id="margin-ratio-display" class="font-bold">28.2%</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- KPI 3: Margen Promedio -->
+            <div class="p-4 bg-stone-500/5 rounded-2xl border border-stone-200/5 flex flex-col justify-between h-28">
+              <div class="flex justify-between items-start">
+                <p class="text-[9px] font-black text-stone-400 uppercase">Margen Promedio</p>
+                <div class="p-1.5 bg-purple-500/10 rounded-xl"><i data-lucide="percent" class="w-4 h-4 text-purple-500"></i></div>
+              </div>
+              <div>
+                <h3 id="metric-margin" class="text-2xl font-black leading-none text-purple-500">28.2%</h3>
+                <p class="text-[9px] text-stone-400 mt-1 font-semibold flex items-center gap-1 text-purple-400">
+                  <i data-lucide="check" class="w-3.5 h-3.5"></i> Óptimo para tienda
+                </p>
+              </div>
+            </div>
+
+            <!-- KPI 4: Alertas Stock -->
+            <div class="p-4 bg-stone-500/5 rounded-2xl border border-stone-200/5 flex flex-col justify-between h-28">
+              <div class="flex justify-between items-start">
+                <p class="text-[9px] font-black text-stone-400 uppercase">Alertas Stock</p>
+                <div class="p-1.5 bg-amber-500/10 rounded-xl"><i data-lucide="alert-triangle" class="w-4 h-4 text-amber-500 animate-bounce"></i></div>
+              </div>
+              <div>
+                <h3 id="metric-alerts" class="text-2xl font-black leading-none text-amber-500">3 prod.</h3>
+                <p class="text-[9px] text-stone-400 mt-1 font-semibold">
+                  Reabastecer a la brevedad
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. GRÁFICO DINÁMICO DE RENTABILIDAD -->
+        <div id="chart-card" class="grid-card p-6 lg:col-span-2 flex flex-col justify-between" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Gráfico Rentabilidad
+          </div>
+          
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 pb-4 border-b border-stone-200/10">
+            <div>
+              <h3 class="font-extrabold text-base">Historial de Ventas y Utilidad</h3>
+              <p class="text-[9px] font-bold text-stone-400 uppercase">Gráfica Reactiva Animada</p>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 text-[10px]">
+              <!-- Tipo gráfica -->
+              <div class="flex gap-1 bg-stone-500/10 p-0.5 rounded-lg">
+                <button onclick="setChartType('area')" id="btn-chart-area" class="px-2 py-1 bg-white/15 rounded-md font-bold transition-all">📈 Área</button>
+                <button onclick="setChartType('bar')" id="btn-chart-bar" class="px-2 py-1 rounded-md font-bold text-stone-400 hover:text-stone-200 transition-all">📊 Barras</button>
+                <button onclick="setChartType('dots')" id="btn-chart-dots" class="px-2 py-1 rounded-md font-bold text-stone-400 hover:text-stone-200 transition-all">🔴 Puntos</button>
+              </div>
+
+              <!-- Filtro temporal -->
+              <div class="flex gap-1 bg-stone-500/10 p-0.5 rounded-lg">
+                <button onclick="setPeriod('hoy')" id="btn-per-hoy" class="px-2.5 py-1 bg-white/15 rounded-md font-bold transition-all">Hoy</button>
+                <button onclick="setPeriod('semana')" id="btn-per-semana" class="px-2.5 py-1 rounded-md font-bold text-stone-400 hover:text-stone-250 transition-all">Semana</button>
+                <button onclick="setPeriod('mes')" id="btn-per-mes" class="px-2.5 py-1 rounded-md font-bold text-stone-400 hover:text-stone-255 transition-all">Mes</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative h-56 w-full flex items-center justify-center">
+            <svg id="interactive-chart" class="w-full h-full overflow-visible" viewBox="0 0 500 200">
+              <defs>
+                <linearGradient id="chart-grad-emerald" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"></stop>
+                  <stop offset="100%" stop-color="#10b981" stop-opacity="0"></stop>
+                </linearGradient>
+                <linearGradient id="chart-grad-blue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"></stop>
+                  <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"></stop>
+                </linearGradient>
+              </defs>
+              
+              <line x1="0" y1="50" x2="500" y2="50" stroke="rgba(128,128,128,0.06)" stroke-dasharray="3 3"></line>
+              <line x1="0" y1="100" x2="500" y2="100" stroke="rgba(128,128,128,0.06)" stroke-dasharray="3 3"></line>
+              <line x1="0" y1="150" x2="500" y2="150" stroke="rgba(128,128,128,0.06)" stroke-dasharray="3 3"></line>
+              <line x1="0" y1="200" x2="500" y2="200" stroke="rgba(128,128,128,0.08)"></line>
+
+              <path id="chart-area-revenue" d="M 0,200 L 0,200 L 500,200 Z" fill="url(#chart-grad-blue)" class="transition-all duration-700 ease-in-out"></path>
+              <path id="chart-path-revenue" d="M 0,200 L 500,200" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" class="transition-all duration-700 ease-in-out"></path>
+              
+              <path id="chart-area-profit" d="M 0,200 L 0,200 L 500,200 Z" fill="url(#chart-grad-emerald)" class="transition-all duration-700 ease-in-out"></path>
+              <path id="chart-path-profit" d="M 0,200 L 500,200" fill="none" stroke="#10b981" stroke-width="3" stroke-linecap="round" class="transition-all duration-700 ease-in-out"></path>
+            </svg>
+            
+            <div id="chart-tooltip" class="absolute bg-white dark:bg-stone-900 shadow-xl border border-stone-200/10 p-2.5 rounded-xl text-[9px] font-bold pointer-events-none opacity-0 transition-opacity duration-200 z-30">
+              <p id="tooltip-date" class="text-stone-400 mb-0.5"></p>
+              <p class="text-blue-500 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>Ventas: <span id="tooltip-rev" class="font-extrabold text-stone-750 dark:text-stone-200"></span></p>
+              <p class="text-emerald-500 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Utilidad: <span id="tooltip-prof" class="font-extrabold text-stone-750 dark:text-stone-200"></span></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. SIMULADOR POS DE VENTA EN TIEMPO REAL -->
+        <div id="sim-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Simulador Ventas
+          </div>
+          
+          <div>
+            <div class="flex items-center gap-2 mb-4 pb-2 border-b border-stone-200/10">
+              <i data-lucide="shopping-bag" class="w-4 h-4 text-emerald-500 animate-pulse"></i>
+              <h3 class="font-extrabold text-base">Registrar Venta (Simulador)</h3>
+            </div>
+            <p class="text-xs text-stone-400 font-semibold mb-5">Haz clic para registrar transacciones y observar la interactividad de datos instantánea.</p>
+            
+            <div class="space-y-4">
+              <div class="flex flex-col gap-2">
+                <label class="text-[9px] font-black uppercase text-stone-400 tracking-wider">Elegir Producto</label>
+                <select id="sim-product-select" class="w-full p-3 bg-stone-500/5 border border-stone-200/10 rounded-2xl outline-none text-xs font-bold text-stone-700 dark:text-stone-200 transition-colors focus:border-emerald-500">
+                  <option value="cola" data-price="45.00" data-cost="32.00">🥤 Coca-Cola 2L - $45.00</option>
+                  <option value="oil" data-price="55.00" data-cost="38.00">🌻 Aceite Girasol 1L - $55.00</option>
+                  <option value="rice" data-price="32.00" data-cost="21.00">🌾 Arroz Integral 1Kg - $32.00</option>
+                  <option value="milk" data-price="28.00" data-cost="19.00">🥛 Leche Lala 1L - $28.00</option>
+                  <option value="eggs" data-price="48.00" data-cost="34.00">🥚 Huevo Blanco 12u - $48.00</option>
+                </select>
+              </div>
+              
+              <button onclick="triggerSimulatedSale(event)" class="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-black uppercase tracking-widest rounded-2xl transition-all shadow-md shadow-emerald-500/10 flex items-center justify-center gap-2 hover:opacity-90 active:scale-95">
+                <i data-lucide="shopping-cart" class="w-4 h-4"></i> Simular Transacción
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-stone-200/10 mt-6 flex justify-between items-center text-[10px]">
+            <span class="text-stone-400 font-semibold">Genera animaciones de importe flotante</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+          </div>
+        </div>
+
+        <!-- 5. PROYECCIONES FINANCIERAS (SLIDERS) -->
+        <div id="margin-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Proyector Margen
+          </div>
+          
+          <div>
+            <div class="flex items-center gap-2 mb-4 pb-2 border-b border-stone-200/10">
+              <i data-lucide="sliders" class="w-4 h-4 text-purple-500"></i>
+              <h3 class="font-extrabold text-base">Proyector de Ganancias</h3>
+            </div>
+            
+            <div class="space-y-4 py-2">
+              <!-- Slider Ventas -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs font-bold">
+                  <span class="text-stone-400">Ingresos Esperados:</span>
+                  <span id="slider-sales-val" class="font-black">$5,000</span>
+                </div>
+                <input oninput="updateFinancialProjection()" type="range" id="slider-sales" min="1000" max="25000" step="500" value="5000" class="w-full accent-purple-500 bg-stone-200/20 rounded-lg appearance-none h-1.5 cursor-pointer">
+              </div>
+
+              <!-- Slider Margen -->
+              <div class="space-y-2">
+                <div class="flex justify-between text-xs font-bold">
+                  <span class="text-stone-400">Margen Marginal:</span>
+                  <span id="slider-margin-val" class="font-black text-purple-500">25%</span>
+                </div>
+                <input oninput="updateFinancialProjection()" type="range" id="slider-margin" min="10" max="60" step="5" value="25" class="w-full accent-purple-500 bg-stone-200/20 rounded-lg appearance-none h-1.5 cursor-pointer">
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 bg-stone-500/5 p-4 rounded-xl border border-stone-200/5 space-y-2 text-xs">
+            <div class="flex justify-between font-semibold">
+              <span class="text-stone-400">Costo Estimado:</span>
+              <span id="proj-cost-val" class="font-bold">$3,750.00</span>
+            </div>
+            <div class="flex justify-between font-black border-t border-stone-200/10 pt-2 text-emerald-500">
+              <span>Utilidad Neta:</span>
+              <span id="proj-profit-val" class="font-black">$1,250.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. BITÁCORA DE ACTIVIDAD EN TIEMPO REAL -->
+        <div id="activity-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Bitácora Actividad
+          </div>
+          
+          <div>
+            <div class="flex items-center gap-2 mb-3 pb-2 border-b border-stone-200/10">
+              <i data-lucide="activity" class="w-4 h-4 text-blue-500"></i>
+              <h3 class="font-extrabold text-base">Bitácora en Vivo</h3>
+            </div>
+            
+            <div id="activity-feed" class="space-y-3 max-h-56 overflow-y-auto pr-1 no-scrollbar text-xs font-semibold text-stone-650">
+              <!-- Activities injected dynamically -->
+            </div>
+          </div>
+          
+          <span class="text-[9px] font-bold text-stone-400 mt-4 block">Actualización reactiva al registrar transacciones</span>
+        </div>
+
+        <!-- 7. AGENDA CHECKLIST GERENCIAL -->
+        <div id="todo-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
+          <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+          
+          <div class="drag-handle hidden flex items-center gap-1.5 bg-amber-500/10 border border-dashed border-amber-500/20 p-1.5 rounded-lg mb-3 cursor-grab text-[10px] font-black text-amber-600 uppercase select-none">
+            <i data-lucide="grip-vertical" class="w-3.5 h-3.5"></i> Mover Ventana: Checklist Agenda
+          </div>
+          
+          <div>
+            <div class="flex items-center justify-between mb-3 pb-2 border-b border-stone-200/10">
+              <div class="flex items-center gap-2">
+                <i data-lucide="check-square" class="w-4 h-4 text-emerald-500"></i>
+                <h3 class="font-extrabold text-base">Agenda Gerencial</h3>
+              </div>
+              <span id="checklist-progress" class="text-[9px] font-black uppercase bg-emerald-500/10 text-emerald-600 px-2 py-0.5 rounded-md">2/4</span>
+            </div>
+
+            <div id="todo-list-container" class="space-y-2 max-h-44 overflow-y-auto pr-1 no-scrollbar text-xs">
+              <!-- Todos injected here -->
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 mt-4 pt-3 border-t border-stone-200/10">
+            <input type="text" id="new-todo-input" placeholder="Añadir pendiente..." class="flex-1 p-2 bg-stone-500/5 border border-stone-200/10 rounded-xl outline-none text-xs font-bold text-stone-700 dark:text-stone-200 focus:border-emerald-500">
+            <button onclick="addTodoTask()" class="p-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl transition-all shadow-md"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          </div>
+        </div>
+
+      </main>
+    </div>
+
+    <!-- DISTRIBUCIÓN 2: SISTEMA SOLAR ED & E (DISEÑO ORION EN MOVIMIENTO ORBITAL DYNAMIC) -->
+    <div id="orion-layout-container" class="hidden relative animate-[fadeIn_0.5s_ease-out]">
+      
+      <!-- TOOLTIP FLOTANTE DE SEGUIMIENTO DEL PUNTERO -->
+      <div id="sphere-tooltip" class="absolute bg-stone-950/95 border border-white/10 p-3 rounded-2xl text-[9px] font-bold text-stone-200 pointer-events-none opacity-0 transition-opacity duration-200 z-50 w-52 shadow-xl shadow-black/80">
+        <!-- Content injected dynamically -->
+      </div>
+      
+      <!-- CANVAS DEL SISTEMA SOLAR COMPLETO -->
+      <div class="relative w-full min-h-[780px] orion-canvas-container overflow-hidden flex items-center justify-center p-6">
+        
+        <!-- ÓRBITAS DE ROTACIÓN PLANETARIA (SVG) -->
+        <svg class="absolute w-[95%] h-[95%] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none anim-rotate-slow" viewBox="0 0 500 500">
+          <!-- Ejes cardinales astronómicos (Fijos) -->
+          <line x1="50" y1="250" x2="450" y2="250" stroke="var(--orbit-line-color)" stroke-width="0.8" stroke-dasharray="2 8" />
+          <line x1="250" y1="50" x2="250" y2="450" stroke="var(--orbit-line-color)" stroke-width="0.8" stroke-dasharray="2 8" />
+
+          <!-- Ejes orbitales (Círculos) -->
+          <circle id="orbit-ring-kpis" cx="250" cy="250" r="120" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="3 5" />
+          <circle id="orbit-ring-goal" cx="250" cy="250" r="120" stroke="var(--orbit-line-color)" stroke-width="1" fill="none" stroke-dasharray="1 4" />
+          <circle id="orbit-ring-chart" cx="250" cy="250" r="222" stroke="var(--orbit-line-color)" stroke-width="1" fill="none" />
+          <circle id="orbit-ring-margin" cx="250" cy="250" r="222" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="4 4" />
+          <circle id="orbit-ring-pos" cx="250" cy="250" r="324" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="6 6" />
+          <circle id="orbit-ring-todo" cx="250" cy="250" r="324" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="2 8" />
+
+          <!-- Ejes gravitacionales dinámicos (Conectores al Sol) -->
+          <line id="gravity-line-kpis" x1="250" y1="250" x2="250" y2="250" stroke="var(--gravity-line-color)" stroke-width="0.8" stroke-dasharray="2 3" />
+          <line id="gravity-line-goal" x1="250" y1="250" x2="250" y2="250" stroke="var(--gravity-line-color)" stroke-width="0.8" stroke-dasharray="2 3" />
+          <line id="gravity-line-chart" x1="250" y1="250" x2="250" y2="250" stroke="var(--gravity-line-color)" stroke-width="0.8" stroke-dasharray="2 3" />
+          <line id="gravity-line-margin" x1="250" y1="250" x2="250" y2="250" stroke="var(--gravity-line-color)" stroke-width="0.8" stroke-dasharray="2 3" />
+          <line id="gravity-line-pos" x1="250" y1="250" x2="250" y2="250" stroke="var(--gravity-line-color)" stroke-width="0.8" stroke-dasharray="2 3" />
+          <line id="gravity-line-todo" x1="250" y1="250" x2="250" y2="250" stroke="var(--gravity-line-color)" stroke-width="0.8" stroke-dasharray="2 3" />
+        </svg>
+
+        <!-- MINI ESFERAS PLANETARIAS SECUNDARIAS (DECORATIVAS PARALLAX) -->
+        <div class="absolute w-4 h-4 rounded-full sphere-decor top-[18%] left-[22%] anim-float-1"></div>
+        <div class="absolute w-6 h-6 rounded-full sphere-decor bottom-[22%] right-[22%] anim-float-2" style="animation-delay: -3s;"></div>
+        <div class="absolute w-3.5 h-3.5 rounded-full bg-stone-500/20 top-[42%] right-[15%] anim-float-1" style="animation-delay: -1s;"></div>
+        <div class="absolute w-4 h-4 rounded-full bg-stone-500/10 bottom-[35%] left-[12%] anim-float-2" style="animation-delay: -5s;"></div>
+
+        <!-- ================= WRAPPER ABSOLUTO INSET-0 ================= -->
+        <div id="orion-spheres-wrapper" class="absolute inset-0 flex items-center justify-center transition-transform duration-500">
+          
+          <!-- EL SOL CENTRAL: Abarrotes ED & E (Abre Bitácora de Actividad) -->
+          <div class="absolute z-20 flex items-center justify-center">
+            <div id="sphere-sun" onclick="handlePlanetClick(event, 'sun')" 
+                 onmouseenter="handleSphereMouseEnter(event, 'El Sol (ED & E)', 'El núcleo de tu negocio. Haz clic para abrir la bitácora de actividad reciente.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-sun-gradient w-32 h-32 cursor-pointer anim-float-1">
+              <span class="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Central</span>
+              <span class="text-xs sm:text-sm font-outfit font-black text-white leading-tight uppercase px-3">ED & E</span>
+              <span class="text-[8px] font-bold text-white/50 uppercase mt-1 leading-none">Sol Central</span>
+            </div>
+          </div>
+
+          <!-- PLANETA 1: KPIs RESUMEN (Órbita 1 - Interna) -->
+          <div id="orbit-wrapper-kpis" class="orbit-wrapper orbit-kpis-anim absolute z-10 flex items-center justify-center">
+            <div id="sphere-kpis"
+                 onpointerdown="handlePlanetPointerDown(event, 'kpis')"
+                 onpointermove="handlePlanetPointerMove(event, 'kpis')"
+                 onpointerup="handlePlanetPointerUp(event, 'kpis')"
+                 onclick="handlePlanetClick(event, 'kpis')"
+                 onmouseenter="handleSphereMouseEnter(event, 'Métricas Clave', 'Ingresos del día, ganancias estimadas y alertas. Haz clic para abrir el visor detallado.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-kpis-color w-24 h-24 anim-float-2">
+              <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">KPIs</span>
+              <span id="sphere-revenue-val" class="text-sm font-outfit font-extrabold text-white leading-none tracking-wide">$2,120.00</span>
+            </div>
+          </div>
+
+          <!-- PLANETA 2: CUMPLIMIENTO DE META DIARIA (Órbita 1 - Interna) -->
+          <div id="orbit-wrapper-goal" class="orbit-wrapper orbit-goal-anim absolute z-10 flex items-center justify-center">
+            <div id="sphere-goal"
+                 onpointerdown="handlePlanetPointerDown(event, 'goal')"
+                 onpointermove="handlePlanetPointerMove(event, 'goal')"
+                 onpointerup="handlePlanetPointerUp(event, 'goal')"
+                 onclick="handlePlanetClick(event, 'goal')"
+                 onmouseenter="handleSphereMouseEnter(event, 'Meta Diaria', 'Visualiza el porcentaje de cumplimiento sobre las metas del día. Haz clic para ajustar la meta.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-goal-color w-24 h-24 anim-float-1">
+              <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Meta</span>
+              <span id="sphere-goal-pct" class="text-sm font-outfit font-extrabold text-white leading-none tracking-wide">60.5%</span>
+            </div>
+          </div>
+
+          <!-- PLANETA 3: HISTORIAL DE VENTAS (Órbita 2 - Intermedia) -->
+          <div id="orbit-wrapper-chart" class="orbit-wrapper orbit-chart-anim absolute z-10 flex items-center justify-center">
+            <div id="sphere-chart"
+                 onpointerdown="handlePlanetPointerDown(event, 'chart')"
+                 onpointermove="handlePlanetPointerMove(event, 'chart')"
+                 onpointerup="handlePlanetPointerUp(event, 'chart')"
+                 onclick="handlePlanetClick(event, 'chart')"
+                 onmouseenter="handleSphereMouseEnter(event, 'Historial Gráfico', 'Historial de ventas y rentabilidad diaria/semanal. Haz clic para interactuar con los gráficos.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-chart-color w-24 h-24 anim-float-2">
+              <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Gráfica</span>
+              <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Historial</span>
+            </div>
+          </div>
+
+          <!-- PLANETA 4: PROYECTOR FINANCIERO (Órbita 2 - Intermedia) -->
+          <div id="orbit-wrapper-margin" class="orbit-wrapper orbit-margin-anim absolute z-10 flex items-center justify-center">
+            <div id="sphere-margin"
+                 onpointerdown="handlePlanetPointerDown(event, 'margin')"
+                 onpointermove="handlePlanetPointerMove(event, 'margin')"
+                 onpointerup="handlePlanetPointerUp(event, 'margin')"
+                 onclick="handlePlanetClick(event, 'margin')"
+                 onmouseenter="handleSphereMouseEnter(event, 'Proyector Financiero', 'Calcula ganancias potenciales estimando ventas y márgenes. Haz clic para ajustar los controles.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-margin-color w-24 h-24 anim-float-1">
+              <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Proyección</span>
+              <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Simulador</span>
+            </div>
+          </div>
+
+          <!-- PLANETA 5: REGISTRAR VENTA (Órbita 3 - Externa) -->
+          <div id="orbit-wrapper-pos" class="orbit-wrapper orbit-pos-anim absolute z-10 flex items-center justify-center">
+            <div id="sphere-pos"
+                 onpointerdown="handlePlanetPointerDown(event, 'pos')"
+                 onpointermove="handlePlanetPointerMove(event, 'pos')"
+                 onpointerup="handlePlanetPointerUp(event, 'pos')"
+                 onclick="handlePlanetClick(event, 'pos')"
+                 onmouseenter="handleSphereMouseEnter(event, 'Punto de Venta POS', 'Registra compras simuladas rápidas. Haz clic para desplegar la caja registradora.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-pos-color w-24 h-24 anim-float-2">
+              <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Registrar</span>
+              <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Venta POS</span>
+            </div>
+          </div>
+
+          <!-- PLANETA 6: AGENDA DE TAREAS (Órbita 3 - Externa) -->
+          <div id="orbit-wrapper-todo" class="orbit-wrapper orbit-todo-anim absolute z-10 flex items-center justify-center">
+            <div id="sphere-todo"
+                 onpointerdown="handlePlanetPointerDown(event, 'todo')"
+                 onpointermove="handlePlanetPointerMove(event, 'todo')"
+                 onpointerup="handlePlanetPointerUp(event, 'todo')"
+                 onclick="handlePlanetClick(event, 'todo')"
+                 onmouseenter="handleSphereMouseEnter(event, 'Agenda Gerencial', 'Pendientes de stock, pagos e inventario. Haz clic para ver y marcar tus tareas.')" 
+                 onmouseleave="handleSphereMouseLeave()"
+                 class="sphere sphere-todo-color w-24 h-24 anim-float-1">
+              <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Agenda</span>
+              <span id="sphere-todo-val" class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">2/4 Tareas</span>
+            </div>
+          </div>
+
+          <!-- ANCHORS CONTENEDORES DE LAS TARJETAS FLOTANTES -->
+          <div id="orion-cards-anchor-scope" class="contents">
+            <!-- Los elementos card-wrapper se moverán aquí y tomarán posición absoluta en pantallas grandes -->
+          </div>
+
+        </div>
+
+        <!-- CONTROLES FLOTANTES DE ZOOM EN EL BORDE DE LA ORBITA -->
+        <div class="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 bg-stone-900/90 dark:bg-stone-950/95 p-3 rounded-full border border-stone-200/10 dark:border-white/5 z-20 text-stone-300 text-xs shadow-xl">
+          <button onclick="adjustZoom(1.15)" class="p-1.5 hover:text-white hover:scale-110 active:scale-95 transition-all text-stone-400 hover:text-stone-100" title="Zoom In"><i data-lucide="plus" class="w-4 h-4"></i></button>
+          <button onclick="adjustZoom(0.85)" class="p-1.5 hover:text-white hover:scale-110 active:scale-95 transition-all text-stone-400 hover:text-stone-100" title="Zoom Out"><i data-lucide="minus" class="w-4 h-4"></i></button>
+          <button onclick="resetZoom()" class="p-1.5 hover:text-white hover:scale-110 active:scale-95 transition-all text-stone-400 hover:text-stone-100" title="Restablecer"><i data-lucide="target" class="w-4 h-4"></i></button>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="text-center py-10 text-[10px] font-black text-stone-400 uppercase tracking-widest">
+      Abarrotes ED & E • Prototipo de Distribución Dinámica y Personalizable © 2026
+    </footer>
+  </div>
+
+  <script>
+    // ESTADO GLOBAL DE LA DEMO
+    let state = {
+      revenue: 2120.00,
+      profit: 598.00,
+      goal: 3500.00,
+      alerts: 3,
+      currentPeriod: 'hoy',
+      theme: 'emerald',
+      chartType: 'area',
+      cardStyle: 'glass',
+      layoutPreset: 'standard',
+      designerMode: false,
+      currentZoom: 1,
+      wasDragged: false,
+      todos: [
+        { id: 1, text: 'Verificar inventario de lácteos', completed: true },
+        { id: 2, text: 'Confirmar reposición de aceites', completed: false },
+        { id: 3, text: 'Cuadrar caja del primer turno', completed: true },
+        { id: 4, text: 'Revisar productos próximos a vencer', completed: false }
+      ],
+      chartPeriodData: {
+        hoy: {
+          labels: ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00'],
+          revenue: [200, 480, 850, 1200, 1600, 1950, 2120],
+          profit: [60, 130, 240, 340, 450, 545, 598]
+        },
+        semana: {
+          labels: ['Lun', 'Mar', 'Mie', 'Jue', 'Vie', 'Sab', 'Dom'],
+          revenue: [4500, 9200, 13400, 18500, 24600, 31800, 37500],
+          profit: [1260, 2580, 3750, 5180, 6880, 8900, 10500]
+        },
+        mes: {
+          labels: ['Semana 1', 'Semana 2', 'Semana 3', 'Semana 4'],
+          revenue: [32000, 71000, 114000, 158000],
+          profit: [8960, 19880, 31920, 44240]
+        }
+      }
+    };
+
+    // DATOS DE LOS PLANETAS PARA EL SISTEMA SOLAR DINÁMICO
+    const planetsData = {
+      kpis: {
+        angle: 45 * Math.PI / 180,
+        radius: 120,
+        speed: 0.15,
+        wrapperId: 'orbit-wrapper-kpis',
+        cardId: 'kpis-container',
+        isDragging: false
+      },
+      goal: {
+        angle: 225 * Math.PI / 180,
+        radius: 120,
+        speed: 0.15,
+        wrapperId: 'orbit-wrapper-goal',
+        cardId: 'goal-card',
+        isDragging: false
+      },
+      chart: {
+        angle: 120 * Math.PI / 180,
+        radius: 222,
+        speed: 0.10,
+        wrapperId: 'orbit-wrapper-chart',
+        cardId: 'chart-card',
+        isDragging: false
+      },
+      margin: {
+        angle: 300 * Math.PI / 180,
+        radius: 222,
+        speed: 0.10,
+        wrapperId: 'orbit-wrapper-margin',
+        cardId: 'margin-card',
+        isDragging: false
+      },
+      pos: {
+        angle: 330 * Math.PI / 180,
+        radius: 324,
+        speed: 0.07,
+        wrapperId: 'orbit-wrapper-pos',
+        cardId: 'sim-card',
+        isDragging: false
+      },
+      todo: {
+        angle: 150 * Math.PI / 180,
+        radius: 324,
+        speed: 0.07,
+        wrapperId: 'orbit-wrapper-todo',
+        cardId: 'todo-card',
+        isDragging: false
+      }
+    };
+
+    // VARIABLES AUXILIARES DE ARRASTRE
+    let startX = 0;
+    let startY = 0;
+
+    // OBTENER CENTRO DEL SISTEMA SOLAR
+    function getSolarSystemCenter() {
+      const wrapper = document.getElementById('orion-spheres-wrapper');
+      if (!wrapper) return { x: 0, y: 0 };
+      const rect = wrapper.parentElement.getBoundingClientRect();
+      return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+      };
+    }
+
+    // MANEJADORES DE ENTRADA (POINTER EVENTS)
+    function handlePlanetPointerDown(e, planetId) {
+      const planet = planetsData[planetId];
+      if (!planet) return;
+
+      const sphere = e.currentTarget;
+      sphere.setPointerCapture(e.pointerId);
+
+      planet.isDragging = true;
+      state.wasDragged = false;
+      startX = e.clientX;
+      startY = e.clientY;
+
+      // Ocultar tooltip al arrastrar
+      handleSphereMouseLeave();
+
+      // Cambiar cursor y glow activo
+      sphere.classList.add('dragging-planet');
+      
+      const wrapper = document.getElementById(planet.wrapperId);
+      if (wrapper) {
+        wrapper.style.transition = 'none';
+      }
+    }
+
+    // MOVER ESFERA DINÁMICAMENTE CON AJUSTE DE ZOOM
+    function handlePlanetPointerMove(e, planetId) {
+      const planet = planetsData[planetId];
+      if (!planet || !planet.isDragging) return;
+
+      const dist = Math.hypot(e.clientX - startX, e.clientY - startY);
+      if (dist > 6) {
+        state.wasDragged = true;
+      }
+
+      const center = getSolarSystemCenter();
+      const dx = e.clientX - center.x;
+      const dy = e.clientY - center.y;
+
+      // Ajustar por el zoom actual
+      const zoomedDx = dx / state.currentZoom;
+      const zoomedDy = dy / state.currentZoom;
+
+      // Actualizar radio y ángulo en tiempo real
+      planet.radius = Math.hypot(zoomedDx, zoomedDy);
+      planet.angle = Math.atan2(zoomedDy, zoomedDx);
+
+      // Limitar el radio de arrastre (dentro de los límites visuales)
+      planet.radius = Math.min(Math.max(planet.radius, 45), 360);
+
+      // Posicionar el wrapper inmediatamente
+      const wrapper = document.getElementById(planet.wrapperId);
+      let x = planet.radius * Math.cos(planet.angle);
+      let y = planet.radius * Math.sin(planet.angle);
+      if (wrapper) {
+        wrapper.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+      }
+
+      // Actualizar anillo orbital SVG dinámicamente
+      const ring = document.getElementById(`orbit-ring-${planetId}`);
+      if (ring) {
+        ring.setAttribute('r', planet.radius);
+      }
+
+      // Actualizar el eje gravitacional dinámico inmediatamente al arrastrar
+      const line = document.getElementById(`gravity-line-${planetId}`);
+      if (line) {
+        line.setAttribute('x2', 250 + x);
+        line.setAttribute('y2', 250 + y);
+      }
+    }
+
+    function handlePlanetPointerUp(e, planetId) {
+      const planet = planetsData[planetId];
+      if (!planet) return;
+
+      const sphere = e.currentTarget;
+      sphere.releasePointerCapture(e.pointerId);
+      planet.isDragging = false;
+
+      // Quitar clases de arrastre
+      sphere.classList.remove('dragging-planet');
+
+      const wrapper = document.getElementById(planet.wrapperId);
+      if (wrapper) {
+        wrapper.style.transition = '';
+      }
+    }
+
+    function handlePlanetClick(e, planetId) {
+      if (state.wasDragged) {
+        state.wasDragged = false;
+        return;
+      }
+      togglePlanetCard(planetId);
+    }
+
+    // BUCLE DE ANIMACIÓN DE ÓRBITAS
+    let lastTime = 0;
+    function animateOrbits(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      if (state.layoutPreset === 'orion') {
+        Object.keys(planetsData).forEach(pId => {
+          const planet = planetsData[pId];
+          const wrapper = document.getElementById(planet.wrapperId);
+          if (!wrapper) return;
+
+          const isPaused = wrapper.classList.contains('orbit-paused');
+
+          // Si no se está arrastrando y no está pausado, avanzar ángulo
+          if (!planet.isDragging && !isPaused) {
+            planet.angle += planet.speed * dt;
+          }
+
+          // Calcular posición x, y
+          const x = planet.radius * Math.cos(planet.angle);
+          const y = planet.radius * Math.sin(planet.angle);
+
+          // Aplicar transformaciones
+          wrapper.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+
+          // Sincronizar el anillo orbital SVG con el radio actual
+          const ring = document.getElementById(`orbit-ring-${pId}`);
+          if (ring) {
+            ring.setAttribute('r', planet.radius);
+          }
+
+          // Sincronizar el eje gravitacional dinámico (línea al Sol)
+          const line = document.getElementById(`gravity-line-${pId}`);
+          if (line) {
+            line.setAttribute('x2', 250 + x);
+            line.setAttribute('y2', 250 + y);
+          }
+        });
+      }
+
+      requestAnimationFrame(animateOrbits);
+    }
+
+    // INICIALIZACIÓN
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      updateMetricDisplays();
+      updateGoalDisplays();
+      renderTodoList();
+      setCardStyle('glass');
+      setTheme('emerald');
+      applyPreset('standard');
+      updateFinancialProjection();
+      
+      // Inyectar historial mock inicial
+      pushActivity('Caja abierta por Supervisor', 'Hace 2 horas', 'Sistema');
+      pushActivity('Recepción de proveedor de refrescos', 'Hace 1 hora', 'Inventario');
+      pushActivity('Venta: Huevo Blanco 12u - Total: $48.00', 'Hace 30 min', 'Venta');
+      
+      // Inicializar Drag and Drop Listeners
+      initDragAndDrop();
+
+      // Iniciar bucle de animación
+      requestAnimationFrame(animateOrbits);
+    });
+
+    // SISTEMA DE TEMAS EN VIVO
+    function setTheme(themeName) {
+      state.theme = themeName;
+      document.body.className = `min-h-screen font-sans theme-${themeName} style-${state.cardStyle}`;
+      if (state.layoutPreset === 'orion') {
+        document.body.classList.add('layout-orion-active');
+      }
+      
+      // Fondo aurora
+      const backdrop = document.getElementById('aurora-backdrop');
+      if (themeName === 'aurora') {
+        backdrop.style.display = 'block';
+      } else {
+        backdrop.style.display = 'none';
+      }
+
+      // Estilizar botones de temas activamente
+      const themes = ['emerald', 'luxury', 'aurora', 'brutalist', 'cyberpunk'];
+      themes.forEach(t => {
+        const btn = document.getElementById(`btn-theme-${t}`);
+        if (t === themeName) {
+          btn.className = "px-2 py-1 rounded-lg font-bold transition-all bg-white shadow-sm text-stone-900 border border-stone-200/30";
+          if (t === 'emerald') btn.className += " text-emerald-700";
+          if (t === 'luxury') btn.className += " text-amber-600";
+          if (t === 'aurora') btn.className += " text-blue-600";
+          if (t === 'cyberpunk') btn.className += " text-pink-600";
+        } else {
+          btn.className = "px-2 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300";
+        }
+      });
+
+      // Accent color en texto
+      const headerAccent = document.getElementById('header-accent');
+      headerAccent.className = "transition-all duration-300 ";
+      if (themeName === 'luxury') headerAccent.className += "text-[#d4a359]";
+      else if (themeName === 'aurora') headerAccent.className += "text-blue-500";
+      else if (themeName === 'brutalist') headerAccent.className += "text-black bg-white px-2 py-0.5 border border-black";
+      else if (themeName === 'cyberpunk') headerAccent.className += "text-pink-500 animate-pulse";
+      else headerAccent.className += "text-emerald-500";
+
+      drawChart();
+    }
+
+    // CARDS STYLES (GLASS, NEUMORPHIC, FLAT)
+    function setCardStyle(styleName) {
+      state.cardStyle = styleName;
+      document.body.className = `min-h-screen font-sans theme-${state.theme} style-${styleName}`;
+      if (state.layoutPreset === 'orion') {
+        document.body.classList.add('layout-orion-active');
+      }
+      
+      const styles = ['glass', 'neumorphic', 'borderless'];
+      styles.forEach(s => {
+        const btn = document.getElementById(`btn-style-${s}`);
+        if (s === styleName) {
+          btn.className = "px-2.5 py-1 rounded-lg font-bold transition-all bg-white shadow-sm text-emerald-700";
+        } else {
+          btn.className = "px-2.5 py-1 rounded-lg font-bold transition-all text-stone-400 hover:text-stone-300";
+        }
+      });
+    }
+
+    // SWAP EN EL DOM PARA POSICIONES REALES DEL PANEL (PRESETS)
+    function applyPreset(preset) {
+      state.layoutPreset = preset;
+      
+      const standardContainer = document.getElementById('standard-layout-container');
+      const orionContainer = document.getElementById('orion-layout-container');
+      const grid = document.getElementById('dashboard-grid');
+      
+      const goal = document.getElementById('goal-card');
+      const kpis = document.getElementById('kpis-container');
+      const chart = document.getElementById('chart-card');
+      const sim = document.getElementById('sim-card');
+      const margin = document.getElementById('margin-card');
+      const feed = document.getElementById('activity-card');
+      const todo = document.getElementById('todo-card');
+
+      const closeButtons = document.querySelectorAll('.orion-close-btn');
+
+      // Si es el diseño Orion (Esferas del Sistema Solar)
+      if (preset === 'orion') {
+        document.body.classList.add('layout-orion-active');
+        standardContainer.classList.add('hidden');
+        orionContainer.classList.remove('hidden');
+
+        // Mover físicamente TODOS los paneles de control dentro del contenedor Orion
+        const scope = document.getElementById('orion-cards-anchor-scope');
+        
+        // Reset spans y añadir classes de posicionamiento absoluto
+        [goal, kpis, chart, sim, margin, feed, todo].forEach(el => {
+          el.className = el.className.replace(/lg:col-span-\d/g, '').trim();
+          el.classList.add('hidden'); // Ocultos por defecto hasta dar clic en el planeta
+          scope.appendChild(el);
+        });
+
+        // Mostrar botones de cerrar
+        closeButtons.forEach(btn => btn.classList.remove('hidden'));
+        
+        // Remover anillos activos previos y reanudar animaciones
+        document.querySelectorAll('.sphere').forEach(s => {
+          s.classList.remove('ring-4', 'ring-amber-500', 'scale-110');
+        });
+        document.querySelectorAll('.orbit-wrapper').forEach(w => {
+          w.classList.remove('orbit-paused');
+        });
+
+        resetZoom();
+      } 
+      else {
+        // Restaurar diseño clásico
+        document.body.classList.remove('layout-orion-active');
+        orionContainer.classList.add('hidden');
+        standardContainer.classList.remove('hidden');
+
+        // Ocultar botones de cerrar
+        closeButtons.forEach(btn => btn.classList.add('hidden'));
+
+        // Asegurarse de que todos estén visibles
+        [goal, kpis, chart, sim, margin, feed, todo].forEach(el => {
+          el.classList.remove('hidden');
+          el.className = el.className.replace(/lg:col-span-\d/g, '').trim();
+        });
+
+        // Distribuir en el DOM clásico según el preset
+        if (preset === 'standard') {
+          goal.classList.add('lg:col-span-3');
+          kpis.classList.add('lg:col-span-3');
+          chart.classList.add('lg:col-span-2');
+          sim.classList.add('lg:col-span-1');
+          margin.classList.add('lg:col-span-1');
+          feed.classList.add('lg:col-span-1');
+          todo.classList.add('lg:col-span-1');
+
+          grid.appendChild(goal);
+          grid.appendChild(kpis);
+          grid.appendChild(chart);
+          grid.appendChild(sim);
+          grid.appendChild(margin);
+          grid.appendChild(feed);
+          grid.appendChild(todo);
+        } 
+        else if (preset === 'asymmetric') {
+          goal.classList.add('lg:col-span-1');
+          kpis.classList.add('lg:col-span-2');
+          chart.classList.add('lg:col-span-2');
+          sim.classList.add('lg:col-span-1');
+          margin.classList.add('lg:col-span-1');
+          feed.classList.add('lg:col-span-1');
+          todo.classList.add('lg:col-span-1');
+
+          grid.appendChild(chart);
+          grid.appendChild(goal);
+          grid.appendChild(kpis);
+          grid.appendChild(sim);
+          grid.appendChild(todo);
+          grid.appendChild(feed);
+          grid.appendChild(margin);
+        } 
+        else if (preset === 'chart-focus') {
+          chart.classList.add('lg:col-span-3');
+          goal.classList.add('lg:col-span-2');
+          sim.classList.add('lg:col-span-1');
+          kpis.classList.add('lg:col-span-3');
+          margin.classList.add('lg:col-span-1');
+          feed.classList.add('lg:col-span-1');
+          todo.classList.add('lg:col-span-1');
+
+          grid.appendChild(chart);
+          grid.appendChild(goal);
+          grid.appendChild(sim);
+          grid.appendChild(kpis);
+          grid.appendChild(margin);
+          grid.appendChild(feed);
+          grid.appendChild(todo);
+        } 
+        else if (preset === 'pos-focus') {
+          sim.classList.add('lg:col-span-1');
+          goal.classList.add('lg:col-span-2');
+          kpis.classList.add('lg:col-span-3');
+          chart.classList.add('lg:col-span-2');
+          margin.classList.add('lg:col-span-1');
+          feed.classList.add('lg:col-span-1');
+          todo.classList.add('lg:col-span-1');
+
+          grid.appendChild(sim);
+          grid.appendChild(goal);
+          grid.appendChild(kpis);
+          grid.appendChild(chart);
+          grid.appendChild(feed);
+          grid.appendChild(margin);
+          grid.appendChild(todo);
+        }
+      }
+
+      initDragAndDrop();
+      lucide.createIcons();
+      drawChart();
+    }
+
+    // ZOOM CONTROLS PARA LA CONSTELACIÓN ORION
+    function adjustZoom(factor) {
+      state.currentZoom = Math.min(Math.max(state.currentZoom * factor, 0.65), 1.4);
+      const container = document.getElementById('orion-spheres-wrapper');
+      container.style.transform = `scale(${state.currentZoom})`;
+      container.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+    }
+
+    // RESTABLECER ZOOM
+    function resetZoom() {
+      state.currentZoom = 1;
+      const container = document.getElementById('orion-spheres-wrapper');
+      container.style.transform = 'scale(1)';
+      container.style.transition = 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+    }
+
+    // MODO DISEÑADOR (DRAG & DROP SWAPPING)
+    function toggleDesignerMode() {
+      if (state.layoutPreset === 'orion') {
+        alert("El modo de arrastrar tarjetas individuales está desactivado en la vista de esferas.");
+        return;
+      }
+      
+      state.designerMode = !state.designerMode;
+      const grid = document.getElementById('dashboard-grid');
+      const alertBox = document.getElementById('designer-alert');
+      const btn = document.getElementById('btn-designer-mode');
+      const cards = document.querySelectorAll('.grid-card');
+      const handles = document.querySelectorAll('.drag-handle');
+
+      if (state.designerMode) {
+        grid.classList.add('designer-active');
+        alertBox.classList.remove('hidden');
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Guardar Distribución`;
+        btn.className = "px-3.5 py-1.5 rounded-xl font-bold bg-emerald-500 text-white border border-emerald-400 shadow-md shadow-emerald-500/10 flex items-center gap-1.5 hover:bg-emerald-400 transition-all";
+        cards.forEach(card => card.setAttribute('draggable', 'true'));
+        handles.forEach(h => h.classList.remove('hidden'));
+      } else {
+        grid.classList.remove('designer-active');
+        alertBox.classList.add('hidden');
+        btn.innerHTML = `<i data-lucide="layout-template" class="w-4 h-4"></i> Organizar Posiciones`;
+        btn.className = "px-3.5 py-1.5 rounded-xl font-bold bg-amber-500 text-stone-900 border border-amber-400 shadow-md shadow-amber-500/10 flex items-center gap-1.5 hover:bg-amber-400 transition-all";
+        cards.forEach(card => card.setAttribute('draggable', 'false'));
+        handles.forEach(h => h.classList.add('hidden'));
+      }
+      lucide.createIcons();
+    }
+
+    // DRAG AND DROP NATIVO PARA INTERCAMBIO FÍSICO
+    let dragSourceEl = null;
+
+    function initDragAndDrop() {
+      const cards = document.querySelectorAll('.grid-card');
+      cards.forEach(card => {
+        card.addEventListener('dragstart', handleDragStart, false);
+        card.addEventListener('dragenter', handleDragEnter, false);
+        card.addEventListener('dragover', handleDragOver, false);
+        card.addEventListener('dragleave', handleDragLeave, false);
+        card.addEventListener('drop', handleDrop, false);
+        card.addEventListener('dragend', handleDragEnd, false);
+      });
+    }
+
+    function handleDragStart(e) {
+      if (!state.designerMode) return;
+      this.classList.add('dragging');
+      dragSourceEl = this;
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/html', this.innerHTML);
+    }
+
+    function handleDragOver(e) {
+      if (!state.designerMode) return;
+      if (e.preventDefault) e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      return false;
+    }
+
+    function handleDragEnter() {
+      if (!state.designerMode) return;
+      this.classList.add('drag-over');
+    }
+
+    function handleDragLeave() {
+      if (!state.designerMode) return;
+      this.classList.remove('drag-over');
+    }
+
+    function handleDrop(e) {
+      if (!state.designerMode) return;
+      e.stopPropagation();
+      
+      if (dragSourceEl !== this) {
+        // Intercambiar posiciones reales en el DOM para cambiar el orden del Grid responsive
+        const parent = this.parentNode;
+        const temp = document.createElement('div');
+        parent.insertBefore(temp, this);
+        parent.insertBefore(this, dragSourceEl);
+        parent.insertBefore(dragSourceEl, temp);
+        temp.remove();
+        
+        // Volver a enlazar los eventos y redibujar SVG
+        initDragAndDrop();
+        lucide.createIcons();
+        drawChart();
+      }
+      return false;
+    }
+
+    function handleDragEnd() {
+      this.classList.remove('dragging');
+      const cards = document.querySelectorAll('.grid-card');
+      cards.forEach(card => card.classList.remove('drag-over'));
+    }
+
+    // INTERACCIONES CLICK DE PLANETAS EN SISTEMA SOLAR (ABRIR RECUBRIMIENTOS FIJOS Y PAUSAR ORBITA)
+    function togglePlanetCard(planetId) {
+      let cardId = '';
+      if (planetId === 'kpis') cardId = 'kpis-container';
+      else if (planetId === 'goal') cardId = 'goal-card';
+      else if (planetId === 'chart') cardId = 'chart-card';
+      else if (planetId === 'pos') cardId = 'sim-card';
+      else if (planetId === 'margin') cardId = 'margin-card';
+      else if (planetId === 'sun') cardId = 'activity-card';
+      else if (planetId === 'todo') cardId = 'todo-card';
+      
+      const card = document.getElementById(cardId);
+      const sphere = document.getElementById(`sphere-${planetId}`);
+      if (!card) return;
+
+      const isHidden = card.classList.contains('hidden');
+
+      // Cerrar las demás tarjetas activas y reanudar sus órbitas
+      const planets = ['kpis', 'goal', 'chart', 'margin', 'pos', 'todo', 'sun'];
+      planets.forEach(p => {
+        let cid = '';
+        if (p === 'kpis') cid = 'kpis-container';
+        else if (p === 'goal') cid = 'goal-card';
+        else if (p === 'chart') cid = 'chart-card';
+        else if (p === 'pos') cid = 'sim-card';
+        else if (p === 'margin') cid = 'margin-card';
+        else if (p === 'sun') cid = 'activity-card';
+        else if (p === 'todo') cid = 'todo-card';
+        
+        const otherCard = document.getElementById(cid);
+        const otherSphere = document.getElementById(`sphere-${p}`);
+        
+        if (otherCard && p !== planetId) otherCard.classList.add('hidden');
+        if (otherSphere && p !== planetId) {
+          otherSphere.classList.remove('ring-4', 'ring-amber-500', 'scale-110');
+          // Reanudar órbita del planeta inactivo
+          const wrapper = otherSphere.closest('.orbit-wrapper');
+          if (wrapper) wrapper.classList.remove('orbit-paused');
+        }
+      });
+
+      if (isHidden) {
+        card.classList.remove('hidden');
+        if (sphere) {
+          sphere.classList.add('ring-4', 'ring-amber-500', 'scale-110');
+          // Pausar órbita del planeta activo
+          const wrapper = sphere.closest('.orbit-wrapper');
+          if (wrapper) wrapper.classList.add('orbit-paused');
+        }
+        if (planetId === 'chart') {
+          setTimeout(drawChart, 100);
+        }
+      } else {
+        card.classList.add('hidden');
+        if (sphere) {
+          sphere.classList.remove('ring-4', 'ring-amber-500', 'scale-110');
+          // Reanudar órbita del planeta
+          const wrapper = sphere.closest('.orbit-wrapper');
+          if (wrapper) wrapper.classList.remove('orbit-paused');
+        }
+      }
+    }
+
+    // BOTÓN DE CERRAR PLANEL EN ORION
+    function closeOrionCard(e) {
+      e.stopPropagation();
+      const card = e.currentTarget.closest('.grid-card');
+      if (card) {
+        card.classList.add('hidden');
+        let planetId = '';
+        if (card.id === 'kpis-container') planetId = 'kpis';
+        else if (card.id === 'goal-card') planetId = 'goal';
+        else if (card.id === 'chart-card') planetId = 'chart';
+        else if (card.id === 'sim-card') planetId = 'pos';
+        else if (card.id === 'margin-card') planetId = 'margin';
+        else if (card.id === 'activity-card') planetId = 'sun';
+        else if (card.id === 'todo-card') planetId = 'todo';
+        
+        const sphere = document.getElementById(`sphere-${planetId}`);
+        if (sphere) {
+          sphere.classList.remove('ring-4', 'ring-amber-500', 'scale-110');
+          // Reanudar la órbita de este planeta cerrado
+          const wrapper = sphere.closest('.orbit-wrapper');
+          if (wrapper) wrapper.classList.remove('orbit-paused');
+        }
+      }
+    }
+
+    // INTERACCIONES HOVER TELEMETRÍA (QUITA PUNTERO Y DESAPARECE)
+    function handleSphereMouseEnter(e, title, desc) {
+      const tooltip = document.getElementById('sphere-tooltip');
+      if (!tooltip) return;
+
+      tooltip.innerHTML = `
+        <span class="text-white font-extrabold block text-xs mb-1">${title}</span>
+        <span class="text-stone-400 font-medium block leading-relaxed">${desc}</span>
+        <span class="text-emerald-400 dark:text-emerald-300 font-black block mt-2 animate-pulse">⚡ CLIC PARA INTERACTUAR</span>
+      `;
+      tooltip.style.opacity = 1;
+
+      // Calcular posiciones relativas al canvas
+      const rect = e.currentTarget.getBoundingClientRect();
+      const parentRect = tooltip.parentElement.getBoundingClientRect();
+      
+      tooltip.style.left = `${rect.left - parentRect.left + rect.width / 2 - 104}px`;
+      tooltip.style.top = `${rect.top - parentRect.top - 100}px`;
+    }
+
+    function handleSphereMouseLeave() {
+      const tooltip = document.getElementById('sphere-tooltip');
+      if (tooltip) tooltip.style.opacity = 0;
+    }
+
+    // GESTIÓN DE LA META DIARIA (CON META DE ESFERAS)
+    function updateGoalDisplays() {
+      const data = state.chartPeriodData[state.currentPeriod];
+      const rev = data.revenue[data.revenue.length - 1];
+      const percentage = (rev / state.goal) * 100;
+      
+      document.getElementById('goal-val-display').innerText = `$${state.goal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+      document.getElementById('processed-val-display').innerText = `Procesado: $${rev.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+      document.getElementById('percentage-display').innerText = `${percentage.toFixed(1)}%`;
+      
+      // Sincronizar en la Esfera Goal
+      if (document.getElementById('sphere-goal-pct')) {
+        document.getElementById('sphere-goal-pct').innerText = `${percentage.toFixed(1)}%`;
+      }
+      if (document.getElementById('sphere-goal-val')) {
+        document.getElementById('sphere-goal-val').innerText = `Meta: $${state.goal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+      }
+
+      const progressBar = document.getElementById('goal-progress-bar');
+      if (progressBar) {
+        progressBar.style.width = `${Math.min(percentage, 100)}%`;
+      }
+
+      const badge = document.getElementById('goal-badge');
+      const statusText = document.getElementById('goal-status-text');
+      
+      if (percentage >= 100) {
+        statusText.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase bg-emerald-500/20 text-emerald-600 animate-bounce";
+        statusText.innerHTML = "¡Meta Cumplida! 🎉";
+        if (badge) badge.className = "px-5 py-3.5 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 text-center shrink-0 w-full md:w-auto shadow-md";
+      } else if (percentage >= 70) {
+        statusText.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase bg-teal-500/10 text-teal-600";
+        statusText.innerHTML = "Excelente Ritmo 🚀";
+        if (badge) badge.className = "px-5 py-3.5 bg-white/10 rounded-2xl border border-white/5 text-center shrink-0 w-full md:w-auto";
+      } else {
+        statusText.className = "inline-flex items-center px-3 py-1 rounded-full text-xs font-black uppercase bg-amber-500/10 text-amber-600";
+        statusText.innerHTML = "Buen Avance 📈";
+        if (badge) badge.className = "px-5 py-3.5 bg-white/10 rounded-2xl border border-white/5 text-center shrink-0 w-full md:w-auto";
+      }
+    }
+
+    // ACTUALIZACIÓN DE MÉTRICAS GENERALES
+    function updateMetricDisplays() {
+      const data = state.chartPeriodData[state.currentPeriod];
+      const rev = data.revenue[data.revenue.length - 1];
+      const prof = data.profit[data.profit.length - 1];
+
+      // Ingresos
+      document.getElementById('metric-revenue').innerText = `$${rev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      
+      const revEls = document.querySelectorAll('#sphere-revenue-val');
+      revEls.forEach(el => {
+        el.innerText = `$${rev.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      });
+
+      // Ganancias
+      document.getElementById('metric-profit').innerText = `$${prof.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      if (document.getElementById('sphere-profit-val')) {
+        document.getElementById('sphere-profit-val').innerText = `$${prof.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+      
+      // Margen
+      const ratio = rev > 0 ? (prof / rev) * 100 : 0;
+      document.getElementById('metric-margin').innerText = `${ratio.toFixed(1)}%`;
+      document.getElementById('margin-ratio-display').innerText = `${ratio.toFixed(1)}%`;
+      
+      if (document.getElementById('sphere-margin-val')) {
+        document.getElementById('sphere-margin-val').innerText = `${ratio.toFixed(1)}%`;
+      }
+      if (document.getElementById('sphere-profit-ratio')) {
+        document.getElementById('sphere-profit-ratio').innerText = `Margen: ${ratio.toFixed(1)}%`;
+      }
+      
+      // Alertas
+      document.getElementById('metric-alerts').innerText = `${state.alerts} prod.`;
+      if (document.getElementById('sphere-alerts-val')) {
+        document.getElementById('sphere-alerts-val').innerText = `${state.alerts} prod.`;
+      }
+    }
+
+    // REGISTRO Y SIMULACIÓN POS EN VIVO
+    function triggerSimulatedSale(e) {
+      const select = document.getElementById('sim-product-select');
+      const opt = select.options[select.selectedIndex];
+      
+      const price = parseFloat(opt.getAttribute('data-price'));
+      const cost = parseFloat(opt.getAttribute('data-cost'));
+      const profit = price - cost;
+      
+      // Floating indicator
+      createFloatingIndicator(e.clientX, e.clientY, `+$${price.toFixed(2)}`);
+
+      // Sumar valores a la data del período actual
+      const periodData = state.chartPeriodData[state.currentPeriod];
+      periodData.revenue[periodData.revenue.length - 1] += price;
+      periodData.profit[periodData.profit.length - 1] += profit;
+
+      // Actualizar UI general
+      updateMetricDisplays();
+      updateGoalDisplays();
+      drawChart();
+
+      // Bitácora de actividad
+      pushActivity(`Simulado: Compra de ${opt.text.split(' - ')[0]} ($${price.toFixed(2)})`, 'Hace unos instantes', 'Venta');
+    }
+
+    function createFloatingIndicator(x, y, text) {
+      const el = document.createElement('div');
+      el.className = 'floating-gain';
+      el.style.left = `${x > 0 ? x : window.innerWidth / 2}px`;
+      el.style.top = `${y > 0 ? y - 15 : window.innerHeight / 2}px`;
+      el.innerText = text;
+      
+      if (state.theme === 'luxury') el.style.color = '#d4a359';
+      else if (state.theme === 'cyberpunk') el.style.color = '#ec4899';
+
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 1000);
+    }
+
+    function pushActivity(text, time, type) {
+      const feed = document.getElementById('activity-feed');
+      if (!feed) return;
+      
+      const item = document.createElement('div');
+      item.className = "p-3 bg-stone-500/5 rounded-2xl border border-stone-200/5 flex items-center justify-between animate-[slideUp_0.4s_ease-out]";
+      
+      const badgeColor = type === 'Venta' ? 'bg-emerald-500/10 text-emerald-600' : 'bg-blue-500/10 text-blue-600';
+      
+      item.innerHTML = `
+        <div>
+          <p class="text-[9px] text-stone-400">${time}</p>
+          <p class="text-stone-750 dark:text-stone-200 text-xs font-bold">${text}</p>
+        </div>
+        <span class="px-2 py-0.5 ${badgeColor} rounded text-[8px] font-black uppercase">${type}</span>
+      `;
+      feed.insertBefore(item, feed.firstChild);
+      if (feed.children.length > 5) feed.lastChild.remove();
+    }
+
+    // PROYECCIONES FINANCIERAS
+    function updateFinancialProjection() {
+      const sales = parseFloat(document.getElementById('slider-sales').value);
+      const margin = parseFloat(document.getElementById('slider-margin').value);
+      
+      document.getElementById('slider-sales-val').innerText = `$${sales.toLocaleString()}`;
+      document.getElementById('slider-margin-val').innerText = `${margin}%`;
+      
+      const profit = sales * (margin / 100);
+      const cost = sales - profit;
+      
+      document.getElementById('proj-cost-val').innerText = `$${cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+      document.getElementById('proj-profit-val').innerText = `$${profit.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+    }
+
+    // GESTIÓN DE PERÍODOS
+    function setPeriod(period) {
+      state.currentPeriod = period;
+      
+      const periods = ['hoy', 'semana', 'mes'];
+      periods.forEach(p => {
+        // Botones clásicos
+        const btn = document.getElementById(`btn-per-${p}`);
+        if (btn) {
+          if (p === period) {
+            btn.className = "px-2.5 py-1 bg-white/20 rounded-md font-bold transition-all text-white shadow-sm";
+          } else {
+            btn.className = "px-2.5 py-1 rounded-md font-bold text-stone-400 hover:text-stone-250 transition-all";
+          }
+        }
+
+        // Botones del filtro de Orion (Esferas)
+        const obtn = document.getElementById(`btn-orion-per-${p}`);
+        if (obtn) {
+          if (p === period) {
+            obtn.className = "px-3.5 py-1 rounded-full bg-white/20 text-white font-bold shadow-sm";
+          } else {
+            obtn.className = "px-3.5 py-1 rounded-full text-stone-400 hover:text-stone-200 transition-all";
+          }
+        }
+      });
+
+      updateMetricDisplays();
+      updateGoalDisplays();
+      drawChart();
+    }
+
+    // DIBUJADO DE GRÁFICA SVG
+    function drawChart() {
+      const svg = document.getElementById('interactive-chart');
+      if (!svg) return;
+      const data = state.chartPeriodData[state.currentPeriod];
+      
+      const width = 500;
+      const height = 200;
+      const padding = 20;
+      
+      const numPoints = data.revenue.length;
+      const maxVal = Math.max(...data.revenue) * 1.15;
+      
+      let revPoints = [];
+      let profPoints = [];
+      
+      for (let i = 0; i < numPoints; i++) {
+        const x = (i / (numPoints - 1)) * (width - padding * 2) + padding;
+        const revY = height - ((data.revenue[i] / maxVal) * (height - padding * 2) + padding);
+        const profY = height - ((data.profit[i] / maxVal) * (height - padding * 2) + padding);
+        
+        revPoints.push({ x, y: revY, val: data.revenue[i], label: data.labels[i] });
+        profPoints.push({ x, y: profY, val: data.profit[i], label: data.labels[i] });
+      }
+      
+      const buildBezierPath = (pts) => {
+        if (pts.length === 0) return '';
+        let d = `M ${pts[0].x},${pts[0].y}`;
+        for (let i = 0; i < pts.length - 1; i++) {
+          const cpX1 = pts[i].x + (pts[i+1].x - pts[i].x) / 3;
+          const cpY1 = pts[i].y;
+          const cpX2 = pts[i].x + 2 * (pts[i+1].x - pts[i].x) / 3;
+          const cpY2 = pts[i+1].y;
+          d += ` C ${cpX1},${cpY1} ${cpX2},${cpY2} ${pts[i+1].x},${pts[i+1].y}`;
+        }
+        return d;
+      };
+
+      const revD = buildBezierPath(revPoints);
+      const profD = buildBezierPath(profPoints);
+      
+      // Tema específico de colores
+      let pColor = '#10b981';
+      if (state.theme === 'luxury') pColor = '#d4a359';
+      else if (state.theme === 'cyberpunk') pColor = '#ec4899';
+      else if (state.theme === 'brutalist') pColor = '#000000';
+      
+      let rColor = '#3b82f6';
+      if (state.theme === 'cyberpunk') rColor = '#8b5cf6';
+      else if (state.theme === 'brutalist') rColor = '#000000';
+
+      document.getElementById('chart-path-revenue').setAttribute('d', revD);
+      document.getElementById('chart-path-revenue').setAttribute('stroke', rColor);
+      document.getElementById('chart-path-profit').setAttribute('d', profD);
+      document.getElementById('chart-path-profit').setAttribute('stroke', pColor);
+      
+      document.getElementById('chart-area-revenue').setAttribute('d', `${revD} L ${revPoints[revPoints.length-1].x},${height} L ${revPoints[0].x},${height} Z`);
+      document.getElementById('chart-area-profit').setAttribute('d', `${profD} L ${profPoints[profPoints.length-1].x},${height} L ${profPoints[0].x},${height} Z`);
+      
+      document.querySelector('#chart-grad-emerald stop').setAttribute('stop-color', pColor);
+      document.querySelector('#chart-grad-blue stop').setAttribute('stop-color', rColor);
+
+      // Eliminar barras y nodos antiguos
+      svg.querySelectorAll('.chart-bar').forEach(b => b.remove());
+      svg.querySelectorAll('.chart-node').forEach(c => c.remove());
+
+      if (state.chartType === 'bar') {
+        document.getElementById('chart-path-revenue').style.display = 'none';
+        document.getElementById('chart-path-profit').style.display = 'none';
+        document.getElementById('chart-area-revenue').style.display = 'none';
+        document.getElementById('chart-area-profit').style.display = 'none';
+
+        const barWidth = 7;
+        revPoints.forEach((p, idx) => {
+          const rH = height - p.y;
+          const pH = height - profPoints[idx].y;
+
+          const rectRev = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rectRev.setAttribute('x', p.x - barWidth - 1);
+          rectRev.setAttribute('y', p.y);
+          rectRev.setAttribute('width', barWidth);
+          rectRev.setAttribute('height', Math.max(rH, 0));
+          rectRev.setAttribute('fill', rColor);
+          rectRev.setAttribute('rx', state.theme === 'brutalist' ? 0 : 2);
+          rectRev.classList.add('chart-bar');
+          svg.appendChild(rectRev);
+
+          const rectProf = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rectProf.setAttribute('x', p.x + 1);
+          rectProf.setAttribute('y', profPoints[idx].y);
+          rectProf.setAttribute('width', barWidth);
+          rectProf.setAttribute('height', Math.max(pH, 0));
+          rectProf.setAttribute('fill', pColor);
+          rectProf.setAttribute('rx', state.theme === 'brutalist' ? 0 : 2);
+          rectProf.classList.add('chart-bar');
+          svg.appendChild(rectProf);
+        });
+      } else {
+        document.getElementById('chart-path-revenue').style.display = 'block';
+        document.getElementById('chart-path-profit').style.display = 'block';
+
+        if (state.chartType === 'area') {
+          document.getElementById('chart-path-revenue').setAttribute('stroke-width', 2.5);
+          document.getElementById('chart-path-revenue').removeAttribute('stroke-dasharray');
+          document.getElementById('chart-path-profit').setAttribute('stroke-width', 3);
+          document.getElementById('chart-path-profit').removeAttribute('stroke-dasharray');
+          
+          document.getElementById('chart-area-revenue').style.display = 'block';
+          document.getElementById('chart-area-profit').style.display = 'block';
+        } else {
+          document.getElementById('chart-path-revenue').setAttribute('stroke-width', 1.5);
+          document.getElementById('chart-path-revenue').setAttribute('stroke-dasharray', '3 3');
+          document.getElementById('chart-path-profit').setAttribute('stroke-width', 1.5);
+          document.getElementById('chart-path-profit').setAttribute('stroke-dasharray', '3 3');
+          
+          document.getElementById('chart-area-revenue').style.display = 'none';
+          document.getElementById('chart-area-profit').style.display = 'none';
+        }
+      }
+
+      // Dibujar nodos de puntos interactivos
+      const drawNodes = (points, labelName, colorHex) => {
+        points.forEach((p, idx) => {
+          const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          circle.setAttribute('cx', p.x);
+          circle.setAttribute('cy', p.y);
+          circle.setAttribute('r', 4.5);
+          circle.setAttribute('fill', colorHex);
+          circle.setAttribute('stroke', '#ffffff');
+          circle.setAttribute('stroke-width', 2);
+          circle.classList.add('chart-node', 'cursor-pointer', 'transition-all', 'hover:scale-150');
+          
+          circle.addEventListener('mouseenter', (e) => {
+            circle.setAttribute('r', 6.5);
+            showTooltip(e, p, labelName, idx);
+          });
+          circle.addEventListener('mouseleave', () => {
+            circle.setAttribute('r', 4.5);
+            hideTooltip();
+          });
+          svg.appendChild(circle);
+        });
+      };
+      
+      drawNodes(revPoints, 'Ventas', rColor);
+      drawNodes(profPoints, 'Ganancias', pColor);
+    }
+
+    const tooltip = document.getElementById('chart-tooltip');
+    
+    function showTooltip(e, pt, labelName, idx) {
+      const data = state.chartPeriodData[state.currentPeriod];
+      document.getElementById('tooltip-date').innerText = pt.label;
+      document.getElementById('tooltip-rev').innerText = `$${data.revenue[idx].toFixed(2)}`;
+      document.getElementById('tooltip-prof').innerText = `$${data.profit[idx].toFixed(2)}`;
+      
+      tooltip.style.opacity = 1;
+      const rect = e.target.getBoundingClientRect();
+      const parentRect = tooltip.parentElement.getBoundingClientRect();
+      
+      tooltip.style.left = `${rect.left - parentRect.left - 40}px`;
+      tooltip.style.top = `${rect.top - parentRect.top - 75}px`;
+    }
+
+    function hideTooltip() {
+      tooltip.style.opacity = 0;
+    }
+
+    // ENLACE DE TIPO DE GRÁFICA
+    function setChartType(chartType) {
+      state.chartType = chartType;
+      
+      const types = ['area', 'bar', 'dots'];
+      types.forEach(t => {
+        const btn = document.getElementById(`btn-chart-${t}`);
+        if (btn) {
+          if (t === chartType) {
+            btn.className = "px-2 py-1 rounded-md font-bold transition-all bg-white/20 text-white shadow-sm";
+          } else {
+            btn.className = "px-2 py-1 rounded-md font-bold text-stone-400 hover:text-stone-200 transition-all";
+          }
+        }
+      });
+      drawChart();
+    }
+
+    // CHECKLIST GERENCIAL (TODO LIST)
+    function renderTodoList() {
+      const container = document.getElementById('todo-list-container');
+      if (!container) return;
+      container.innerHTML = '';
+      
+      let completedCount = 0;
+      state.todos.forEach(todo => {
+        if (todo.completed) completedCount++;
+        
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between p-3 rounded-2xl border transition-all ${
+          todo.completed 
+            ? 'bg-stone-500/5 border-stone-200/5 text-stone-400 line-through' 
+            : 'bg-white/40 dark:bg-stone-850/40 border-stone-200/10 text-stone-750 dark:text-stone-150'
+        }`;
+        
+        item.innerHTML = `
+          <div class="flex items-center gap-2.5 cursor-pointer" onclick="toggleTodo(${todo.id})">
+            <div class="w-4 h-4 rounded border flex items-center justify-center transition-all ${
+              todo.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-stone-400/50'
+            }">
+              ${todo.completed ? '<i data-lucide="check" class="w-3 h-3"></i>' : ''}
+            </div>
+            <span class="select-none font-bold text-xs">${todo.text}</span>
+          </div>
+          <button onclick="deleteTodo(${todo.id})" class="text-stone-400 hover:text-red-500 transition-colors p-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+        `;
+        
+        container.appendChild(item);
+      });
+
+      const total = state.todos.length;
+      const countEl = document.getElementById('checklist-progress');
+      if (countEl) countEl.innerText = `${completedCount}/${total}`;
+      
+      // Actualizar texto de la esfera de agenda en Orion
+      const sphereTodoText = document.getElementById('sphere-todo-val');
+      if (sphereTodoText) {
+        sphereTodoText.innerText = `${completedCount}/${total} Tareas`;
+      }
+      
+      lucide.createIcons();
+    }
+
+    function toggleTodo(id) {
+      const todo = state.todos.find(t => t.id === id);
+      if (todo) {
+        todo.completed = !todo.completed;
+        renderTodoList();
+      }
+    }
+
+    // AÑADIR PENDIENTE
+    function addTodoTask() {
+      const input = document.getElementById('new-todo-input');
+      const text = input.value.trim();
+      if (text) {
+        state.todos.push({ id: Date.now(), text, completed: false });
+        input.value = '';
+        renderTodoList();
+      }
+    }
+
+    // ELIMINAR PENDIENTE
+    function deleteTodo(id) {
+      state.todos = state.todos.filter(t => t.id !== id);
+      renderTodoList();
+    }
+  </script>
+</body>
+</html>

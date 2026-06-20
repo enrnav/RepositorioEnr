@@ -259,8 +259,8 @@ const Users = () => {
 
       {showForm && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-soft w-full max-w-md overflow-hidden border border-white animate-slide-up">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800">
                 {editUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
               </h3>
@@ -271,91 +271,93 @@ const Users = () => {
                 <X size={20} />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Nombre Completo</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.full_name}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                  placeholder="Ej. Juan Pérez"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Usuario</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.username}
-                  onChange={(e) => setFormData({...formData, username: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                  placeholder="Ej. juanp"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                  Contraseña
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                  placeholder="••••••••"
-                />
-                
-                {formData.password && (
-                  <div className="mt-2 space-y-1 animate-fade-in">
-                    <div className="flex justify-between items-center text-xs">
-                      <span className="text-gray-500 font-medium">Fortaleza de contraseña:</span>
-                      <span className={`font-bold ${
-                        getPasswordStrength(formData.password) === 1 ? 'text-red-500' :
-                        getPasswordStrength(formData.password) === 2 ? 'text-orange-500' :
-                        getPasswordStrength(formData.password) === 3 ? 'text-amber-500' :
-                        getPasswordStrength(formData.password) === 4 ? 'text-green-600' :
-                        'text-gray-400'
-                      }`}>
-                        {getPasswordStrength(formData.password) === 0 && 'Ninguna'}
-                        {getPasswordStrength(formData.password) === 1 && 'Muy débil'}
-                        {getPasswordStrength(formData.password) === 2 && 'Regular'}
-                        {getPasswordStrength(formData.password) === 3 && 'Buena'}
-                        {getPasswordStrength(formData.password) === 4 && 'Fuerte'}
-                      </span>
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Nombre Completo</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.full_name}
+                    onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
+                    placeholder="Ej. Juan Pérez"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Usuario</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={(e) => setFormData({...formData, username: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
+                    placeholder="Ej. juanp"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
+                    Contraseña
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={formData.password}
+                    onChange={(e) => setFormData({...formData, password: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
+                    placeholder="••••••••"
+                  />
+                  
+                  {formData.password && (
+                    <div className="mt-2 space-y-1 animate-fade-in">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-gray-500 font-medium">Fortaleza de contraseña:</span>
+                        <span className={`font-bold ${
+                          getPasswordStrength(formData.password) === 1 ? 'text-red-500' :
+                          getPasswordStrength(formData.password) === 2 ? 'text-orange-500' :
+                          getPasswordStrength(formData.password) === 3 ? 'text-amber-500' :
+                          getPasswordStrength(formData.password) === 4 ? 'text-green-600' :
+                          'text-gray-400'
+                        }`}>
+                          {getPasswordStrength(formData.password) === 0 && 'Ninguna'}
+                          {getPasswordStrength(formData.password) === 1 && 'Muy débil'}
+                          {getPasswordStrength(formData.password) === 2 && 'Regular'}
+                          {getPasswordStrength(formData.password) === 3 && 'Buena'}
+                          {getPasswordStrength(formData.password) === 4 && 'Fuerte'}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-300 ${
+                            getPasswordStrength(formData.password) === 1 ? 'bg-red-500 w-1/4' :
+                            getPasswordStrength(formData.password) === 2 ? 'bg-orange-500 w-2/4' :
+                            getPasswordStrength(formData.password) === 3 ? 'bg-amber-400 w-3/4' :
+                            getPasswordStrength(formData.password) === 4 ? 'bg-green-500 w-full' :
+                            'w-0'
+                          }`}
+                        />
+                      </div>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                      <div 
-                        className={`h-full transition-all duration-300 ${
-                          getPasswordStrength(formData.password) === 1 ? 'bg-red-500 w-1/4' :
-                          getPasswordStrength(formData.password) === 2 ? 'bg-orange-500 w-2/4' :
-                          getPasswordStrength(formData.password) === 3 ? 'bg-amber-400 w-3/4' :
-                          getPasswordStrength(formData.password) === 4 ? 'bg-green-500 w-full' :
-                          'w-0'
-                        }`}
-                      />
-                    </div>
-                  </div>
-                )}
-                
-                <p className="text-[11px] text-gray-500 leading-normal mt-2">
-                  * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
-                </p>
+                  )}
+                  
+                  <p className="text-[11px] text-gray-500 leading-normal mt-2">
+                    * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
+                  </p>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Rol</label>
+                  <select
+                    value={formData.role}
+                    onChange={(e) => setFormData({...formData, role: e.target.value})}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
+                  >
+                    <option value="cajero">Cajero (Solo Punto de Venta)</option>
+                    <option value="supervisor">Supervisor (Ventas, Inventario y Cortes)</option>
+                    <option value="admin">Administrador (Acceso Total)</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Rol</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                >
-                  <option value="cajero">Cajero (Solo Punto de Venta)</option>
-                  <option value="supervisor">Supervisor (Ventas, Inventario y Cortes)</option>
-                  <option value="admin">Administrador (Acceso Total)</option>
-                </select>
-              </div>
-              <div className="mt-6 flex justify-end space-x-3 pt-4 border-t border-gray-100">
+              <div className="p-6 bg-gray-50/80 border-t border-gray-100 flex justify-end space-x-3 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); setEditUser(null); }}

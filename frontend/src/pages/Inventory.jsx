@@ -1035,7 +1035,7 @@ const Inventory = () => {
       {/* Modal Nuevo/Editar Producto */}
       {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
             <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
               <h3 className="text-base sm:text-lg font-black text-brand-900 flex items-center gap-2">
                 <Package className="text-chiluda-red" size={20} />
@@ -1279,14 +1279,14 @@ const Inventory = () => {
       {/* Modal Exportar */}
       {isExportModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800">Exportar Reportes</h3>
               <button onClick={() => setIsExportModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Periodo del Reporte</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1348,14 +1348,14 @@ const Inventory = () => {
       {/* Modal Exportar Stock */}
       {isStockModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800">Exportar Inventario Actual</h3>
               <button onClick={() => setIsStockModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Formato de Archivo</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -1398,14 +1398,14 @@ const Inventory = () => {
       {/* Modal Exportar Devoluciones */}
       {isReturnsExportModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden animate-scale-in">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+          <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
               <h3 className="text-lg font-semibold text-gray-800">Exportar Reporte de Devoluciones</h3>
               <button onClick={() => setIsReturnsExportModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
                 <X size={20} />
               </button>
             </div>
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-5 overflow-y-auto flex-1">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Periodo del Reporte</label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">

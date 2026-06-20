@@ -855,8 +855,8 @@ const Invoices = () => {
       {/* TIMBRADO EXITOSO DIALOG */}
       {successInvoice && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-soft w-full max-w-lg overflow-hidden border border-white animate-slide-up">
-            <div className="p-8 text-center space-y-5">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-soft w-full max-w-lg max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-slide-up">
+            <div className="p-8 text-center space-y-5 overflow-y-auto flex-1">
               <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <CheckCircle size={44} className="stroke-[2.5]" />
               </div>

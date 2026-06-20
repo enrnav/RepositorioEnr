@@ -927,8 +927,8 @@ const Sales = () => {
       {/* Checkout Split Payment Modal */}
       {showCheckoutModal && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-white animate-scale-in">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
               <h3 className="text-lg font-black text-brand-900">
                 {paymentMethod ? 'Procesar Pago' : 'Método de Pago'}
               </h3>
@@ -940,7 +940,7 @@ const Sales = () => {
               </button>
             </div>
             
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto flex-1">
               {!paymentMethod ? (
                 <div className="space-y-6">
                   <div className="text-center pb-4 border-b border-gray-100">
@@ -1190,14 +1190,14 @@ const Sales = () => {
       {/* Product Variant Quick Selection Modal */}
       {showVariantModal && variantProduct && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden border border-white animate-scale-in">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
               <h3 className="font-extrabold text-brand-900 text-sm">Selecciona Variante</h3>
               <button onClick={() => setShowVariantModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
                 <X size={18} />
               </button>
             </div>
-            <div className="p-5 max-h-[60vh] overflow-y-auto space-y-2">
+            <div className="p-5 overflow-y-auto flex-1 space-y-2">
               <div className="mb-3">
                 <h4 className="text-sm font-bold text-gray-500">Producto Padre:</h4>
                 <p className="text-base font-extrabold text-brand-900">{variantProduct.name}</p>
@@ -1238,7 +1238,7 @@ const Sales = () => {
       {/* Ticket Modal (Thermal adaptation) */}
       {showTicketModal && lastSaleData && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4 print:p-0 print:bg-white print:items-start">
-          <div id="printable-ticket" className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none">
+          <div id="printable-ticket" className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 print:hidden">
               <h3 className="text-lg font-black text-brand-900">Venta Completada</h3>
               <button onClick={() => setShowTicketModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
@@ -1343,8 +1343,8 @@ const Sales = () => {
       {/* Control de Caja / Shift Manager Modal */}
       {showShiftManager && (activeShift || isAdmin) && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-white animate-scale-in">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
               <h3 className="text-lg font-black text-brand-900 flex items-center gap-2">
                 <Coins className="text-emerald-500" size={20} />
                 Gestión de Turno y Control de Caja
@@ -1354,7 +1354,7 @@ const Sales = () => {
               </button>
             </div>
 
-            <div className="flex border-b border-gray-100 bg-brand-50/30">
+            <div className="flex border-b border-gray-100 bg-brand-50/30 flex-shrink-0">
               {activeShift && (
                 <>
                   <button 
@@ -1408,7 +1408,7 @@ const Sales = () => {
               )}
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
               {shiftTab === 'open' && !activeShift && isAdmin && (
                 <div className="space-y-4 max-w-md mx-auto text-center py-6">
                   <div className="w-16 h-16 bg-brand-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
@@ -1727,7 +1727,7 @@ const Sales = () => {
       {/* Sales History and Return Modal */}
       {showHistoryModal && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-1.5 sm:p-6">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[96vh] sm:max-h-[90vh]">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[88vh] max-h-[88dvh] sm:max-h-[90vh]">
             <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h3 className="text-lg sm:text-xl font-bold text-brand-900 flex items-center gap-2">
                 <History className="text-chiluda-red" size={24} />
@@ -1843,8 +1843,8 @@ const Sales = () => {
       {/* Supervisor Credentials Modal overlay */}
       {cancelConfirm.show && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[250] p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-white p-6 animate-scale-in">
-            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white p-6 animate-scale-in">
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3 flex-shrink-0">
               <h3 className="text-md font-extrabold text-brand-900 flex items-center gap-2">
                 <Lock className="text-red-500 w-5 h-5" />
                 Autorización del Supervisor
@@ -1857,7 +1857,7 @@ const Sales = () => {
               </button>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-4 flex-1 overflow-y-auto pr-1">
               <div className="p-3 bg-red-50/50 border border-red-100 rounded-2xl">
                 <span className="text-[9px] font-black text-red-500 uppercase tracking-wider block">Producto a Cancelar:</span>
                 <span className="text-xs font-bold text-brand-900 block mt-0.5">{cancelConfirm.productName}</span>
@@ -1916,7 +1916,7 @@ const Sales = () => {
               )}
             </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100">
+            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100 flex-shrink-0">
               <button
                 onClick={() => setCancelConfirm({ show: false, saleId: null, reason: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, quantity: 1 })}
                 className="w-1/3 py-2.5 rounded-xl font-bold text-xs text-gray-500 bg-gray-100 hover:bg-gray-200"

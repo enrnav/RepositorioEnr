@@ -1032,235 +1032,239 @@ const Inventory = () => {
 
       {/* Modal Nuevo/Editar Producto */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-2xl lg:max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-white animate-slide-up">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-800">
+        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
+            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
+              <h3 className="text-base sm:text-lg font-black text-brand-900 flex items-center gap-2">
+                <Package className="text-chiluda-red" size={20} />
                 {editingProduct ? 'Modificar Producto' : 'Nuevo Producto'}
               </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
                 <X size={20} />
               </button>
             </div>
+            
             <form onSubmit={handleSaveProduct} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="p-6 overflow-y-auto flex-1">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                
-                {/* Columna Izquierda: Datos del Producto */}
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del Producto</label>
-                    <input
-                      type="text"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                      value={newProduct.name}
-                      onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
-                      placeholder="Ej. Papas Fuego"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Código de Barras (Opcional)</label>
-                    <input
-                      type="text"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                      value={newProduct.barcode}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const existing = inventory.find(p => p.barcode && p.barcode === val);
-                        
-                        if (existing) {
-                          setEditingProduct(existing);
-                          setNewProduct({
-                            name: existing.name,
-                            barcode: existing.barcode,
-                            price: existing.price,
-                            cost_price: existing.cost_price || 0,
-                            quantity: '',
-                            min_stock: existing.min_stock || 3,
-                            entry_date: existing.entry_date || '',
-                            image: existing.image || ''
-                          });
-                        } else {
-                          setNewProduct({ ...newProduct, barcode: val });
-                        }
-                      }}
-                      placeholder="Escanea o escribe el código"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* Columna Izquierda: Datos del Producto */}
+                  <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio Costo ($)</label>
+                      <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Nombre del Producto</label>
                       <input
-                        type="number"
-                        step="0.01"
-                        min="0"
+                        type="text"
                         required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                        value={newProduct.cost_price}
-                        onChange={(e) => setNewProduct({ ...newProduct, cost_price: e.target.value })}
-                        placeholder="0.00"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                        value={newProduct.name}
+                        onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
+                        placeholder="Ej. Papas Fuego"
                       />
                     </div>
+                    
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Precio Venta ($)</label>
+                      <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Código de Barras (Opcional)</label>
                       <input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                        value={newProduct.price}
-                        onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Stock Inicial</label>
-                      <input
-                        type="number"
-                        min="0"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                        value={newProduct.quantity}
-                        onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
-                        placeholder="0"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Stock Mínimo</label>
-                      <input
-                        type="number"
-                        min="1"
-                        required
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                        value={newProduct.min_stock}
-                        onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
-                        placeholder="3"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Ingreso</label>
-                    <input
-                      type="date"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-chiluda-red/50 focus:border-chiluda-red text-sm"
-                      value={newProduct.entry_date}
-                      onChange={(e) => setNewProduct({ ...newProduct, entry_date: e.target.value })}
-                    />
-                    <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, se asignará la fecha actual.</p>
-                  </div>
-
-                </div>
-
-                {/* Columna Derecha: Gestor de Variantes */}
-                <div className="space-y-4 border-t md:border-t-0 md:border-l border-gray-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-xs font-black uppercase text-brand-900 tracking-wider mb-2">Variantes (Opcional):</h4>
-                    <div className="bg-brand-50/50 p-3 rounded-2xl border border-gray-200/50 space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nombre (ej. M, Fresa)"
-                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
-                          value={newVariant.name}
-                          onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
-                        />
-                        <input
-                          type="text"
-                          placeholder="Cod. Barras"
-                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
-                          value={newVariant.barcode}
-                          onChange={(e) => setNewVariant({ ...newVariant, barcode: e.target.value })}
-                        />
-                      </div>
-                      <div className="grid grid-cols-3 gap-2">
-                        <input
-                          type="number"
-                          placeholder="Costo"
-                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
-                          value={newVariant.cost_price}
-                          onChange={(e) => setNewVariant({ ...newVariant, cost_price: e.target.value })}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Precio"
-                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
-                          value={newVariant.price}
-                          onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
-                        />
-                        <input
-                          type="number"
-                          placeholder="Stock"
-                          className="px-2.5 py-1.5 border border-gray-300 rounded-lg text-xs font-semibold w-full focus:outline-none focus:ring-1 focus:ring-brand-900"
-                          value={newVariant.quantity}
-                          onChange={(e) => setNewVariant({ ...newVariant, quantity: e.target.value })}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!newVariant.name.trim()) {
-                            alert("Nombre de variante requerido");
-                            return;
+                        type="text"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                        value={newProduct.barcode}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const existing = inventory.find(p => p.barcode && p.barcode === val);
+                          
+                          if (existing) {
+                            setEditingProduct(existing);
+                            setNewProduct({
+                              name: existing.name,
+                              barcode: existing.barcode,
+                              price: existing.price,
+                              cost_price: existing.cost_price || 0,
+                              quantity: '',
+                              min_stock: existing.min_stock || 3,
+                              entry_date: existing.entry_date || '',
+                              image: existing.image || ''
+                            });
+                          } else {
+                            setNewProduct({ ...newProduct, barcode: val });
                           }
-                          setProductVariants([...productVariants, { ...newVariant }]);
-                          setNewVariant({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
                         }}
-                        className="w-full py-1.5 bg-brand-900 text-white text-xs font-bold rounded-lg hover:bg-brand-950 transition-colors"
-                      >
-                        + Agregar Variante
-                      </button>
+                        placeholder="Escanea o escribe el código"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Precio Costo ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          required
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          value={newProduct.cost_price}
+                          onChange={(e) => setNewProduct({ ...newProduct, cost_price: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Precio Venta ($)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          required
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          value={newProduct.price}
+                          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                          placeholder="0.00"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Stock Inicial</label>
+                        <input
+                          type="number"
+                          min="0"
+                          required
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          value={newProduct.quantity}
+                          onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Stock Mínimo</label>
+                        <input
+                          type="number"
+                          min="1"
+                          required
+                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          value={newProduct.min_stock}
+                          onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
+                          placeholder="3"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Fecha de Ingreso</label>
+                      <input
+                        type="date"
+                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                        value={newProduct.entry_date}
+                        onChange={(e) => setNewProduct({ ...newProduct, entry_date: e.target.value })}
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, se asignará la fecha actual.</p>
                     </div>
                   </div>
 
-                  {/* Lista de Variantes Agregadas */}
-                  <div className="space-y-1.5 flex-1 max-h-48 overflow-y-auto mt-2 pr-1">
-                    {productVariants.length === 0 ? (
-                      <div className="text-[11px] text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-xl">
-                        Sin variantes agregadas
-                      </div>
-                    ) : (
-                      productVariants.map((v, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2 rounded-xl text-xs font-semibold shadow-sm hover:shadow transition-shadow">
-                          <div className="overflow-hidden pr-2">
-                            <span className="font-extrabold text-brand-900 block truncate">{v.name}</span>
-                            {v.barcode && <span className="text-[9px] text-gray-400 block truncate">@{v.barcode}</span>}
-                            <div className="text-[9px] text-gray-400 mt-0.5 font-medium">
-                              Costo: ${v.cost_price || 'Padre'} | Precio: ${v.price || 'Padre'} | Stock: {v.quantity}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setProductVariants(productVariants.filter((_, subIdx) => subIdx !== idx))}
-                            className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                  {/* Columna Derecha: Gestor de Variantes */}
+                  <div className="space-y-4 md:border-l md:border-t-0 border-t border-gray-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-start">
+                    <div>
+                      <h4 className="text-xs font-black uppercase text-brand-900 tracking-wider mb-2">Variantes (Opcional):</h4>
+                      <div className="bg-brand-50/50 p-3 rounded-2xl border border-gray-200/50 space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nombre (ej. M, Fresa)"
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            value={newVariant.name}
+                            onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
+                          />
+                          <input
+                            type="text"
+                            placeholder="Cod. Barras"
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            value={newVariant.barcode}
+                            onChange={(e) => setNewVariant({ ...newVariant, barcode: e.target.value })}
+                          />
                         </div>
-                      ))
-                    )}
+                        <div className="grid grid-cols-3 gap-2">
+                          <input
+                            type="number"
+                            placeholder="Costo"
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            value={newVariant.cost_price}
+                            onChange={(e) => setNewVariant({ ...newVariant, cost_price: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Precio"
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            value={newVariant.price}
+                            onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
+                          />
+                          <input
+                            type="number"
+                            placeholder="Stock"
+                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            value={newVariant.quantity}
+                            onChange={(e) => setNewVariant({ ...newVariant, quantity: e.target.value })}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!newVariant.name.trim()) {
+                              alert("Nombre de variante requerido");
+                              return;
+                            }
+                            setProductVariants([...productVariants, { ...newVariant }]);
+                            setNewVariant({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
+                          }}
+                          className="w-full py-2 bg-brand-900 text-white text-xs font-bold rounded-xl hover:bg-brand-950 transition-colors shadow-sm"
+                        >
+                          + Agregar Variante
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Lista de Variantes Agregadas */}
+                    <div className="space-y-1.5 flex-1 max-h-48 overflow-y-auto mt-2 pr-1">
+                      {productVariants.length === 0 ? (
+                        <div className="text-[11px] text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-xl">
+                          Sin variantes agregadas
+                        </div>
+                      ) : (
+                        productVariants.map((v, idx) => (
+                          <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2.5 rounded-2xl text-xs font-semibold shadow-sm hover:shadow transition-shadow">
+                            <div className="overflow-hidden pr-2">
+                              <span className="font-extrabold text-brand-900 block truncate">{v.name}</span>
+                              {v.barcode && <span className="text-[9px] text-gray-400 block truncate">@{v.barcode}</span>}
+                              <div className="text-[9px] text-gray-400 mt-0.5 font-medium">
+                                Costo: ${v.cost_price || 'Padre'} | Precio: ${v.price || 'Padre'} | Stock: {v.quantity}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setProductVariants(productVariants.filter((_, subIdx) => subIdx !== idx))}
+                              className="text-red-500 hover:text-red-700 p-1 flex-shrink-0"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
+
                 </div>
-
-              </div>
-
               </div>
               
               {/* Botones de Acción */}
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-150 flex justify-end space-x-3 flex-shrink-0">
+              <div className="px-4 sm:px-6 py-4 bg-gray-50/80 border-t border-gray-150 flex justify-end space-x-3 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-white transition-colors text-sm font-semibold"
+                  className="px-4 py-2 border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-100 transition-colors text-xs font-bold"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-chiluda-red text-white rounded-md hover:bg-chiluda-darkred transition-colors text-sm font-bold shadow-sm"
+                  className="px-4 py-2 bg-chiluda-red text-white rounded-xl hover:bg-chiluda-darkred transition-colors text-xs font-extrabold shadow-sm active:scale-95 transition-all"
                 >
                   {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
                 </button>

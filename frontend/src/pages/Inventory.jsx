@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, Plus, Search, Edit2, Trash2, X, Package } from 'lucide-react';
+import { Download, Plus, Search, Edit2, Trash2, X, Package, ChevronDown, TrendingUp, History } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -10,6 +10,7 @@ import { fetchInventory, createProduct, updateProduct, deleteProduct, fetchSales
 const Inventory = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [inventory, setInventory] = useState([]);
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isStockModalOpen, setIsStockModalOpen] = useState(false);
@@ -807,28 +808,82 @@ const Inventory = () => {
           Gestión de Inventario
         </h2>
 
-        <div className="flex flex-wrap gap-2.5 sm:gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0">
-          <button
-            onClick={() => setIsStockModalOpen(true)}
-            className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-200 text-stone-600 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-[11px] sm:text-xs"
-          >
-            <Download size={16} />
-            <span>Exportar Stock</span>
-          </button>
-          <button
-            onClick={() => setIsExportModalOpen(true)}
-            className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-200 text-stone-600 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-[11px] sm:text-xs"
-          >
-            <Download size={16} />
-            <span>Exportar Ventas</span>
-          </button>
-          <button
-            onClick={() => setIsReturnsExportModalOpen(true)}
-            className="flex items-center space-x-2 bg-white/90 backdrop-blur-xl border border-stone-200 text-stone-600 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-[11px] sm:text-xs"
-          >
-            <Download size={16} />
-            <span>Exportar Devoluciones</span>
-          </button>
+        <div className="flex flex-wrap sm:flex-nowrap gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0 relative">
+          <div className="relative w-full sm:w-auto">
+            <button
+              onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-white/95 backdrop-blur-xl border border-stone-200 text-stone-600 px-4 py-2.5 sm:px-5 sm:py-2.5 rounded-full hover:bg-stone-50 hover:text-chiluda-red hover:border-chiluda-red/30 hover:shadow-soft active:scale-[0.98] transition-all duration-300 font-bold text-xs uppercase tracking-wider"
+            >
+              <Download size={15} />
+              <span>Exportar Reportes</span>
+              <ChevronDown size={14} className={`transition-transform duration-300 ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {isExportDropdownOpen && (
+              <>
+                <div 
+                  className="fixed inset-0 z-40 cursor-default" 
+                  onClick={() => setIsExportDropdownOpen(false)} 
+                />
+                <div className="absolute right-0 top-full mt-2 w-full sm:w-72 bg-white/95 backdrop-blur-2xl rounded-2xl shadow-xl border border-stone-200/60 overflow-hidden z-50 animate-slide-up p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(false);
+                      setIsStockModalOpen(true);
+                    }}
+                    className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-stone-50 text-left transition-all duration-200 group"
+                    style={{ textTransform: 'none' }}
+                  >
+                    <div className="p-2 bg-amber-500/10 text-amber-600 rounded-lg group-hover:bg-amber-500 group-hover:text-white transition-colors duration-200">
+                      <Package size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-black text-brand-900 group-hover:text-chiluda-red transition-colors duration-200 uppercase tracking-wider">Exportar Stock</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-0.5 leading-tight">Inventario actual en formato Excel, PDF o SQL</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(false);
+                      setIsExportModalOpen(true);
+                    }}
+                    className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-stone-50 text-left transition-all duration-200 group"
+                    style={{ textTransform: 'none' }}
+                  >
+                    <div className="p-2 bg-emerald-500/10 text-emerald-600 rounded-lg group-hover:bg-emerald-500 group-hover:text-white transition-colors duration-200">
+                      <TrendingUp size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-black text-brand-900 group-hover:text-chiluda-red transition-colors duration-200 uppercase tracking-wider">Exportar Ventas</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-0.5 leading-tight">Ventas históricas diarias, semanales o mensuales</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(false);
+                      setIsReturnsExportModalOpen(true);
+                    }}
+                    className="w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl hover:bg-stone-50 text-left transition-all duration-200 group"
+                    style={{ textTransform: 'none' }}
+                  >
+                    <div className="p-2 bg-red-500/10 text-red-650 rounded-lg group-hover:bg-red-500 group-hover:text-white transition-colors duration-200">
+                      <History size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[11px] font-black text-brand-900 group-hover:text-chiluda-red transition-colors duration-200 uppercase tracking-wider">Exportar Devoluciones</p>
+                      <p className="text-[10px] text-gray-400 font-bold mt-0.5 leading-tight">Cancelaciones y devoluciones con filtro por periodo</p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             onClick={() => {
               setEditingProduct(null);
@@ -836,7 +891,7 @@ const Inventory = () => {
               setProductVariants([]);
               setIsModalOpen(true);
             }}
-            className="flex items-center space-x-2 bg-chiluda-red text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float font-black text-[11px] sm:text-xs"
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float font-black text-xs"
           >
             <Plus size={16} />
             <span>Nuevo Producto</span>

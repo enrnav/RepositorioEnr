@@ -744,6 +744,49 @@ def add_cash_movement(movement: schemas.CashMovementCreate, db: Session = Depend
     db.refresh(db_mov)
     return db_mov
 
+@router.get("/shifts/active-all")
+def get_all_active_shifts(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
+        
+    active_shifts = db.query(models.Shift).filter(models.Shift.status == "open").all()
+    
+    result = []
+    for s in active_shifts:
+        user = db.query(models.User).filter(models.User.id == s.user_id).first()
+        result.append({
+            "id": s.id,
+            "user_id": s.user_id,
+            "username": user.username if user else "Desconocido",
+            "full_name": user.full_name if user else "Desconocido",
+            "start_time": s.start_time,
+            "initial_cash": s.initial_cash,
+            "final_cash_expected": s.final_cash_expected,
+            "status": s.status
+        })
+    return result
+
+@router.post("/shifts/{shift_id}/close", response_model=schemas.ShiftResponse)
+def close_any_shift(shift_id: int, close_data: schemas.ShiftClose, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
+        
+    shift = db.query(models.Shift).filter(
+        models.Shift.id == shift_id,
+        models.Shift.status == "open"
+    ).first()
+    if not shift:
+        raise HTTPException(status_code=404, detail="Turno no encontrado o ya está cerrado.")
+        
+    shift.end_time = datetime.utcnow().isoformat()
+    shift.final_cash_real = close_data.final_cash_real
+    shift.difference = close_data.final_cash_real - shift.final_cash_expected
+    shift.status = "closed"
+    
+    db.commit()
+    db.refresh(shift)
+    return shift
+
 @router.get("/shifts/{shift_id}/report")
 def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     shift = db.query(models.Shift).filter(models.Shift.id == shift_id).first()

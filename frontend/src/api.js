@@ -207,6 +207,26 @@ export const fetchShiftReport = async (shiftId) => {
     }
 };
 
+export const fetchActiveShiftsAdmin = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/shifts/active-all`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching active shifts for admin:", error);
+        throw error;
+    }
+};
+
+export const closeShiftAdmin = async (shiftId, finalCashReal) => {
+    try {
+        const response = await axios.post(`${API_URL}/shifts/${shiftId}/close`, { final_cash_real: finalCashReal });
+        return response.data;
+    } catch (error) {
+        console.error(`Error closing shift ${shiftId} for admin:`, error);
+        throw error;
+    }
+};
+
 // --- CHECKOUT API ENDPOINT ---
 
 export const checkoutSales = async (checkoutData) => {

@@ -7,7 +7,8 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   fetchInventory, checkoutSales, fetchRecentSales, cancelSale, 
-  fetchActiveShift, openShift, closeShift, addCashMovement, fetchShiftReport 
+  fetchActiveShift, openShift, closeShift, addCashMovement, fetchShiftReport,
+  fetchActiveShiftsAdmin, closeShiftAdmin
 } from '../api';
 
 
@@ -65,6 +66,12 @@ const Sales = () => {
   // Variants
   const [showVariantModal, setShowVariantModal] = useState(false);
   const [variantProduct, setVariantProduct] = useState(null);
+
+  // Admin Shift States
+  const [adminShifts, setAdminShifts] = useState([]);
+  const [loadingAdminShifts, setLoadingAdminShifts] = useState(false);
+  const [adminCloseReal, setAdminCloseReal] = useState('');
+  const [selectedShiftToClose, setSelectedShiftToClose] = useState(null);
   
   // Refs
   const searchInputRef = useRef(null);
@@ -164,6 +171,41 @@ const Sales = () => {
       setShiftReport(data);
     } catch (error) {
       console.error("Error loading shift report", error);
+    }
+  };
+
+  const loadAdminShifts = async () => {
+    setLoadingAdminShifts(true);
+    try {
+      const data = await fetchActiveShiftsAdmin();
+      setAdminShifts(data);
+    } catch (error) {
+      console.error("Error loading active shifts", error);
+      showAlert("Error", "No se pudieron cargar los turnos activos.", "error");
+    } finally {
+      setLoadingAdminShifts(false);
+    }
+  };
+
+  const handleCloseShiftAdmin = async (shiftId, cashReal) => {
+    if (isNaN(cashReal) || cashReal < 0) {
+      showAlert("Monto Inválido", "Ingresa el efectivo real contado en caja.", "warning");
+      return;
+    }
+    try {
+      await closeShiftAdmin(shiftId, cashReal);
+      showAlert("Caja Cerrada", "El turno de caja del cajero ha sido cerrado correctamente.", "success");
+      setAdminCloseReal('');
+      setSelectedShiftToClose(null);
+      loadAdminShifts();
+      if (activeShift && activeShift.id === shiftId) {
+        setActiveShift(null);
+        setCart([]);
+      }
+      window.dispatchEvent(new Event("shiftChanged"));
+    } catch (error) {
+      console.error("Error closing shift as admin", error);
+      showAlert("Error", error.response?.data?.detail || "No se pudo cerrar la caja.", "error");
     }
   };
 
@@ -588,11 +630,18 @@ const Sales = () => {
         </h2>
         
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-          {activeShift && (
+          {(activeShift || isAdmin) && (
             <button
               onClick={() => {
-                loadShiftReport(activeShift.id);
-                setShiftTab('report');
+                if (activeShift) {
+                  loadShiftReport(activeShift.id);
+                  setShiftTab('report');
+                } else {
+                  setShiftTab('open');
+                }
+                if (isAdmin) {
+                  loadAdminShifts();
+                }
                 setShowShiftManager(true);
               }}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white/80 backdrop-blur-md border border-gray-200 text-gray-700 px-4 py-2 rounded-full hover:bg-brand-50 hover:text-chiluda-red hover:border-chiluda-red/30 transition-all shadow-sm font-semibold text-xs"
@@ -1288,7 +1337,7 @@ const Sales = () => {
       )}
 
       {/* Control de Caja / Shift Manager Modal */}
-      {showShiftManager && activeShift && (
+      {showShiftManager && (activeShift || isAdmin) && (
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-white animate-scale-in">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -1302,34 +1351,91 @@ const Sales = () => {
             </div>
 
             <div className="flex border-b border-gray-100 bg-brand-50/30">
-              <button 
-                onClick={() => setShiftTab('report')}
-                className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                  shiftTab === 'report' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
-                }`}
-              >
-                Corte X (Ventas & Resumen)
-              </button>
-              <button 
-                onClick={() => setShiftTab('movement')}
-                className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                  shiftTab === 'movement' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
-                }`}
-              >
-                Registrar Movimiento Efectivo
-              </button>
-              <button 
-                onClick={() => setShiftTab('close')}
-                className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                  shiftTab === 'close' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
-                }`}
-              >
-                Corte Z (Cierre de Caja)
-              </button>
+              {activeShift && (
+                <>
+                  <button 
+                    onClick={() => setShiftTab('report')}
+                    className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
+                      shiftTab === 'report' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                    }`}
+                  >
+                    Corte X (Ventas & Resumen)
+                  </button>
+                  <button 
+                    onClick={() => setShiftTab('movement')}
+                    className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
+                      shiftTab === 'movement' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                    }`}
+                  >
+                    Registrar Movimiento Efectivo
+                  </button>
+                  <button 
+                    onClick={() => setShiftTab('close')}
+                    className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
+                      shiftTab === 'close' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                    }`}
+                  >
+                    Corte Z (Cierre de Caja)
+                  </button>
+                </>
+              )}
+              {!activeShift && isAdmin && (
+                <button 
+                  onClick={() => setShiftTab('open')}
+                  className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
+                    shiftTab === 'open' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                  }`}
+                >
+                  Abrir Mi Caja
+                </button>
+              )}
+              {isAdmin && (
+                <button 
+                  onClick={() => {
+                    setShiftTab('adminShifts');
+                    loadAdminShifts();
+                  }}
+                  className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
+                    shiftTab === 'adminShifts' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                  }`}
+                >
+                  Turnos de Cajeros
+                </button>
+              )}
             </div>
 
             <div className="p-6 overflow-y-auto max-h-[60vh] space-y-6">
-              {shiftTab === 'report' && shiftReport && (
+              {shiftTab === 'open' && !activeShift && isAdmin && (
+                <div className="space-y-4 max-w-md mx-auto text-center py-6">
+                  <div className="w-16 h-16 bg-brand-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+                    <Coins size={32} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-brand-900 mb-1">Abrir Turno de Caja</h4>
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      Como administrador, puedes iniciar tu propio turno de caja si deseas realizar ventas directas y registrar movimientos en esta sesión.
+                    </p>
+                  </div>
+                  
+                  <div className="w-full p-5 bg-brand-50/50 rounded-2xl border border-gray-100 flex flex-col gap-3">
+                    <label className="text-xs font-bold text-gray-500 text-left uppercase tracking-wider">Fondo Inicial ($ MXN):</label>
+                    <input
+                      type="number"
+                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-center font-bold text-xl text-brand-900"
+                      value={initialCashInput}
+                      onChange={(e) => setInitialCashInput(e.target.value)}
+                    />
+                    <button
+                      onClick={handleOpenShift}
+                      className="w-full py-3 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred transition-all shadow-md active:scale-95 text-sm"
+                    >
+                      Iniciar Turno
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {shiftTab === 'report' && shiftReport && activeShift && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100">
@@ -1376,7 +1482,7 @@ const Sales = () => {
                 </div>
               )}
 
-              {shiftTab === 'movement' && (
+              {shiftTab === 'movement' && activeShift && (
                 <div className="space-y-4">
                   <div className="flex gap-4">
                     <button
@@ -1432,7 +1538,7 @@ const Sales = () => {
                 </div>
               )}
 
-              {shiftTab === 'close' && shiftReport && (
+              {shiftTab === 'close' && shiftReport && activeShift && (
                 <div className="space-y-4">
                   <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-800 text-xs sm:text-sm">
                     <AlertCircle className="shrink-0 text-amber-600" size={20} />
@@ -1479,6 +1585,133 @@ const Sales = () => {
                   >
                     Confirmar Corte Z y Cerrar Caja
                   </button>
+                </div>
+              )}
+
+              {shiftTab === 'adminShifts' && isAdmin && (
+                <div className="space-y-4">
+                  {selectedShiftToClose ? (
+                    <div className="space-y-4 animate-scale-in">
+                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-800 text-xs sm:text-sm">
+                        <AlertCircle className="shrink-0 text-amber-600" size={20} />
+                        <div className="space-y-1">
+                          <p className="font-extrabold">Corte Forzado por Administrador</p>
+                          <p className="opacity-90 leading-relaxed">
+                            Estás realizando el cierre del turno del cajero <strong>{selectedShiftToClose.full_name || selectedShiftToClose.username}</strong>. El cajero será desconectado del control de caja.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border border-gray-100 rounded-2xl p-4 bg-white space-y-2.5">
+                        <div className="flex justify-between text-xs font-bold">
+                          <span className="text-gray-500">Fondo Inicial:</span>
+                          <span className="text-brand-900">${selectedShiftToClose.initial_cash.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs font-bold">
+                          <span className="text-gray-500">Efectivo Esperado en Caja:</span>
+                          <span className="text-emerald-600 font-extrabold">${selectedShiftToClose.final_cash_expected.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs font-bold">
+                          <span className="text-gray-500">Hora de Inicio:</span>
+                          <span className="text-brand-900">{new Date(selectedShiftToClose.start_time).toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Efectivo Físico Contado ($):</label>
+                        <input
+                          type="number"
+                          placeholder="Ej. 1000"
+                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-center font-bold text-2xl text-brand-900"
+                          value={adminCloseReal}
+                          onChange={(e) => setAdminCloseReal(e.target.value)}
+                        />
+                      </div>
+
+                      {adminCloseReal !== '' && (
+                        <div className={`p-4 rounded-2xl border text-center font-extrabold text-sm animate-fade-in ${
+                          parseFloat(adminCloseReal) - selectedShiftToClose.final_cash_expected === 0 
+                            ? 'bg-green-50 border-green-200 text-green-800' 
+                            : 'bg-red-50 border-red-200 text-red-800'
+                        }`}>
+                          {parseFloat(adminCloseReal) - selectedShiftToClose.final_cash_expected === 0 
+                            ? 'Caja cuadrada ($0.00 descuadre)' 
+                            : `Diferencia (Descuadre): $${(parseFloat(adminCloseReal) - selectedShiftToClose.final_cash_expected).toFixed(2)}`
+                          }
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => {
+                            setSelectedShiftToClose(null);
+                            setAdminCloseReal('');
+                          }}
+                          className="flex-1 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 active:scale-95 transition-all text-sm"
+                        >
+                          Atrás
+                        </button>
+                        <button
+                          onClick={() => handleCloseShiftAdmin(selectedShiftToClose.id, parseFloat(adminCloseReal))}
+                          className="flex-[2] py-3 bg-red-600 text-white font-extrabold rounded-xl hover:bg-red-700 active:scale-95 transition-all text-sm shadow-md"
+                        >
+                          Confirmar Corte y Cerrar Caja
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {loadingAdminShifts ? (
+                        <div className="text-center py-8 text-gray-500 font-medium text-xs">
+                          Cargando turnos de cajeros...
+                        </div>
+                      ) : adminShifts.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500 font-medium text-xs">
+                          No hay turnos activos de otros cajeros.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-brand-50/50 border-b border-gray-100 text-gray-500 font-bold">
+                                <th className="p-3">Cajero</th>
+                                <th className="p-3">Apertura</th>
+                                <th className="p-3 text-right">Esperado</th>
+                                <th className="p-3 text-center">Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {adminShifts.map((s) => (
+                                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50 font-medium">
+                                  <td className="p-3">
+                                    <div className="font-bold text-brand-900">{s.full_name}</div>
+                                    <div className="text-[10px] text-gray-400">@{s.username}</div>
+                                  </td>
+                                  <td className="p-3 text-gray-500">
+                                    {new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </td>
+                                  <td className="p-3 text-right font-bold text-emerald-600">
+                                    ${s.final_cash_expected.toFixed(2)}
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <button
+                                      onClick={() => {
+                                        setSelectedShiftToClose(s);
+                                        setAdminCloseReal('');
+                                      }}
+                                      className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-3 py-1.5 rounded-xl font-bold transition-all text-[11px]"
+                                    >
+                                      Hacer Corte
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1656,7 +1889,7 @@ const Sales = () => {
               {!isAdmin && !isStaff && (
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Usuario Supervisor:</label>
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Usuario Supervisor o Administrador:</label>
                     <input
                       type="text"
                       className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-xs font-bold"

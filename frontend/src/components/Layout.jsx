@@ -177,7 +177,7 @@ const Layout = () => {
             </Link>
           </div>
         </header>
-        <main className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative z-10">
+        <main className="flex-1 overflow-auto p-4 md:p-8 relative z-10">
           <div className="max-w-[1600px] mx-auto">
             <Outlet />
           </div>
@@ -338,7 +338,7 @@ const Layout = () => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-auto p-4 md:p-8 animate-fade-in relative">
+        <div className="flex-1 overflow-auto p-4 md:p-8 relative">
           <div className="max-w-7xl mx-auto">
             <Outlet />
           </div>

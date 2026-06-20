@@ -1721,10 +1721,10 @@ const Sales = () => {
 
       {/* Sales History and Return Modal */}
       {showHistoryModal && (
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-3 sm:p-6">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[85vh] sm:max-h-[90vh]">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h3 className="text-xl font-bold text-brand-900 flex items-center gap-2">
+        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-1.5 sm:p-6">
+          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[96vh] sm:max-h-[90vh]">
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h3 className="text-lg sm:text-xl font-bold text-brand-900 flex items-center gap-2">
                 <History className="text-chiluda-red" size={24} />
                 Historial de Ventas e Incidencias
               </h3>
@@ -1733,7 +1733,7 @@ const Sales = () => {
               </button>
             </div>
             
-            <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
+            <div className="p-3 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
               <div className="flex bg-brand-50/60 p-1 rounded-2xl border border-gray-100 max-w-md">
                 <button
                   type="button"

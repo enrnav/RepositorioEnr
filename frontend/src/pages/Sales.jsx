@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, 
   X, Printer, CreditCard, Banknote, History, Coins, ArrowRight, AlertCircle, Lock,
@@ -924,7 +925,7 @@ const Sales = () => {
       </div>
 
       {/* Checkout Split Payment Modal */}
-      {showCheckoutModal && (
+      {showCheckoutModal && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden border border-white animate-scale-in">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -1182,11 +1183,12 @@ const Sales = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Product Variant Quick Selection Modal */}
-      {showVariantModal && variantProduct && (
+      {showVariantModal && variantProduct && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden border border-white animate-scale-in">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -1229,11 +1231,12 @@ const Sales = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Ticket Modal (Thermal adaptation) */}
-      {showTicketModal && lastSaleData && (
+      {showTicketModal && lastSaleData && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4 print:p-0 print:bg-white print:items-start">
           <div id="printable-ticket" className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 print:hidden">
@@ -1333,11 +1336,12 @@ const Sales = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Control de Caja / Shift Manager Modal */}
-      {showShiftManager && (activeShift || isAdmin) && (
+      {showShiftManager && (activeShift || isAdmin) && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden border border-white animate-scale-in">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -1716,11 +1720,12 @@ const Sales = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Sales History and Return Modal */}
-      {showHistoryModal && (
+      {showHistoryModal && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-1.5 sm:p-6">
           <div className="bg-white/95 backdrop-blur-2xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[96vh] sm:max-h-[90vh]">
             <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
@@ -1831,11 +1836,12 @@ const Sales = () => {
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Supervisor Credentials Modal overlay */}
-      {cancelConfirm.show && (
+      {cancelConfirm.show && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[250] p-4">
           <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden border border-white p-6 animate-scale-in">
             <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
@@ -1925,11 +1931,12 @@ const Sales = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Global alert Toast overlay */}
-      {customAlert.show && (
+      {customAlert.show && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-xs overflow-hidden border border-white p-5 text-center animate-scale-in">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
@@ -1952,7 +1959,8 @@ const Sales = () => {
               Cerrar
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Download, Plus, Search, Edit2, Trash2, X, Package, ChevronDown, TrendingUp, History } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
 import { jsPDF } from 'jspdf';
@@ -902,7 +903,7 @@ const Inventory = () => {
       {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg border border-red-200">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-3 rounded-lg border border-green-200">{success}</div>}
 
-      {deleteConfirm && (
+      {deleteConfirm && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up">
             <div className="p-6 text-center">
@@ -927,7 +928,8 @@ const Inventory = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
@@ -1031,7 +1033,7 @@ const Inventory = () => {
       </div>
 
       {/* Modal Nuevo/Editar Producto */}
-      {isModalOpen && (
+      {isModalOpen && createPortal(
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
           <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
             <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
@@ -1271,10 +1273,11 @@ const Inventory = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Modal Exportar */}
-      {isExportModalOpen && (
+      {isExportModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -1339,10 +1342,11 @@ const Inventory = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Modal Exportar Stock */}
-      {isStockModalOpen && (
+      {isStockModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -1388,10 +1392,11 @@ const Inventory = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       {/* Modal Exportar Devoluciones */}
-      {isReturnsExportModalOpen && (
+      {isReturnsExportModalOpen && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-md overflow-hidden animate-scale-in">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -1456,7 +1461,8 @@ const Inventory = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Users as UsersIcon, UserPlus, Shield, User, Edit2, Trash2, X } from 'lucide-react';
 import { API_URL } from '../api';
 
@@ -183,7 +184,7 @@ const Users = () => {
         </div>
       </div>
 
-      {error && (
+      {error && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up border border-red-100">
             <div className="p-6 text-center">
@@ -200,10 +201,11 @@ const Users = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {success && (
+      {success && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up border border-green-100">
             <div className="p-6 text-center">
@@ -222,10 +224,11 @@ const Users = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {deleteConfirm && (
+      {deleteConfirm && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up">
             <div className="p-6 text-center">
@@ -250,10 +253,11 @@ const Users = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showForm && (
+      {showForm && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-soft w-full max-w-md overflow-hidden border border-white animate-slide-up">
             <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -368,7 +372,8 @@ const Users = () => {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <div className="bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">

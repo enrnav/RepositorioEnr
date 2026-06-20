@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Receipt, Search, Plus, FileText, Download, Mail, Trash2, Loader, CheckCircle, AlertCircle, Calendar, DollarSign, CreditCard } from 'lucide-react';
 import { API_URL, fetchBillingProfiles, createBillingProfile, fetchTicketDetails, createInvoice, fetchInvoices, cancelInvoice } from '../api';
 
@@ -852,7 +853,7 @@ const Invoices = () => {
       )}
 
       {/* TIMBRADO EXITOSO DIALOG */}
-      {successInvoice && (
+      {successInvoice && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-soft w-full max-w-lg overflow-hidden border border-white animate-slide-up">
             <div className="p-8 text-center space-y-5">
@@ -911,11 +912,12 @@ const Invoices = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ERROR MSG DIALOG */}
-      {errorMsg && (
+      {errorMsg && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-soft w-full max-w-sm overflow-hidden animate-slide-up border border-red-100">
             <div className="p-6 text-center space-y-4">
@@ -932,11 +934,12 @@ const Invoices = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* SUCCESS GENERAL NOTIFICATION MODAL */}
-      {successMsg && (
+      {successMsg && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-soft w-full max-w-sm overflow-hidden animate-slide-up border border-emerald-100">
             <div className="p-6 text-center space-y-4">
@@ -953,11 +956,12 @@ const Invoices = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* CONFIRM CANCEL DIALOG */}
-      {confirmCancelInvoiceId && (
+      {confirmCancelInvoiceId && createPortal(
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-soft w-full max-w-sm overflow-hidden animate-slide-up">
             <div className="p-6 text-center space-y-4">
@@ -984,7 +988,8 @@ const Invoices = () => {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

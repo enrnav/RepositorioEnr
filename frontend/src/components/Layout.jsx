@@ -333,6 +333,25 @@ const Layout = () => {
               )}
             </button>
 
+            <div className="hidden sm:flex flex-col items-end mr-4 text-right select-none ml-4">
+              <span className="text-xs font-extrabold text-brand-900 leading-none">{user.full_name}</span>
+              <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">
+                {user.role === 'admin' ? 'Administrador' : 'Supervisor'}
+              </span>
+            </div>
+
+            <Link
+              to="/login"
+              onClick={() => {
+                sessionStorage.removeItem('user');
+                sessionStorage.removeItem('token');
+              }}
+              className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0"
+            >
+              <LogOut size={18} className="shrink-0" />
+              <span className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:inline">Cerrar Sesión</span>
+            </Link>
+
             {/* Notifications Dropdown */}
             {showNotifications && (
               <>

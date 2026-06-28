@@ -248,7 +248,7 @@ const Layout = () => {
           <X size={20} />
         </button>
 
-        <div className="h-20 flex items-center space-x-3 px-6 border-b border-stone-200 select-none bg-white">
+        <div className="h-20 flex items-center space-x-3 px-6 border-b border-stone-200 select-none bg-white flex-shrink-0">
           <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain animate-fade-in" />
           <div className="flex flex-col items-start max-w-[180px]">
             <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
@@ -303,7 +303,7 @@ const Layout = () => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative z-10 lg:z-20 bg-transparent">
         {/* Header */}
-        <header className="h-20 glass sticky top-0 flex items-center justify-between px-4 lg:px-8 z-10 shadow-sm border-b border-stone-200/30">
+        <header className="h-20 glass sticky top-0 flex items-center justify-between px-4 lg:px-8 z-10 shadow-sm border-b border-stone-200/30 flex-shrink-0">
           <div className="flex items-center space-x-2">
             <button 
               onClick={() => setIsSidebarOpen(true)}

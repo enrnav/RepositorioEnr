@@ -151,11 +151,12 @@ class CheckoutItem(BaseModel):
 
 class CheckoutRequest(BaseModel):
     items: List[CheckoutItem]
-    payment_method: str # 'efectivo', 'tarjeta', 'mixto'
+    payment_method: str # 'efectivo', 'tarjeta', 'mixto', 'credito'
     cash_amount: float = 0.0
     card_amount: float = 0.0
     discount: float = 0.0
     shift_id: Optional[int] = None
+    customer_id: Optional[int] = None
 
 
 # Billing & Invoice Schemas
@@ -192,6 +193,128 @@ class InvoiceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Supplier Schemas
+class SupplierBase(BaseModel):
+    name: str
+    rfc: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class SupplierCreate(SupplierBase):
+    pass
+
+
+class SupplierResponse(SupplierBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+# Purchase Item Schemas
+class PurchaseItemBase(BaseModel):
+    product_id: int
+    variant_id: Optional[int] = None
+    quantity: int
+    cost_price: float
+    price: Optional[float] = None
+
+
+class PurchaseItemCreate(PurchaseItemBase):
+    pass
+
+
+class PurchaseItemResponse(PurchaseItemBase):
+    id: int
+    purchase_id: int
+    product_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Purchase Schemas
+class PurchaseCreate(BaseModel):
+    supplier_id: Optional[int] = None
+    invoice_number: Optional[str] = None
+    notes: Optional[str] = None
+    items: List[PurchaseItemCreate]
+
+
+class PurchaseResponse(BaseModel):
+    id: int
+    supplier_id: Optional[int] = None
+    invoice_number: Optional[str] = None
+    total_cost: float
+    created_at: str
+    notes: Optional[str] = None
+    user_id: Optional[int] = None
+    items: List[PurchaseItemResponse] = []
+    supplier_name: Optional[str] = None
+    user_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+# Store Settings Schemas
+class StoreSettingsBase(BaseModel):
+    store_name: str
+    rfc: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = None
+    tax_rate: float = 16.0
+    ticket_footer: Optional[str] = "¡Gracias por su compra!"
+
+class StoreSettingsCreate(StoreSettingsBase):
+    pass
+
+class StoreSettingsResponse(StoreSettingsBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+# Customer Schemas
+class CustomerBase(BaseModel):
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    credit_limit: float = 0.0
+
+class CustomerCreate(CustomerBase):
+    pass
+
+class CustomerResponse(CustomerBase):
+    id: int
+    current_balance: float
+
+    class Config:
+        from_attributes = True
+
+# Customer Payment Schemas
+class CustomerPaymentCreate(BaseModel):
+    amount: float
+    notes: Optional[str] = None
+
+class CustomerPaymentResponse(BaseModel):
+    id: int
+    customer_id: int
+    shift_id: Optional[int] = None
+    user_id: int
+    amount: float
+    created_at: str
+    notes: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 
 
 

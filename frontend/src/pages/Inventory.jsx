@@ -805,7 +805,7 @@ const Inventory = () => {
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
         <h2 className="text-xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center gap-2">
-          <Package className="text-chiluda-red w-8 h-8 shrink-0" />
+          <Package className="text-chiluda-red w-8 h-8 shrink-0 animate-bounce" />
           <span>Gestión de Inventario</span>
         </h2>
 
@@ -932,7 +932,7 @@ const Inventory = () => {
         document.body
       )}
 
-      <div className="bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
+      <div className="bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
         {/* Toolbar */}
         <div className="p-4 md:p-6 border-b border-gray-100/50 flex flex-col md:flex-row items-start md:items-center justify-between bg-white/40 gap-4">
           <div className="relative w-full md:w-80">

@@ -88,6 +88,7 @@ class SaleHistory(Base):
     cancel_reason = Column(String, nullable=True)
     authorized_by = Column(String, nullable=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id"), index=True, nullable=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"), index=True, nullable=True)
 
 class ProductReturn(Base):
     __tablename__ = "product_returns"
@@ -120,6 +121,81 @@ class Invoice(Base):
     pdf_url = Column(String, nullable=True)
     created_at = Column(String)
     status = Column(String, default="active") # "active", "cancelled"
+
+
+class Supplier(Base):
+    __tablename__ = "suppliers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    rfc = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+
+
+class Purchase(Base):
+    __tablename__ = "purchases"
+    id = Column(Integer, primary_key=True, index=True)
+    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
+    invoice_number = Column(String, nullable=True)
+    total_cost = Column(Float, default=0.0)
+    created_at = Column(String)
+    notes = Column(String, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    supplier = relationship("Supplier")
+    items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+
+
+class PurchaseItem(Base):
+    __tablename__ = "purchase_items"
+    id = Column(Integer, primary_key=True, index=True)
+    purchase_id = Column(Integer, ForeignKey("purchases.id"))
+    product_id = Column(Integer, ForeignKey("products.id"))
+    variant_id = Column(Integer, ForeignKey("product_variants.id"), nullable=True)
+    quantity = Column(Integer)
+    cost_price = Column(Float)
+    price = Column(Float, nullable=True)
+
+    purchase = relationship("Purchase", back_populates="items")
+    product = relationship("Product")
+    variant = relationship("ProductVariant")
+
+
+class StoreSettings(Base):
+    __tablename__ = "store_settings"
+    id = Column(Integer, primary_key=True, index=True)
+    store_name = Column(String, default="ABARROTES ED & E")
+    rfc = Column(String, nullable=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    tax_rate = Column(Float, default=16.0)
+    ticket_footer = Column(String, default="¡Gracias por su compra!")
+
+
+class Customer(Base):
+    __tablename__ = "customers"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    phone = Column(String, nullable=True)
+    email = Column(String, nullable=True)
+    credit_limit = Column(Float, default=0.0)
+    current_balance = Column(Float, default=0.0)
+
+
+class CustomerPayment(Base):
+    __tablename__ = "customer_payments"
+    id = Column(Integer, primary_key=True, index=True)
+    customer_id = Column(Integer, ForeignKey("customers.id"))
+    shift_id = Column(Integer, nullable=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    amount = Column(Float)
+    created_at = Column(String)
+    notes = Column(String, nullable=True)
+
+
 
 
 

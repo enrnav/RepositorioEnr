@@ -10,3 +10,5 @@ python-multipart>=0.0.6
 psycopg2-binary>=2.9.10
 reportlab>=4.0.0
 
+# Monitoreo de Datadog APM (Descomentar para instalar)
+# ddtrace>=2.0.0

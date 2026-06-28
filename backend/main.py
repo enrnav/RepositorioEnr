@@ -1,3 +1,22 @@
+# =============================================================
+# MONITOREO CON DATADOG APM (Descomentar para activar)
+# Asegúrese de descomentar también 'ddtrace' en requirements.txt
+#
+# import os
+# from ddtrace import patch_all
+# 
+# # Configurar variables de entorno requeridas por Datadog
+# os.environ["DD_SERVICE"] = "abarrotes-backend"
+# os.environ["DD_ENV"] = "production"
+# os.environ["DD_VERSION"] = "1.0.0"
+# # Descomente y ajuste si el Datadog Agent corre en otro host/puerto:
+# # os.environ["DD_AGENT_HOST"] = "localhost"
+# # os.environ["DD_TRACE_AGENT_PORT"] = "8126"
+#
+# # Habilitar la instrumentación automática para FastAPI y otras librerías
+# patch_all(fastapi=True)
+# =============================================================
+
 import logging
 import os
 from fastapi import FastAPI, Request

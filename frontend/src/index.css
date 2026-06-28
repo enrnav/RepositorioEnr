@@ -6,11 +6,11 @@ body {
   margin: 0;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #FAF9F6; /* brand-50 */
+  background-color: #f3f6f4;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.04) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.02) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.02) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(5, 150, 105, 0.12) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(210, 20, 58, 0.08) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.10) 0px, transparent 50%);
   background-attachment: fixed;
   color: #064E3B; /* brand-900 */
 }
@@ -49,10 +49,11 @@ body {
 
 /* Glassmorphism utilities */
 .glass {
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.04) !important;
 }
 
 .card-hover-effect {

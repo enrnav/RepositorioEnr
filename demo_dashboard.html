@@ -35,7 +35,7 @@
     
     /* 1. TEMA CLARO: Bosque Esmeralda (Orgánico) */
     .theme-emerald {
-      --bg-color: #FAF9F6;
+      --bg-color: #FFFFFF;
       --card-bg: rgba(255, 255, 255, 0.75);
       --card-border: rgba(6, 78, 59, 0.08);
       --text-main: #064E3B;
@@ -46,6 +46,13 @@
                     radial-gradient(at 100% 100%, rgba(245, 158, 11, 0.03) 0px, transparent 50%);
       --orbit-line-color: rgba(6, 78, 59, 0.16);
       --gravity-line-color: rgba(6, 78, 59, 0.35);
+      --hud-kpis: #2563eb;
+      --hud-goal: #059669;
+      --hud-chart: #7e22ce;
+      --hud-margin: #d97706;
+      --hud-pos: #0891b2;
+      --hud-todo: #db2777;
+      --hud-sun: #10b981;
     }
 
     /* 2. TEMA OSCURO: Oro y Negro (Premium/Luxury) */
@@ -61,6 +68,13 @@
                     radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.06) 0px, transparent 50%);
       --orbit-line-color: rgba(212, 163, 89, 0.22);
       --gravity-line-color: rgba(212, 163, 89, 0.45);
+      --hud-kpis: #3b82f6;
+      --hud-goal: #d4a359;
+      --hud-chart: #a78bfa;
+      --hud-margin: #f59e0b;
+      --hud-pos: #06b6d4;
+      --hud-todo: #ec4899;
+      --hud-sun: #d4a359;
     }
 
     /* 3. TEMA DIFUMINADO: Aurora Glow (Glassmorphism) */
@@ -75,6 +89,13 @@
       --gradient-bg: none;
       --orbit-line-color: rgba(59, 130, 246, 0.22);
       --gravity-line-color: rgba(59, 130, 246, 0.45);
+      --hud-kpis: #2563eb;
+      --hud-goal: #10b981;
+      --hud-chart: #7e22ce;
+      --hud-margin: #d97706;
+      --hud-pos: #0891b2;
+      --hud-todo: #db2777;
+      --hud-sun: #3b82f6;
     }
 
     /* 4. TEMA RETRO: Brutalista (Alto Contraste) */
@@ -89,6 +110,13 @@
       --gradient-bg: none;
       --orbit-line-color: rgba(0, 0, 0, 0.3);
       --gravity-line-color: rgba(0, 0, 0, 0.55);
+      --hud-kpis: #000000;
+      --hud-goal: #000000;
+      --hud-chart: #000000;
+      --hud-margin: #000000;
+      --hud-pos: #000000;
+      --hud-todo: #000000;
+      --hud-sun: #000000;
     }
 
     /* 5. TEMA NEÓN: Cyberpunk (Dark Synthwave) */
@@ -104,6 +132,13 @@
                     radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
       --orbit-line-color: rgba(236, 72, 153, 0.28);
       --gravity-line-color: rgba(236, 72, 153, 0.55);
+      --hud-kpis: #06b6d4;
+      --hud-goal: #059669;
+      --hud-chart: #ff2d75;
+      --hud-margin: #fbbf24;
+      --hud-pos: #06b6d4;
+      --hud-todo: #ff2d75;
+      --hud-sun: #ff2d75;
     }
 
     body {
@@ -411,7 +446,7 @@
       /* La clase funciona como indicador de estado pausado para el bucle de JS */
     }
 
-    /* Contenedor del sistema solar (Orion Canvas) */
+    /* Contenedor del sistema solar (Orion Canvas) con bordes HUD y soporte para paralaje */
     .orion-canvas-container {
       position: relative !important;
       background: var(--card-bg) !important;
@@ -420,6 +455,8 @@
       -webkit-backdrop-filter: blur(20px);
       box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
       transition: background-color 0.4s ease, border-color 0.3s ease;
+      transform-style: preserve-3d;
+      perspective: 1000px;
     }
 
     .orion-canvas-container::before {
@@ -436,6 +473,46 @@
       opacity: 0.18 !important;
     }
 
+    /* Elementos HUD para el lienzo de Orion */
+    .hud-scanner-overlay {
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      pointer-events: none;
+      z-index: 1;
+    }
+    .hud-telemetry {
+      position: absolute;
+      font-family: monospace;
+      font-size: 8px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 700;
+      opacity: 0.6;
+      pointer-events: none;
+      z-index: 5;
+    }
+    .hud-tel-tl { top: 12px; left: 16px; }
+    .hud-tel-tr { top: 12px; right: 16px; text-align: right; }
+    .hud-tel-bl { bottom: 12px; left: 16px; }
+    .hud-tel-br { bottom: 12px; right: 16px; text-align: right; }
+
+    .canvas-hud-corner {
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border-color: var(--accent-color);
+      border-style: solid;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0.45;
+      transition: border-color 0.3s ease;
+    }
+    .canvas-corner-tl { top: 0; left: 0; border-width: 3px 0 0 3px; }
+    .canvas-corner-tr { top: 0; right: 0; border-width: 3px 3px 0 0; }
+    .canvas-corner-bl { bottom: 0; left: 0; border-width: 0 0 3px 3px; }
+    .canvas-corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
+
     .orion-zoom-controls {
       background: var(--card-bg) !important;
       border: 1px solid var(--card-border) !important;
@@ -443,6 +520,7 @@
       -webkit-backdrop-filter: blur(16px) !important;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05) !important;
       transition: all 0.3s ease !important;
+      border-radius: 9999px !important;
     }
 
     .orion-zoom-btn {
@@ -483,6 +561,7 @@
       filter: blur(80px) !important;
       pointer-events: none !important;
       opacity: 0.45 !important;
+      transition: transform 0.2s ease-out;
     }
 
     .orion-bg-glow-2 {
@@ -496,6 +575,7 @@
       filter: blur(100px) !important;
       pointer-events: none !important;
       opacity: 0.5 !important;
+      transition: transform 0.2s ease-out;
     }
 
     .sphere-sun-glow {
@@ -530,7 +610,21 @@
       animation: radar-sweep-rotate 20s linear infinite;
     }
 
-    /* Sphere hover dynamic glows */
+    /* Sphere hover dynamic glows & Glossy 3D overlay */
+    .sphere {
+      position: relative;
+      overflow: visible !important;
+    }
+    .sphere::after {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.2) 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+    
     .sphere:hover {
       transform: scale(1.08) !important;
       z-index: 30 !important;
@@ -548,18 +642,151 @@
     .sphere-pos-color:hover { box-shadow: 0 0 50px rgba(6, 182, 212, 0.65), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.35) !important; }
     .sphere-todo-color:hover { box-shadow: 0 0 50px rgba(219, 39, 119, 0.65), inset -8px -8px 20px rgba(0, 0, 0, 0.75), inset 8px 8px 15px rgba(255, 255, 255, 0.45) !important; }
 
-    /* REGLAS CSS PARA EL MODO ORION ACTIVO: ABSOLUTO COCKPIT */
+    /* Estructuras de Anillos de Planetas (Estilo Saturno 3D) */
+    .planet-ring-wrapper {
+      position: absolute;
+      width: 150%;
+      height: 35%;
+      top: 32.5%;
+      left: -25%;
+      border: 2px solid var(--accent-glow);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: rotateX(70deg) rotateY(-15deg);
+      box-shadow: 0 0 15px var(--accent-glow), inset 0 0 15px var(--accent-glow);
+      animation: rotateRing 15s infinite linear;
+      z-index: 4;
+    }
+    .theme-emerald .planet-ring-wrapper { border-color: rgba(16, 185, 129, 0.35); box-shadow: 0 0 12px rgba(16, 185, 129, 0.2), inset 0 0 12px rgba(16, 185, 129, 0.2); }
+    .theme-luxury .planet-ring-wrapper { border-color: rgba(212, 163, 89, 0.45); box-shadow: 0 0 15px rgba(212, 163, 89, 0.25), inset 0 0 15px rgba(212, 163, 89, 0.25); }
+    .theme-aurora .planet-ring-wrapper { border-color: rgba(59, 130, 246, 0.4); box-shadow: 0 0 12px rgba(59, 130, 246, 0.2), inset 0 0 12px rgba(59, 130, 246, 0.2); }
+    .theme-cyberpunk .planet-ring-wrapper { border-color: rgba(236, 72, 153, 0.55); box-shadow: 0 0 18px rgba(236, 72, 153, 0.35), inset 0 0 18px rgba(236, 72, 153, 0.35); }
+
+    @keyframes rotateRing {
+      from { transform: rotateX(70deg) rotateY(-15deg) rotateZ(0deg); }
+      to { transform: rotateX(70deg) rotateY(-15deg) rotateZ(360deg); }
+    }
+
+    /* Estructuras de Lunas que Orbitan Planetas */
+    .moon-satellite {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #fff 0%, #cbd5e1 45%, #475569 90%);
+      box-shadow: 0 0 8px rgba(255,255,255,0.6), inset -2px -2px 4px rgba(0,0,0,0.6);
+      top: 50%;
+      left: 50%;
+      margin-top: -5px;
+      margin-left: -5px;
+      animation: orbitMoon 8s infinite linear;
+      z-index: 6;
+      pointer-events: none;
+    }
+    @keyframes orbitMoon {
+      from { transform: rotate(0deg) translateX(55px) rotate(0deg); }
+      to { transform: rotate(360deg) translateX(55px) rotate(-360deg); }
+    }
+
+    /* Animación de flujo en órbitas e interactividad en líneas de gravedad */
+    .orion-canvas-container circle {
+      stroke-linecap: round;
+      transition: stroke-dashoffset 10s linear, stroke 0.3s ease, stroke-width 0.3s ease;
+    }
+    @keyframes flowOrbit {
+      from { stroke-dashoffset: 200; }
+      to { stroke-dashoffset: 0; }
+    }
+    .orbit-flow-anim {
+      animation: flowOrbit 14s infinite linear;
+    }
+    
+    .orion-canvas-container line {
+      transition: stroke 0.3s ease, stroke-width 0.3s ease, stroke-dasharray 0.3s ease;
+    }
+    .orion-canvas-container line.active-gravity {
+      stroke-width: 1.5px !important;
+      stroke: var(--accent-color) !important;
+      filter: drop-shadow(0 0 3px var(--accent-glow));
+      stroke-dasharray: none !important;
+    }
+
+    /* REGLAS CSS PARA EL MODO ORION ACTIVO: ABSOLUTO COCKPIT HUD */
     @media (min-width: 1024px) {
       body.layout-orion-active .grid-card {
         position: absolute !important;
         z-index: 50;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 25px var(--accent-glow) !important;
-        border-color: var(--accent-color) !important;
-        max-height: 460px;
+        background: rgba(10, 10, 20, 0.88) !important;
+        border: 1px solid var(--accent-color) !important;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6), 0 0 30px var(--accent-glow) !important;
+        border-radius: 1rem !important;
+        backdrop-filter: blur(25px) !important;
+        -webkit-backdrop-filter: blur(25px) !important;
+        color: #ffffff !important;
+        padding: 1.5rem !important;
+        max-height: 480px;
         overflow-y: auto;
-        animation: cardFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
       }
       
+      /* HUD light mode overrides */
+      body.layout-orion-active.theme-emerald:not(.bg-stars-active) .grid-card,
+      body.layout-orion-active.theme-aurora:not(.bg-stars-active) .grid-card {
+        background: rgba(255, 255, 255, 0.92) !important;
+        color: var(--text-main) !important;
+        border: 1.5px solid var(--accent-color) !important;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08), 0 0 20px var(--accent-glow) !important;
+      }
+
+      /* Scanline overlay en las tarjetas */
+      body.layout-orion-active .grid-card::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          rgba(18, 16, 16, 0) 50%, 
+          rgba(0, 0, 0, 0.15) 50%
+        );
+        background-size: 100% 4px;
+        z-index: 1;
+        pointer-events: none;
+        opacity: 0.15;
+        border-radius: inherit;
+      }
+      body.layout-orion-active.theme-emerald:not(.bg-stars-active) .grid-card::before,
+      body.layout-orion-active.theme-aurora:not(.bg-stars-active) .grid-card::before {
+        background: linear-gradient(
+          rgba(255, 255, 255, 0) 50%, 
+          rgba(0, 0, 0, 0.03) 50%
+        );
+        background-size: 100% 4px;
+      }
+
+      /* Brackets decorativos HUD para las esquinas de las tarjetas */
+      .hud-bracket {
+        position: absolute;
+        width: 14px;
+        height: 14px;
+        border-color: var(--accent-color);
+        border-style: solid;
+        pointer-events: none;
+        z-index: 10;
+        opacity: 0.75;
+      }
+      .hud-bracket-tl { top: -2px; left: -2px; border-width: 2.5px 0 0 2.5px; }
+      .hud-bracket-tr { top: -2px; right: -2px; border-width: 2.5px 2.5px 0 0; }
+      .hud-bracket-bl { bottom: -2px; left: -2px; border-width: 0 0 2.5px 2.5px; }
+      .hud-bracket-br { bottom: -2px; right: -2px; border-width: 0 2.5px 2.5px 0; }
+
+      /* Colores temáticos dinámicos por ID de planeta */
+      body.layout-orion-active #kpis-container { border-color: var(--hud-kpis, #3b82f6) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(59, 130, 246, 0.25) !important; }
+      body.layout-orion-active #goal-card { border-color: var(--hud-goal, #10b981) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(16, 185, 129, 0.25) !important; }
+      body.layout-orion-active #chart-card { border-color: var(--hud-chart, #7e22ce) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(168, 85, 247, 0.25) !important; }
+      body.layout-orion-active #margin-card { border-color: var(--hud-margin, #d97706) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(217, 119, 6, 0.25) !important; }
+      body.layout-orion-active #sim-card { border-color: var(--hud-pos, #0891b2) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(6, 182, 212, 0.25) !important; }
+      body.layout-orion-active #todo-card { border-color: var(--hud-todo, #db2777) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px rgba(219, 39, 119, 0.25) !important; }
+      body.layout-orion-active #activity-card { border-color: var(--hud-sun, var(--accent-color)) !important; box-shadow: 0 15px 40px rgba(0, 0, 0, 0.45), 0 0 25px var(--accent-glow) !important; }
+
       /* Posicionamiento específico flotando al lado de cada planeta */
       body.layout-orion-active #kpis-container {
         top: 6%;
@@ -773,6 +1000,11 @@
         
         <!-- 1. META DE VENTAS DIARIA (GOAL BANNER) -->
         <div id="goal-card" class="grid-card p-6 lg:col-span-3 flex flex-col justify-between" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -821,6 +1053,11 @@
 
         <!-- 2. GRUPO KPIs (MÉTRICAS CLAVE EN FORMATO MÚLTIPLE O COMPACTO) -->
         <div id="kpis-container" class="grid-card p-4 lg:col-span-3" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -893,6 +1130,11 @@
 
         <!-- 3. GRÁFICO DINÁMICO DE RENTABILIDAD -->
         <div id="chart-card" class="grid-card p-6 lg:col-span-2 flex flex-col justify-between" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -960,6 +1202,11 @@
 
         <!-- 4. SIMULADOR POS DE VENTA EN TIEMPO REAL -->
         <div id="sim-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -1002,6 +1249,11 @@
 
         <!-- 5. PROYECCIONES FINANCIERAS (SLIDERS) -->
         <div id="margin-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -1052,6 +1304,11 @@
 
         <!-- 6. BITÁCORA DE ACTIVIDAD EN TIEMPO REAL -->
         <div id="activity-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -1077,6 +1334,11 @@
 
         <!-- 7. AGENDA CHECKLIST GERENCIAL -->
         <div id="todo-card" class="grid-card p-6 flex flex-col justify-between" draggable="false">
+          <!-- HUD Corner Brackets -->
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
           <!-- BOTÓN CERRAR PARA DISEÑO SISTEMA SOLAR -->
           <button onclick="closeOrionCard(event)" class="orion-close-btn hidden absolute top-4 right-4 text-stone-400 hover:text-white transition-colors z-50">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -1118,11 +1380,22 @@
       </div>
       
       <!-- CANVAS DEL SISTEMA SOLAR COMPLETO -->
-      <div class="relative w-full min-h-[780px] orion-canvas-container overflow-hidden flex items-center justify-center p-6">
+      <div class="relative w-full min-h-[780px] orion-canvas-container overflow-hidden flex items-center justify-center p-6" id="orion-canvas">
         
         <!-- Ambient depth glow points -->
-        <div class="orion-bg-glow-1"></div>
-        <div class="orion-bg-glow-2"></div>
+        <div class="orion-bg-glow-1" id="orion-glow-1"></div>
+        <div class="orion-bg-glow-2" id="orion-glow-2"></div>
+
+        <!-- HUD telemetry overlay -->
+        <div class="hud-scanner-overlay"></div>
+        <div class="hud-telemetry hud-tel-tl">SCAN STATE: ACTIVE</div>
+        <div class="hud-telemetry hud-tel-tr">SYS_ID: ED_E_ORION_9</div>
+        <div class="hud-telemetry hud-tel-bl">COORDS: 45.92.11 / -20.10.35</div>
+        <div class="hud-telemetry hud-tel-br">LINK STABLE</div>
+        <div class="canvas-hud-corner canvas-corner-tl"></div>
+        <div class="canvas-hud-corner canvas-corner-tr"></div>
+        <div class="canvas-hud-corner canvas-corner-bl"></div>
+        <div class="canvas-hud-corner canvas-corner-br"></div>
 
         <!-- Radar sweep scanner -->
         <div class="absolute w-[648px] h-[648px] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full overflow-hidden pointer-events-none z-0 opacity-[0.25] dark:opacity-[0.15]">
@@ -1136,12 +1409,12 @@
           <line x1="400" y1="40" x2="400" y2="760" stroke="var(--orbit-line-color)" stroke-width="0.8" stroke-dasharray="2 12" />
 
           <!-- Ejes orbitales (Círculos) -->
-          <circle id="orbit-ring-kpis" cx="400" cy="400" r="120" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="3 5" />
-          <circle id="orbit-ring-goal" cx="400" cy="400" r="120" stroke="var(--orbit-line-color)" stroke-width="1" fill="none" stroke-dasharray="1 4" />
-          <circle id="orbit-ring-chart" cx="400" cy="400" r="222" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="4 6" />
-          <circle id="orbit-ring-margin" cx="400" cy="400" r="222" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="4 4" />
-          <circle id="orbit-ring-pos" cx="400" cy="400" r="324" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="2 8" />
-          <circle id="orbit-ring-todo" cx="400" cy="400" r="324" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="2 8" />
+          <circle id="orbit-ring-kpis" class="orbit-flow-anim" cx="400" cy="400" r="120" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="3 5" />
+          <circle id="orbit-ring-goal" class="orbit-flow-anim" cx="400" cy="400" r="120" stroke="var(--orbit-line-color)" stroke-width="1" fill="none" stroke-dasharray="1 4" />
+          <circle id="orbit-ring-chart" class="orbit-flow-anim" cx="400" cy="400" r="222" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="4 6" />
+          <circle id="orbit-ring-margin" class="orbit-flow-anim" cx="400" cy="400" r="222" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="4 4" />
+          <circle id="orbit-ring-pos" class="orbit-flow-anim" cx="400" cy="400" r="324" stroke="var(--orbit-line-color)" stroke-width="1.2" fill="none" stroke-dasharray="2 8" />
+          <circle id="orbit-ring-todo" class="orbit-flow-anim" cx="400" cy="400" r="324" stroke="var(--orbit-line-color)" stroke-width="0.8" fill="none" stroke-dasharray="2 8" />
 
           <!-- Technical Compass Degree Markings -->
           <text x="400" y="28" text-anchor="middle" class="text-[8px] font-mono font-extrabold uppercase tracking-widest" style="fill: var(--text-muted); opacity: 0.7;">000° (N)</text>
@@ -1159,10 +1432,10 @@
         </svg>
 
         <!-- MINI ESFERAS PLANETARIAS SECUNDARIAS (DECORATIVAS PARALLAX) -->
-        <div class="absolute w-4 h-4 rounded-full sphere-decor top-[18%] left-[22%] anim-float-1"></div>
-        <div class="absolute w-6 h-6 rounded-full sphere-decor bottom-[22%] right-[22%] anim-float-2" style="animation-delay: -3s;"></div>
-        <div class="absolute w-3.5 h-3.5 rounded-full bg-stone-500/20 top-[42%] right-[15%] anim-float-1" style="animation-delay: -1s;"></div>
-        <div class="absolute w-4 h-4 rounded-full bg-stone-500/10 bottom-[35%] left-[12%] anim-float-2" style="animation-delay: -5s;"></div>
+        <div class="absolute w-4 h-4 rounded-full sphere-decor top-[18%] left-[22%] anim-float-1" data-parallax-speed="0.08"></div>
+        <div class="absolute w-6 h-6 rounded-full sphere-decor bottom-[22%] right-[22%] anim-float-2" style="animation-delay: -3s;" data-parallax-speed="0.12"></div>
+        <div class="absolute w-3.5 h-3.5 rounded-full bg-stone-500/20 top-[42%] right-[15%] anim-float-1" style="animation-delay: -1s;" data-parallax-speed="0.05"></div>
+        <div class="absolute w-4 h-4 rounded-full bg-stone-500/10 bottom-[35%] left-[12%] anim-float-2" style="animation-delay: -5s;" data-parallax-speed="0.1"></div>
 
         <!-- ================= WRAPPER ABSOLUTO INSET-0 ================= -->
         <div id="orion-spheres-wrapper" class="absolute inset-0 flex items-center justify-center transition-transform duration-500">
@@ -1182,6 +1455,8 @@
 
           <!-- PLANETA 1: KPIs RESUMEN (Órbita 1 - Interna) -->
           <div id="orbit-wrapper-kpis" class="orbit-wrapper orbit-kpis-anim absolute z-10 flex items-center justify-center">
+            <!-- KPIs Moon Satellite -->
+            <div class="moon-satellite"></div>
             <div id="sphere-kpis"
                  onpointerdown="handlePlanetPointerDown(event, 'kpis')"
                  onpointermove="handlePlanetPointerMove(event, 'kpis')"
@@ -1197,6 +1472,8 @@
 
           <!-- PLANETA 2: CUMPLIMIENTO DE META DIARIA (Órbita 1 - Interna) -->
           <div id="orbit-wrapper-goal" class="orbit-wrapper orbit-goal-anim absolute z-10 flex items-center justify-center">
+            <!-- Goal Moon Satellite -->
+            <div class="moon-satellite" style="animation-duration: 6s; animation-delay: -2.5s;"></div>
             <div id="sphere-goal"
                  onpointerdown="handlePlanetPointerDown(event, 'goal')"
                  onpointermove="handlePlanetPointerMove(event, 'goal')"
@@ -1220,6 +1497,8 @@
                  onmouseenter="handleSphereMouseEnter(event, 'Historial Gráfico', 'Historial de ventas y rentabilidad diaria/semanal. Haz clic para interactuar con los gráficos.')" 
                  onmouseleave="handleSphereMouseLeave()"
                  class="sphere sphere-chart-color w-24 h-24 anim-float-2">
+              <!-- 3D Saturn-style Rings -->
+              <div class="planet-ring-wrapper"></div>
               <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Gráfica</span>
               <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Historial</span>
             </div>
@@ -1250,6 +1529,8 @@
                  onmouseenter="handleSphereMouseEnter(event, 'Punto de Venta POS', 'Registra compras simuladas rápidas. Haz clic para desplegar la caja registradora.')" 
                  onmouseleave="handleSphereMouseLeave()"
                  class="sphere sphere-pos-color w-24 h-24 anim-float-2">
+              <!-- 3D Saturn-style Rings -->
+              <div class="planet-ring-wrapper" style="animation-duration: 20s; transform: rotateX(65deg) rotateY(15deg);"></div>
               <span class="text-[10px] font-bold text-white/80 uppercase tracking-widest mb-1">Registrar</span>
               <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Venta POS</span>
             </div>
@@ -1561,6 +1842,41 @@
       
       // Inicializar Drag and Drop Listeners
       initDragAndDrop();
+
+      // PARALAJE ESPACIAL EN EL CANVAS DE ORION
+      const canvas = document.getElementById('orion-canvas');
+      if (canvas) {
+        canvas.addEventListener('mousemove', (e) => {
+          if (state.layoutPreset !== 'orion') return;
+          const rect = canvas.getBoundingClientRect();
+          const mouseX = (e.clientX - rect.left) / rect.width - 0.5; // -0.5 a 0.5
+          const mouseY = (e.clientY - rect.top) / rect.height - 0.5;
+          
+          // Desplazar brillos de fondo
+          const glow1 = document.getElementById('orion-glow-1');
+          const glow2 = document.getElementById('orion-glow-2');
+          if (glow1) glow1.style.transform = `translate(${mouseX * 40}px, ${mouseY * 40}px)`;
+          if (glow2) glow2.style.transform = `translate(${mouseX * -50}px, ${mouseY * -50}px)`;
+          
+          // Desplazar esferas decorativas (Paralaje)
+          const decors = canvas.querySelectorAll('.sphere-decor');
+          decors.forEach(dec => {
+            const speed = parseFloat(dec.getAttribute('data-parallax-speed') || '0.05');
+            dec.style.transform = `translate(${mouseX * speed * 250}px, ${mouseY * speed * 250}px)`;
+          });
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+          const glow1 = document.getElementById('orion-glow-1');
+          const glow2 = document.getElementById('orion-glow-2');
+          if (glow1) glow1.style.transform = '';
+          if (glow2) glow2.style.transform = '';
+          const decors = canvas.querySelectorAll('.sphere-decor');
+          decors.forEach(dec => {
+            dec.style.transform = '';
+          });
+        });
+      }
  
       // Iniciar bucle de animación
       requestAnimationFrame(animateOrbits);
@@ -1959,7 +2275,7 @@
 
       const isHidden = card.classList.contains('hidden');
 
-      // Cerrar las demás tarjetas activas y reanudar sus órbitas
+      // Cerrar las demás tarjetas activas y reanudar sus órbitas e iluminación de gravedad/anillo
       const planets = ['kpis', 'goal', 'chart', 'margin', 'pos', 'todo', 'sun'];
       planets.forEach(p => {
         let cid = '';
@@ -1980,6 +2296,11 @@
           // Reanudar órbita del planeta inactivo
           const wrapper = otherSphere.closest('.orbit-wrapper');
           if (wrapper) wrapper.classList.remove('orbit-paused');
+          // Quitar iluminación del conector y órbita
+          const gravityLine = document.getElementById(`gravity-line-${p}`);
+          if (gravityLine) gravityLine.classList.remove('active-gravity');
+          const orbitRing = document.getElementById(`orbit-ring-${p}`);
+          if (orbitRing) orbitRing.classList.remove('orbit-active');
         }
       });
 
@@ -1990,6 +2311,11 @@
           // Pausar órbita del planeta activo
           const wrapper = sphere.closest('.orbit-wrapper');
           if (wrapper) wrapper.classList.add('orbit-paused');
+          // Iluminar gravedad y órbita
+          const gravityLine = document.getElementById(`gravity-line-${planetId}`);
+          if (gravityLine) gravityLine.classList.add('active-gravity');
+          const orbitRing = document.getElementById(`orbit-ring-${planetId}`);
+          if (orbitRing) orbitRing.classList.add('orbit-active');
         }
         if (planetId === 'chart') {
           setTimeout(drawChart, 100);
@@ -2001,6 +2327,11 @@
           // Reanudar órbita del planeta
           const wrapper = sphere.closest('.orbit-wrapper');
           if (wrapper) wrapper.classList.remove('orbit-paused');
+          // Apagar gravedad y órbita
+          const gravityLine = document.getElementById(`gravity-line-${planetId}`);
+          if (gravityLine) gravityLine.classList.remove('active-gravity');
+          const orbitRing = document.getElementById(`orbit-ring-${planetId}`);
+          if (orbitRing) orbitRing.classList.remove('orbit-active');
         }
       }
     }
@@ -2026,17 +2357,31 @@
           // Reanudar la órbita de este planeta cerrado
           const wrapper = sphere.closest('.orbit-wrapper');
           if (wrapper) wrapper.classList.remove('orbit-paused');
+          // Apagar gravedad y órbita
+          const gravityLine = document.getElementById(`gravity-line-${planetId}`);
+          if (gravityLine) gravityLine.classList.remove('active-gravity');
+          const orbitRing = document.getElementById(`orbit-ring-${planetId}`);
+          if (orbitRing) orbitRing.classList.remove('orbit-active');
         }
       }
     }
 
     // INTERACCIONES HOVER TELEMETRÍA (QUITA PUNTERO Y DESAPARECE)
     function handleSphereMouseEnter(e, title, desc) {
+      const sphere = e.currentTarget;
+      const planetId = sphere.id.replace('sphere-', '');
+
+      // Iluminar gravedad y órbita al hacer hover
+      const gravityLine = document.getElementById(`gravity-line-${planetId}`);
+      if (gravityLine) gravityLine.classList.add('active-gravity');
+      const orbitRing = document.getElementById(`orbit-ring-${planetId}`);
+      if (orbitRing) orbitRing.classList.add('orbit-active');
+
       const tooltip = document.getElementById('sphere-tooltip');
       if (!tooltip) return;
 
       tooltip.innerHTML = `
-        <span class="text-white font-extrabold block text-xs mb-1">${title}</span>
+        <span class="text-white font-outfit font-black block text-xs mb-1">${title}</span>
         <span class="text-stone-400 font-medium block leading-relaxed">${desc}</span>
         <span class="text-emerald-400 dark:text-emerald-300 font-black block mt-2 animate-pulse">⚡ CLIC PARA INTERACTUAR</span>
       `;
@@ -2053,6 +2398,21 @@
     function handleSphereMouseLeave() {
       const tooltip = document.getElementById('sphere-tooltip');
       if (tooltip) tooltip.style.opacity = 0;
+
+      // Apagar iluminaciones que no estén fijadas por el planeta activo (pausado)
+      const planets = ['kpis', 'goal', 'chart', 'margin', 'pos', 'todo', 'sun'];
+      planets.forEach(pId => {
+        const sphere = document.getElementById(`sphere-${pId}`);
+        const wrapper = sphere ? sphere.closest('.orbit-wrapper') : null;
+        const isPaused = wrapper ? wrapper.classList.contains('orbit-paused') : false;
+        
+        if (!isPaused) {
+          const gravityLine = document.getElementById(`gravity-line-${pId}`);
+          if (gravityLine) gravityLine.classList.remove('active-gravity');
+          const orbitRing = document.getElementById(`orbit-ring-${pId}`);
+          if (orbitRing) orbitRing.classList.remove('orbit-active');
+        }
+      });
     }
 
     // GESTIÓN DE LA META DIARIA (CON META DE ESFERAS)

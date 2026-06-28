@@ -251,6 +251,49 @@ export const fetchProfitMarginReport = async () => {
     }
 };
 
+// --- BACKUP & SECURITY API ---
+
+export const exportBackupDatabase = async (format) => {
+    try {
+        const response = await axios.get(`${API_URL}/backup/export`, {
+            params: { format },
+            responseType: 'blob'
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error exporting backup database:", error);
+        throw error;
+    }
+};
+
+export const importBackupDatabase = async (file) => {
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await axios.post(`${API_URL}/backup/import`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error importing backup database:", error);
+        throw error;
+    }
+};
+
+// --- ADVANCED DASHBOARD DETAILS ---
+
+export const fetchDashboardDetails = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/reports/dashboard-details`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching dashboard details:", error);
+        throw error;
+    }
+};
+
 // --- BILLING & INVOICING API ---
 
 export const fetchBillingProfiles = async (query = '') => {
@@ -325,5 +368,159 @@ export const cancelInvoice = async (invoiceId) => {
     }
 };
 
+// --- SUPPLIERS API ENDPOINTS ---
 
+export const fetchSuppliers = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/suppliers/`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching suppliers:", error);
+        throw error;
+    }
+};
 
+export const createSupplier = async (supplierData) => {
+    try {
+        const response = await axios.post(`${API_URL}/suppliers/`, supplierData);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating supplier:", error);
+        throw error;
+    }
+};
+
+export const updateSupplier = async (id, supplierData) => {
+    try {
+        const response = await axios.put(`${API_URL}/suppliers/${id}`, supplierData);
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating supplier ${id}:`, error);
+        throw error;
+    }
+};
+
+export const deleteSupplier = async (id) => {
+    try {
+        const response = await axios.delete(`${API_URL}/suppliers/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error deleting supplier ${id}:`, error);
+        throw error;
+    }
+};
+
+// --- PURCHASES API ENDPOINTS ---
+
+export const fetchPurchases = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/purchases/`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching purchases:", error);
+        throw error;
+    }
+};
+
+export const fetchPurchaseDetails = async (id) => {
+    try {
+        const response = await axios.get(`${API_URL}/purchases/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching purchase details ${id}:`, error);
+        throw error;
+    }
+};
+
+export const createPurchase = async (purchaseData) => {
+    try {
+        const response = await axios.post(`${API_URL}/purchases/`, purchaseData);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating purchase:", error);
+        throw error;
+    }
+};
+// --- SETTINGS API ENDPOINTS ---
+export const fetchStoreSettings = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/settings`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching store settings:", error);
+        throw error;
+    }
+};
+
+export const updateStoreSettings = async (settingsData) => {
+    try {
+        const response = await axios.put(`${API_URL}/settings`, settingsData);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating store settings:", error);
+        throw error;
+    }
+};
+
+// --- CUSTOMERS API ENDPOINTS ---
+export const fetchCustomers = async (query = '') => {
+    try {
+        const response = await axios.get(`${API_URL}/customers`, {
+            params: query ? { q: query } : {}
+        });
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching customers:", error);
+        throw error;
+    }
+};
+
+export const createCustomer = async (customerData) => {
+    try {
+        const response = await axios.post(`${API_URL}/customers`, customerData);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating customer:", error);
+        throw error;
+    }
+};
+
+export const updateCustomer = async (id, customerData) => {
+    try {
+        const response = await axios.put(`${API_URL}/customers/${id}`, customerData);
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating customer ${id}:`, error);
+        throw error;
+    }
+};
+
+export const deleteCustomer = async (id) => {
+    try {
+        const response = await axios.delete(`${API_URL}/customers/${id}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error deleting customer ${id}:`, error);
+        throw error;
+    }
+};
+
+export const registerCustomerPayment = async (id, paymentData) => {
+    try {
+        const response = await axios.post(`${API_URL}/customers/${id}/pay`, paymentData);
+        return response.data;
+    } catch (error) {
+        console.error(`Error registering payment for customer ${id}:`, error);
+        throw error;
+    }
+};
+
+export const fetchCustomerHistory = async (id) => {
+    try {
+        const response = await axios.get(`${API_URL}/customers/${id}/history`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching history for customer ${id}:`, error);
+        throw error;
+    }
+};

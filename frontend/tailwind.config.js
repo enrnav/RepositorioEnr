@@ -13,7 +13,7 @@ export default {
           lightred: '#ECFDF5' // Soft mint white selection background
         },
         brand: {
-          50: '#FAF9F6',      // Soft Warm Alabaster White background
+          50: '#FFFFFF',      // Pure White background
           100: '#F5F5F4',     // Light Stone/warm grey
           900: '#064E3B'      // Forest Green 900 for premium contrast text
         }

@@ -80,7 +80,8 @@ def run_migration():
             ("cash_amount", "FLOAT DEFAULT 0.0"),
             ("card_amount", "FLOAT DEFAULT 0.0"),
             ("authorized_by", "VARCHAR"),
-            ("invoice_id", "INTEGER")
+            ("invoice_id", "INTEGER"),
+            ("customer_id", "INTEGER")
         ]
         for col, col_type in sales_history_cols:
             try:

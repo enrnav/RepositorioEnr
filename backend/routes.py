@@ -581,6 +581,17 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
     elif current_user.role != 'admin':
         raise HTTPException(status_code=400, detail="Se requiere un turno de caja activo para procesar la venta.")
         
+    # Validar cliente si es pago a crédito
+    customer = None
+    if checkout_data.payment_method == "credito":
+        if not checkout_data.customer_id:
+            raise HTTPException(status_code=400, detail="Debe seleccionar un cliente para realizar una venta a crédito.")
+        customer = db.query(models.Customer).filter(models.Customer.id == checkout_data.customer_id).with_for_update().first()
+        if not customer:
+            raise HTTPException(status_code=404, detail="El cliente seleccionado no existe.")
+    elif checkout_data.customer_id:
+        customer = db.query(models.Customer).filter(models.Customer.id == checkout_data.customer_id).first()
+
     try:
         now_str = datetime.utcnow().isoformat()
         subtotal = 0.0
@@ -618,6 +629,17 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
         if subtotal <= 0:
             raise HTTPException(status_code=400, detail="El total de la venta debe ser mayor a 0.")
 
+        sale_total = subtotal - checkout_data.discount
+
+        # Validar límite de crédito del cliente si aplica
+        if checkout_data.payment_method == "credito" and customer:
+            if customer.current_balance + sale_total > customer.credit_limit:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Límite de crédito excedido. Disponible: ${customer.credit_limit - customer.current_balance:.2f}, Total venta: ${sale_total:.2f}"
+                )
+            customer.current_balance += sale_total
+
         discount_ratio = checkout_data.discount / subtotal if checkout_data.discount > 0 else 0.0
         
         for item_data in items_to_process:
@@ -646,16 +668,17 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
                 cost_price_sold=cost,
                 discount=item_discount,
                 payment_method=checkout_data.payment_method,
-                cash_amount=checkout_data.cash_amount * (item_subtotal / subtotal),
-                card_amount=checkout_data.card_amount * (item_subtotal / subtotal),
-                created_at=now_str
+                cash_amount=checkout_data.cash_amount * (item_subtotal / subtotal) if checkout_data.payment_method == "mixto" else (sale_total if checkout_data.payment_method == "efectivo" else 0.0),
+                card_amount=checkout_data.card_amount * (item_subtotal / subtotal) if checkout_data.payment_method == "mixto" else (sale_total if checkout_data.payment_method == "tarjeta" else 0.0),
+                created_at=now_str,
+                customer_id=checkout_data.customer_id
             )
             db.add(sale_record)
             
         if shift:
             cash_sale_total = 0.0
             if checkout_data.payment_method == "efectivo":
-                cash_sale_total = subtotal - checkout_data.discount
+                cash_sale_total = sale_total
             elif checkout_data.payment_method == "mixto":
                 cash_sale_total = checkout_data.cash_amount
                 
@@ -666,6 +689,8 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
         
     except Exception as e:
         db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/shifts/active", response_model=Optional[schemas.ShiftResponse])
@@ -816,6 +841,7 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
     
     cash_sales = 0.0
     card_sales = 0.0
+    credit_sales = 0.0
     cancelled_sales_total = 0.0
     
     sales_list = []
@@ -828,6 +854,8 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
                 cash_sales += total
             elif s.payment_method == "tarjeta":
                 card_sales += total
+            elif s.payment_method == "credito":
+                credit_sales += total
             elif s.payment_method == "mixto":
                 cash_sales += s.cash_amount
                 card_sales += s.card_amount
@@ -861,7 +889,8 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
         "totals": {
             "cash_sales": cash_sales,
             "card_sales": card_sales,
-            "total_sales": cash_sales + card_sales,
+            "credit_sales": credit_sales,
+            "total_sales": cash_sales + card_sales + credit_sales,
             "cash_entries": entries,
             "cash_withdrawals": withdrawals,
             "cancelled_sales_total": cancelled_sales_total
@@ -1034,7 +1063,25 @@ def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_us
             "is_cancelled": s.is_cancelled
         })
         
-    taxes_total = round((subtotal - discount_total) - ((subtotal - discount_total) / 1.16), 2)
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    if not settings:
+        settings = models.StoreSettings(
+            id=1,
+            store_name="ABARROTES ED & E",
+            rfc="AED180425EE3",
+            phone="8112345678",
+            email="ventas@abarrotesede.com",
+            address="Av. Constitución #450, Monterrey, N.L. C.P. 64000",
+            tax_rate=16.0,
+            ticket_footer="¡Gracias por su compra!"
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+
+    tax_factor = 1 + (settings.tax_rate / 100)
+        
+    taxes_total = round((subtotal - discount_total) - ((subtotal - discount_total) / tax_factor), 2)
     total = round(subtotal - discount_total, 2)
     
     # Comprobar si ya está facturada
@@ -1055,7 +1102,7 @@ def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_us
         "created_at": ref_sale.created_at,
         "payment_method": ref_sale.payment_method,
         "items": items,
-        "subtotal": round((subtotal - discount_total) / 1.16, 2),
+        "subtotal": round((subtotal - discount_total) / tax_factor, 2),
         "discount": discount_total,
         "taxes": taxes_total,
         "total": total,
@@ -1172,7 +1219,20 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
     xml_path = os.path.join(invoices_dir, f"{invoice_uuid}.xml")
     pdf_path = os.path.join(invoices_dir, f"{invoice_uuid}.pdf")
     
-    # Generar archivos físicos
+    # Generar archivos físicos con configuración dinámica
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    store_settings_dict = None
+    if settings:
+        store_settings_dict = {
+            "store_name": settings.store_name,
+            "rfc": settings.rfc,
+            "phone": settings.phone,
+            "email": settings.email,
+            "address": settings.address,
+            "tax_rate": settings.tax_rate,
+            "ticket_footer": settings.ticket_footer
+        }
+
     try:
         # Generar XML
         xml_content = facturacion.generate_cfdi_xml(
@@ -1180,7 +1240,8 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
             billing_profile=billing_profile,
             items=items,
             invoice_uuid=invoice_uuid,
-            timestamp_str=timestamp_str
+            timestamp_str=timestamp_str,
+            store_settings=store_settings_dict
         )
         with open(xml_path, "w", encoding="utf-8") as f:
             f.write(xml_content)
@@ -1192,7 +1253,8 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
             billing_profile=billing_profile,
             items=items,
             invoice_uuid=invoice_uuid,
-            timestamp_str=timestamp_str
+            timestamp_str=timestamp_str,
+            store_settings=store_settings_dict
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al generar los documentos fiscales: {str(e)}")
@@ -1268,6 +1330,875 @@ def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     db.refresh(invoice)
     return invoice
+
+
+# --- PROVEEDORES (SUPPLIERS) ENDPOINTS ---
+
+@router.get("/suppliers/", response_model=List[schemas.SupplierResponse])
+def get_suppliers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+    return db.query(models.Supplier).order_by(models.Supplier.name).all()
+
+@router.post("/suppliers/", response_model=schemas.SupplierResponse)
+def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+    
+    if supplier.rfc and supplier.rfc.strip():
+        existing = db.query(models.Supplier).filter(models.Supplier.rfc == supplier.rfc.upper().strip()).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe un proveedor con ese RFC")
+
+    db_supplier = models.Supplier(
+        name=supplier.name.strip(),
+        rfc=supplier.rfc.upper().strip() if supplier.rfc else None,
+        phone=supplier.phone.strip() if supplier.phone else None,
+        email=supplier.email.lower().strip() if supplier.email else None,
+        address=supplier.address.strip() if supplier.address else None,
+        notes=supplier.notes.strip() if supplier.notes else None
+    )
+    db.add(db_supplier)
+    db.commit()
+    db.refresh(db_supplier)
+    return db_supplier
+
+@router.put("/suppliers/{supplier_id}", response_model=schemas.SupplierResponse)
+def update_supplier(supplier_id: int, supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+    
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+
+    if supplier.rfc and supplier.rfc.strip():
+        existing = db.query(models.Supplier).filter(
+            models.Supplier.rfc == supplier.rfc.upper().strip(), 
+            models.Supplier.id != supplier_id
+        ).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Ya existe otro proveedor con ese RFC")
+
+    db_supplier.name = supplier.name.strip()
+    db_supplier.rfc = supplier.rfc.upper().strip() if supplier.rfc else None
+    db_supplier.phone = supplier.phone.strip() if supplier.phone else None
+    db_supplier.email = supplier.email.lower().strip() if supplier.email else None
+    db_supplier.address = supplier.address.strip() if supplier.address else None
+    db_supplier.notes = supplier.notes.strip() if supplier.notes else None
+
+    db.commit()
+    db.refresh(db_supplier)
+    return db_supplier
+
+@router.delete("/suppliers/{supplier_id}")
+def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+    
+    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    if not db_supplier:
+        raise HTTPException(status_code=404, detail="Proveedor no encontrado")
+    
+    associated_purchases = db.query(models.Purchase).filter(models.Purchase.supplier_id == supplier_id).first()
+    if associated_purchases:
+        raise HTTPException(
+            status_code=400, 
+            detail="No se puede eliminar el proveedor porque tiene compras/entradas asociadas. Considere editarlo o dejarlo inactivo."
+        )
+
+    db.delete(db_supplier)
+    db.commit()
+    return {"message": "Proveedor eliminado exitosamente"}
+
+
+# --- COMPRAS / ENTRADAS (PURCHASES) ENDPOINTS ---
+
+@router.get("/purchases/", response_model=List[schemas.PurchaseResponse])
+def get_purchases(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+        
+    purchases = db.query(models.Purchase).order_by(models.Purchase.id.desc()).all()
+    
+    result = []
+    for p in purchases:
+        supplier_name = "Compra Directa / Sin Proveedor"
+        if p.supplier_id:
+            supplier = db.query(models.Supplier).filter(models.Supplier.id == p.supplier_id).first()
+            if supplier:
+                supplier_name = supplier.name
+                
+        user_name = "Desconocido"
+        if p.user_id:
+            user = db.query(models.User).filter(models.User.id == p.user_id).first()
+            if user:
+                user_name = user.full_name
+                
+        items_res = []
+        for item in p.items:
+            prod = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+            prod_name = prod.name if prod else f"Producto ID {item.product_id}"
+            if item.variant_id:
+                var = db.query(models.ProductVariant).filter(models.ProductVariant.id == item.variant_id).first()
+                if var:
+                    prod_name += f" ({var.name})"
+            
+            items_res.append(
+                schemas.PurchaseItemResponse(
+                    id=item.id,
+                    purchase_id=item.purchase_id,
+                    product_id=item.product_id,
+                    variant_id=item.variant_id,
+                    quantity=item.quantity,
+                    cost_price=item.cost_price,
+                    price=item.price,
+                    product_name=prod_name
+                )
+            )
+            
+        result.append(
+            schemas.PurchaseResponse(
+                id=p.id,
+                supplier_id=p.supplier_id,
+                invoice_number=p.invoice_number,
+                total_cost=p.total_cost,
+                created_at=p.created_at,
+                notes=p.notes,
+                user_id=p.user_id,
+                items=items_res,
+                supplier_name=supplier_name,
+                user_name=user_name
+            )
+        )
+    return result
+
+@router.get("/purchases/{purchase_id}", response_model=schemas.PurchaseResponse)
+def get_purchase_details(purchase_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+        
+    p = db.query(models.Purchase).filter(models.Purchase.id == purchase_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Compra no encontrada")
+        
+    supplier_name = "Compra Directa / Sin Proveedor"
+    if p.supplier_id:
+        supplier = db.query(models.Supplier).filter(models.Supplier.id == p.supplier_id).first()
+        if supplier:
+            supplier_name = supplier.name
+            
+    user_name = "Desconocido"
+    if p.user_id:
+        user = db.query(models.User).filter(models.User.id == p.user_id).first()
+        if user:
+            user_name = user.full_name
+            
+    items_res = []
+    for item in p.items:
+        prod = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        prod_name = prod.name if prod else f"Producto ID {item.product_id}"
+        if item.variant_id:
+            var = db.query(models.ProductVariant).filter(models.ProductVariant.id == item.variant_id).first()
+            if var:
+                prod_name += f" ({var.name})"
+        
+        items_res.append(
+            schemas.PurchaseItemResponse(
+                id=item.id,
+                purchase_id=item.purchase_id,
+                product_id=item.product_id,
+                variant_id=item.variant_id,
+                quantity=item.quantity,
+                cost_price=item.cost_price,
+                price=item.price,
+                product_name=prod_name
+            )
+        )
+        
+    return schemas.PurchaseResponse(
+        id=p.id,
+        supplier_id=p.supplier_id,
+        invoice_number=p.invoice_number,
+        total_cost=p.total_cost,
+        created_at=p.created_at,
+        notes=p.notes,
+        user_id=p.user_id,
+        items=items_res,
+        supplier_name=supplier_name,
+        user_name=user_name
+    )
+
+@router.post("/purchases/", response_model=schemas.PurchaseResponse)
+def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
+        
+    if not purchase_data.items:
+        raise HTTPException(status_code=400, detail="Debe añadir al menos un artículo a la compra.")
+
+    try:
+        now_str = datetime.utcnow().isoformat()
+        
+        db_purchase = models.Purchase(
+            supplier_id=purchase_data.supplier_id,
+            invoice_number=purchase_data.invoice_number.strip() if purchase_data.invoice_number else None,
+            total_cost=0.0,
+            created_at=now_str,
+            notes=purchase_data.notes.strip() if purchase_data.notes else None,
+            user_id=current_user.id
+        )
+        db.add(db_purchase)
+        db.commit()
+        db.refresh(db_purchase)
+        
+        total_cost = 0.0
+        
+        for item in purchase_data.items:
+            product = db.query(models.Product).filter(models.Product.id == item.product_id).with_for_update().first()
+            if not product:
+                raise HTTPException(status_code=404, detail=f"El producto con ID {item.product_id} no existe.")
+            
+            if item.variant_id:
+                variant = db.query(models.ProductVariant).filter(
+                    models.ProductVariant.id == item.variant_id,
+                    models.ProductVariant.product_id == item.product_id
+                ).with_for_update().first()
+                if not variant:
+                    raise HTTPException(
+                        status_code=404, 
+                        detail=f"La variante ID {item.variant_id} para el producto ID {item.product_id} no existe."
+                    )
+                
+                variant.quantity += item.quantity
+                variant.cost_price = item.cost_price
+                if item.price is not None and item.price > 0:
+                    variant.price = item.price
+                
+                product.quantity += item.quantity
+            else:
+                product.quantity += item.quantity
+                product.cost_price = item.cost_price
+                if item.price is not None and item.price > 0:
+                    product.price = item.price
+                    
+            item_cost = item.cost_price * item.quantity
+            total_cost += item_cost
+            
+            db_item = models.PurchaseItem(
+                purchase_id=db_purchase.id,
+                product_id=item.product_id,
+                variant_id=item.variant_id,
+                quantity=item.quantity,
+                cost_price=item.cost_price,
+                price=item.price
+            )
+            db.add(db_item)
+            
+        db_purchase.total_cost = total_cost
+        db.commit()
+        db.refresh(db_purchase)
+        
+        return get_purchase_details(purchase_id=db_purchase.id, db=db, current_user=current_user)
+        
+    except Exception as e:
+        db.rollback()
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=400, detail=f"Error al procesar la compra: {str(e)}")
+
+
+# --- AJUSTES DE TIENDA (STORE SETTINGS) ENDPOINTS ---
+
+@router.get("/settings", response_model=schemas.StoreSettingsResponse)
+def get_store_settings(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    if not settings:
+        settings = models.StoreSettings(
+            id=1,
+            store_name="ABARROTES ED & E",
+            rfc="AED180425EE3",
+            phone="8112345678",
+            email="ventas@abarrotesede.com",
+            address="Av. Constitución #450, Monterrey, N.L. C.P. 64000",
+            tax_rate=16.0,
+            ticket_footer="¡Gracias por su compra!"
+        )
+        db.add(settings)
+        db.commit()
+        db.refresh(settings)
+    return settings
+
+@router.put("/settings", response_model=schemas.StoreSettingsResponse)
+def update_store_settings(settings_data: schemas.StoreSettingsCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes para cambiar la configuración.")
+    
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    if not settings:
+        settings = models.StoreSettings(id=1)
+        db.add(settings)
+        
+    for key, value in settings_data.dict().items():
+        setattr(settings, key, value)
+        
+    db.commit()
+    db.refresh(settings)
+    return settings
+
+
+# --- CLIENTES Y CRÉDITOS (CUSTOMERS & CREDIT) ENDPOINTS ---
+
+@router.get("/customers", response_model=List[schemas.CustomerResponse])
+def get_customers(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    query = db.query(models.Customer)
+    if q:
+        query = query.filter(
+            (models.Customer.name.ilike(f"%{q}%")) |
+            (models.Customer.phone.ilike(f"%{q}%"))
+        )
+    return query.order_by(models.Customer.name).all()
+
+@router.post("/customers", response_model=schemas.CustomerResponse)
+def create_customer(customer_data: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    existing = db.query(models.Customer).filter(models.Customer.name.ilike(customer_data.name.strip())).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe un cliente con ese nombre.")
+        
+    db_customer = models.Customer(
+        name=customer_data.name.strip(),
+        phone=customer_data.phone.strip() if customer_data.phone else None,
+        email=customer_data.email.lower().strip() if customer_data.email else None,
+        credit_limit=customer_data.credit_limit,
+        current_balance=0.0
+    )
+    db.add(db_customer)
+    db.commit()
+    db.refresh(db_customer)
+    return db_customer
+
+@router.put("/customers/{customer_id}", response_model=schemas.CustomerResponse)
+def update_customer(customer_id: int, customer_data: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    db_customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    if not db_customer:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+        
+    existing = db.query(models.Customer).filter(
+        models.Customer.name.ilike(customer_data.name.strip()), 
+        models.Customer.id != customer_id
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya existe otro cliente con ese nombre.")
+        
+    db_customer.name = customer_data.name.strip()
+    db_customer.phone = customer_data.phone.strip() if customer_data.phone else None
+    db_customer.email = customer_data.email.lower().strip() if customer_data.email else None
+    db_customer.credit_limit = customer_data.credit_limit
+    
+    db.commit()
+    db.refresh(db_customer)
+    return db_customer
+
+@router.delete("/customers/{customer_id}")
+def delete_customer(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes para eliminar clientes.")
+        
+    db_customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    if not db_customer:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+        
+    if db_customer.current_balance > 0:
+        raise HTTPException(status_code=400, detail="No se puede eliminar el cliente porque tiene un saldo deudor pendiente.")
+        
+    db.delete(db_customer)
+    db.commit()
+    return {"message": "Cliente eliminado exitosamente"}
+
+@router.post("/customers/{customer_id}/pay", response_model=schemas.CustomerPaymentResponse)
+def register_customer_payment(customer_id: int, payment_data: schemas.CustomerPaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    shift = db.query(models.Shift).filter(
+        models.Shift.user_id == current_user.id,
+        models.Shift.status == "open"
+    ).first()
+    if not shift and current_user.role != 'admin':
+        raise HTTPException(status_code=400, detail="Debe tener un turno de caja abierto para registrar un abono.")
+        
+    customer = db.query(models.Customer).filter(models.Customer.id == customer_id).with_for_update().first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+        
+    if payment_data.amount <= 0:
+        raise HTTPException(status_code=400, detail="El monto del abono debe ser mayor a 0.")
+        
+    db_payment = models.CustomerPayment(
+        customer_id=customer_id,
+        shift_id=shift.id if shift else None,
+        user_id=current_user.id,
+        amount=payment_data.amount,
+        created_at=datetime.utcnow().isoformat(),
+        notes=payment_data.notes.strip() if payment_data.notes else None
+    )
+    
+    customer.current_balance -= payment_data.amount
+    
+    if shift:
+        db_mov = models.CashMovement(
+            shift_id=shift.id,
+            type="entrada",
+            amount=payment_data.amount,
+            reason=f"Abono de cliente: {customer.name}",
+            created_at=datetime.utcnow().isoformat()
+        )
+        shift.final_cash_expected += payment_data.amount
+        db.add(db_mov)
+        
+    db.add(db_payment)
+    db.commit()
+    db.refresh(db_payment)
+    return db_payment
+
+@router.get("/customers/{customer_id}/history")
+def get_customer_history(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    if not customer:
+        raise HTTPException(status_code=404, detail="Cliente no encontrado.")
+        
+    sales = db.query(
+        models.SaleHistory.id,
+        models.SaleHistory.created_at,
+        models.SaleHistory.payment_method,
+        models.SaleHistory.price_sold,
+        models.SaleHistory.quantity,
+        models.SaleHistory.discount,
+        models.Product.name.label("product_name")
+    ).join(
+        models.Product, models.Product.id == models.SaleHistory.product_id
+    ).filter(
+        models.SaleHistory.customer_id == customer_id
+    ).all()
+    
+    payments = db.query(models.CustomerPayment).filter(models.CustomerPayment.customer_id == customer_id).all()
+    
+    history = []
+    sales_by_ticket = {}
+    for s in sales:
+        total_item = (s.price_sold * s.quantity) - s.discount
+        date_key = s.created_at
+        if date_key not in sales_by_ticket:
+            sales_by_ticket[date_key] = {
+                "id": s.id,
+                "type": "compra",
+                "payment_method": s.payment_method,
+                "created_at": s.created_at,
+                "amount": 0.0,
+                "details": []
+            }
+        sales_by_ticket[date_key]["amount"] += total_item
+        sales_by_ticket[date_key]["details"].append(f"{s.quantity}x {s.product_name}")
+        
+    for ticket in sales_by_ticket.values():
+        history.append({
+            "id": ticket["id"],
+            "type": "compra_credito" if ticket["payment_method"] == "credito" else "compra_asociada",
+            "description": ", ".join(ticket["details"]),
+            "amount": round(ticket["amount"], 2),
+            "created_at": ticket["created_at"]
+        })
+        
+    for p in payments:
+        history.append({
+            "id": p.id,
+            "type": "abono",
+            "description": p.notes or "Abono a cuenta",
+            "amount": p.amount,
+            "created_at": p.created_at
+        })
+        
+    history = sorted(history, key=lambda x: x["created_at"], reverse=True)
+    return {
+        "customer": {
+            "id": customer.id,
+            "name": customer.name,
+            "current_balance": customer.current_balance,
+            "credit_limit": customer.credit_limit
+        },
+        "history": history
+    }
+
+
+# --- BACKUP & SECURITY ENDPOINTS ---
+import json
+import io
+from fastapi.responses import StreamingResponse
+from fastapi import UploadFile, File
+from sqlalchemy import text
+
+@router.get("/backup/export")
+def export_backup_database(format: str = "json", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permisos para exportar respaldos.")
+        
+    def serialize_table(model):
+        rows = db.query(model).all()
+        result = []
+        for row in rows:
+            row_dict = {}
+            for key in row.__mapper__.columns.keys():
+                val = getattr(row, key)
+                if val is not None and hasattr(val, "isoformat"):
+                    val = val.isoformat()
+                row_dict[key] = val
+            result.append(row_dict)
+        return result
+
+    if format == "json":
+        backup_data = {
+            "store_settings": serialize_table(models.StoreSettings),
+            "users": serialize_table(models.User),
+            "suppliers": serialize_table(models.Supplier),
+            "billing_profiles": serialize_table(models.BillingProfile),
+            "customers": serialize_table(models.Customer),
+            "products": serialize_table(models.Product),
+            "product_variants": serialize_table(models.ProductVariant),
+            "invoices": serialize_table(models.Invoice),
+            "shifts": serialize_table(models.Shift),
+            "customer_payments": serialize_table(models.CustomerPayment),
+            "purchases": serialize_table(models.Purchase),
+            "purchase_items": serialize_table(models.PurchaseItem),
+            "cash_movements": serialize_table(models.CashMovement),
+            "sales_history": serialize_table(models.SaleHistory),
+            "product_returns": serialize_table(models.ProductReturn),
+            "notifications": serialize_table(models.Notification)
+        }
+        json_str = json.dumps(backup_data, indent=2, ensure_ascii=False)
+        stream = io.BytesIO(json_str.encode('utf-8'))
+        
+        headers = {
+            'Content-Disposition': f'attachment; filename="tienda_backup_{datetime.now().strftime("%Y-%m-%d")}.json"'
+        }
+        return StreamingResponse(stream, media_type="application/json", headers=headers)
+        
+    elif format == "sql":
+        sql_lines = []
+        sql_lines.append("-- TIENDA DATABASE BACKUP SQL DUMP")
+        sql_lines.append(f"-- Generated: {datetime.now().isoformat()}")
+        sql_lines.append("")
+        sql_lines.append("BEGIN;")
+        
+        tables = [
+            ("store_settings", models.StoreSettings),
+            ("users", models.User),
+            ("suppliers", models.Supplier),
+            ("billing_profiles", models.BillingProfile),
+            ("customers", models.Customer),
+            ("products", models.Product),
+            ("product_variants", models.ProductVariant),
+            ("invoices", models.Invoice),
+            ("shifts", models.Shift),
+            ("customer_payments", models.CustomerPayment),
+            ("purchases", models.Purchase),
+            ("purchase_items", models.PurchaseItem),
+            ("cash_movements", models.CashMovement),
+            ("sales_history", models.SaleHistory),
+            ("product_returns", models.ProductReturn),
+            ("notifications", models.Notification)
+        ]
+        
+        for table_name, model in tables:
+            rows = db.query(model).all()
+            if not rows:
+                continue
+            sql_lines.append(f"\n-- Data for table {table_name}")
+            sql_lines.append(f"TRUNCATE TABLE {table_name} CASCADE;")
+            
+            columns = model.__mapper__.columns.keys()
+            cols_str = ", ".join(columns)
+            
+            for row in rows:
+                vals = []
+                for col in columns:
+                    val = getattr(row, col)
+                    if val is None:
+                        vals.append("NULL")
+                    elif isinstance(val, (int, float)):
+                        vals.append(str(val))
+                    elif isinstance(val, bool):
+                        vals.append("TRUE" if val else "FALSE")
+                    else:
+                        escaped_str = str(val).replace("'", "''")
+                        vals.append(f"'{escaped_str}'")
+                vals_str = ", ".join(vals)
+                sql_lines.append(f"INSERT INTO {table_name} ({cols_str}) VALUES ({vals_str});")
+                
+            try:
+                sql_lines.append(f"SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), COALESCE((SELECT MAX(id)+1 FROM {table_name}), 1), false);")
+            except Exception:
+                pass
+            
+        sql_lines.append("\nCOMMIT;")
+        
+        sql_str = "\n".join(sql_lines)
+        stream = io.BytesIO(sql_str.encode('utf-8'))
+        headers = {
+            'Content-Disposition': f'attachment; filename="tienda_backup_{datetime.now().strftime("%Y-%m-%d")}.sql"'
+        }
+        return StreamingResponse(stream, media_type="application/sql", headers=headers)
+        
+    elif format == "excel":
+        import openpyxl
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+        
+        wb = openpyxl.Workbook()
+        default_sheet = wb.active
+        wb.remove(default_sheet)
+        
+        tables = [
+            ("Ajustes", models.StoreSettings),
+            ("Usuarios", models.User),
+            ("Proveedores", models.Supplier),
+            ("Perfiles_Facturacion", models.BillingProfile),
+            ("Clientes", models.Customer),
+            ("Productos", models.Product),
+            ("Variantes_Producto", models.ProductVariant),
+            ("Facturas", models.Invoice),
+            ("Turnos_Caja", models.Shift),
+            ("Abonos_Clientes", models.CustomerPayment),
+            ("Compras", models.Purchase),
+            ("Items_Compra", models.PurchaseItem),
+            ("Movimientos_Caja", models.CashMovement),
+            ("Historial_Ventas", models.SaleHistory),
+            ("Devoluciones", models.ProductReturn)
+        ]
+        
+        title_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
+        cell_font = Font(name="Calibri", size=10)
+        header_fill = PatternFill(start_color="064E3B", end_color="064E3B", fill_type="solid")
+        align_center = Alignment(horizontal="center", vertical="center")
+        align_left = Alignment(horizontal="left", vertical="center")
+        
+        thin_side = Side(border_style="thin", color="D1D5DB")
+        thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+        
+        for sheet_name, model in tables:
+            ws = wb.create_sheet(title=sheet_name)
+            rows = db.query(model).all()
+            columns = model.__mapper__.columns.keys()
+            
+            for col_idx, col_name in enumerate(columns, 1):
+                cell = ws.cell(row=1, column=col_idx, value=col_name.upper())
+                cell.font = title_font
+                cell.fill = header_fill
+                cell.alignment = align_center
+                cell.border = thin_border
+                
+            for row_idx, row in enumerate(rows, 2):
+                for col_idx, col_name in enumerate(columns, 1):
+                    val = getattr(row, col_name)
+                    if isinstance(val, bool):
+                        val = "SÍ" if val else "NO"
+                    cell = ws.cell(row=row_idx, column=col_idx, value=val)
+                    cell.font = cell_font
+                    cell.border = thin_border
+                    if isinstance(val, (int, float)):
+                        cell.alignment = Alignment(horizontal="right", vertical="center")
+                    else:
+                        cell.alignment = align_left
+                        
+            for col in ws.columns:
+                max_len = max(len(str(cell.value or '')) for cell in col)
+                col_letter = openpyxl.utils.get_column_letter(col[0].column)
+                ws.column_dimensions[col_letter].width = max(max_len + 3, 10)
+                
+        output = io.BytesIO()
+        wb.save(output)
+        output.seek(0)
+        
+        headers = {
+            'Content-Disposition': f'attachment; filename="tienda_backup_{datetime.now().strftime("%Y-%m-%d")}.xlsx"'
+        }
+        return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
+        
+    else:
+        raise HTTPException(status_code=400, detail="Formato de respaldo no soportado.")
+
+
+@router.post("/backup/import")
+def import_backup_database(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="No tienes permisos para restaurar respaldos.")
+        
+    try:
+        content = file.file.read()
+        data = json.loads(content.decode('utf-8'))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="El archivo no es un JSON válido o tiene codificación incorrecta.")
+        
+    tables = [
+        ("product_returns", models.ProductReturn),
+        ("sales_history", models.SaleHistory),
+        ("cash_movements", models.CashMovement),
+        ("customer_payments", models.CustomerPayment),
+        ("purchase_items", models.PurchaseItem),
+        ("purchases", models.Purchase),
+        ("invoices", models.Invoice),
+        ("shifts", models.Shift),
+        ("product_variants", models.ProductVariant),
+        ("products", models.Product),
+        ("billing_profiles", models.BillingProfile),
+        ("customers", models.Customer),
+        ("suppliers", models.Supplier),
+        ("users", models.User),
+        ("store_settings", models.StoreSettings),
+        ("notifications", models.Notification)
+    ]
+    
+    try:
+        # Delete rows
+        for name, model in tables:
+            db.query(model).delete()
+        db.commit()
+        
+        # Insert rows
+        for name, model in reversed(tables):
+            rows = data.get(name, [])
+            valid_keys = model.__mapper__.columns.keys()
+            for row_dict in rows:
+                filtered_dict = {k: v for k, v in row_dict.items() if k in valid_keys}
+                instance = model(**filtered_dict)
+                db.add(instance)
+            db.commit()
+            
+            # Sincronizar secuencias
+            try:
+                db.execute(text(f"SELECT setval(pg_get_serial_sequence('{model.__tablename__}', 'id'), COALESCE((SELECT MAX(id)+1 FROM {model.__tablename__}), 1), false);"))
+                db.commit()
+            except Exception as seq_err:
+                db.rollback()
+                
+        return {"status": "success", "message": "Base de datos restaurada correctamente."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error durante la restauración: {str(e)}")
+
+
+@router.get("/reports/dashboard-details")
+def get_dashboard_details(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role not in ["admin", "supervisor"]:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
+        
+    from datetime import datetime as dt, timedelta
+    from sqlalchemy import func
+    
+    # 1. Active credit balance (total owed by customers)
+    total_owed = db.query(func.coalesce(func.sum(models.Customer.current_balance), 0.0)).scalar()
+    
+    # 2. Setup dates
+    local_now = dt.now()
+    
+    today_start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
+    
+    # Month boundaries
+    this_month_start = local_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    last_month_end = this_month_start - timedelta(seconds=1)
+    last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    
+    # Query non-cancelled sales
+    sales_query = db.query(models.SaleHistory).filter(models.SaleHistory.is_cancelled == False)
+    
+    def calculate_sales_metrics(query_obj, start_dt, end_dt):
+        sales_in_range = query_obj.filter(
+            models.SaleHistory.created_at >= start_dt.isoformat(),
+            models.SaleHistory.created_at <= end_dt.isoformat()
+        ).all()
+        
+        revenue = 0.0
+        cost = 0.0
+        for s in sales_in_range:
+            price = s.price_sold
+            cost_val = s.cost_price_sold if s.cost_price_sold is not None else 0.0
+            revenue += (price * s.quantity) - s.discount
+            cost += cost_val * s.quantity
+            
+        profit = revenue - cost
+        return revenue, profit
+        
+    # Sales/Profit for Today
+    today_revenue, today_profit = calculate_sales_metrics(sales_query, today_start, local_now)
+    # Sales/Profit for Yesterday
+    yesterday_revenue, yesterday_profit = calculate_sales_metrics(sales_query, yesterday_start, today_start - timedelta(seconds=1))
+    
+    # Sales/Profit for This Month
+    this_month_revenue, this_month_profit = calculate_sales_metrics(sales_query, this_month_start, local_now)
+    # Sales/Profit for Last Month
+    last_month_revenue, last_month_profit = calculate_sales_metrics(sales_query, last_month_start, last_month_end)
+    
+    # 3. 30-day time-series
+    time_series = []
+    for i in range(29, -1, -1):
+        day_start = today_start - timedelta(days=i)
+        day_end = day_start + timedelta(hours=23, minutes=59, seconds=59)
+        
+        day_rev, day_prof = calculate_sales_metrics(sales_query, day_start, day_end)
+        time_series.append({
+            "date": day_start.strftime("%Y-%m-%d"),
+            "display_date": day_start.strftime("%d/%m"),
+            "Ventas": round(day_rev, 2),
+            "Utilidad": round(day_prof, 2)
+        })
+        
+    # 4. Payment method breakdown (last 30 days)
+    last_30_days_start = today_start - timedelta(days=30)
+    sales_30_days = sales_query.filter(
+        models.SaleHistory.created_at >= last_30_days_start.isoformat()
+    ).all()
+    
+    pm_cash = 0.0
+    pm_card = 0.0
+    pm_credit = 0.0
+    
+    for s in sales_30_days:
+        total = (s.price_sold * s.quantity) - s.discount
+        if s.payment_method == "efectivo":
+            pm_cash += total
+        elif s.payment_method == "tarjeta":
+            pm_card += total
+        elif s.payment_method == "credito":
+            pm_credit += total
+        elif s.payment_method == "mixto":
+            pm_cash += s.cash_amount
+            pm_card += s.card_amount
+            
+    pm_total = pm_cash + pm_card + pm_credit
+    
+    return {
+        "today": {
+            "revenue": round(today_revenue, 2),
+            "profit": round(today_profit, 2),
+            "yesterday_revenue": round(yesterday_revenue, 2),
+            "yesterday_profit": round(yesterday_profit, 2)
+        },
+        "month": {
+            "revenue": round(this_month_revenue, 2),
+            "profit": round(this_month_profit, 2),
+            "last_month_revenue": round(last_month_revenue, 2),
+            "last_month_profit": round(last_month_profit, 2)
+        },
+        "credit": {
+            "total_owed": round(total_owed, 2)
+        },
+        "time_series": time_series,
+        "payment_methods": {
+            "cash": round(pm_cash, 2),
+            "card": round(pm_card, 2),
+            "credit": round(pm_credit, 2),
+            "total": round(pm_total, 2)
+        }
+    }
+
+
+
 
 
 

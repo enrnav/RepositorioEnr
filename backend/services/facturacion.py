@@ -21,10 +21,32 @@ def prettify_xml(elem):
     reparsed = minidom.parseString(rough_string)
     return reparsed.toprettyxml(indent="  ")
 
-def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp_str):
+def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp_str, store_settings=None):
     """
     Genera una estructura XML compatible con el estándar CFDI 4.0 del SAT.
     """
+    # Configurar valores dinámicos desde store_settings
+    tax_rate = 16.0
+    emisor_rfc = "AED180425EE3"
+    emisor_name = "ABARROTES ED & E"
+    lugar_expedicion = "64000"
+
+    if store_settings:
+        if "tax_rate" in store_settings and store_settings["tax_rate"] is not None:
+            tax_rate = float(store_settings["tax_rate"])
+        if store_settings.get("rfc"):
+            emisor_rfc = store_settings["rfc"]
+        if store_settings.get("store_name"):
+            emisor_name = store_settings["store_name"]
+        if store_settings.get("address"):
+            # Obtener CP del domicilio fiscal de la dirección si contiene 5 números al final
+            import re
+            cp_match = re.findall(r'\b\d{5}\b', store_settings["address"])
+            if cp_match:
+                lugar_expedicion = cp_match[-1]
+
+    tax_factor = 1 + (tax_rate / 100)
+
     # Totales
     subtotal = 0.0
     descuento_total = sale_info.get("discount", 0.0)
@@ -32,18 +54,12 @@ def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp
     # Calcular totales por concepto
     conceptos_data = []
     for item in items:
-        # Suponiendo que el precio unitario ya incluye o no IVA. Haremos desglose estándar de IVA 16%
-        # Para abarrotes, algunos productos son tasa 0%, pero por simplicidad de simulación usaremos IVA 16%
-        # a menos que se indique lo contrario.
         item_qty = item["quantity"]
         item_price = item["price"]
         item_total = item_qty * item_price
         
-        # Desglose de impuesto (IVA 16%)
-        # Base = Importe / 1.16
-        # IVA = Importe - Base
-        # Si queremos simplificar, asumimos que el precio de venta ya incluye IVA
-        base = round(item_total / 1.16, 2)
+        # Desglose de impuesto dinámico
+        base = round(item_total / tax_factor, 2)
         iva = round(item_total - base, 2)
         
         subtotal += base
@@ -53,7 +69,7 @@ def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp
             "sat_unit_key": item.get("sat_unit_key") or "H87",
             "quantity": item_qty,
             "name": item["name"],
-            "price_unit": round(item_price / 1.16, 4),
+            "price_unit": round(item_price / tax_factor, 4),
             "total": base,
             "base": base,
             "iva": iva
@@ -82,7 +98,7 @@ def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp
         "Total": f"{total:.2f}",
         "TipoDeComprobante": "I",
         "MetodoPago": "PUE",
-        "LugarExpedicion": "64000",
+        "LugarExpedicion": lugar_expedicion,
         "Exportacion": "01"
     }
     
@@ -91,8 +107,8 @@ def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp
     
     # Emisor
     emisor = ET.SubElement(comprobante, "{http://www.sat.gob.mx/cfd/4}Emisor", {
-        "Rfc": "AED180425EE3",
-        "Nombre": "ABARROTES ED E",
+        "Rfc": emisor_rfc.upper().strip(),
+        "Nombre": emisor_name.upper().strip(),
         "RegimenFiscal": "626"  # Régimen Simplificado de Confianza
     })
     
@@ -125,7 +141,7 @@ def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp
             "Base": f"{c['base']:.2f}",
             "Impuesto": "002", # IVA
             "TipoFactor": "Tasa",
-            "TasaOCuota": "0.160000",
+            "TasaOCuota": f"{tax_rate/100:.6f}",
             "Importe": f"{c['iva']:.2f}"
         })
         
@@ -138,7 +154,7 @@ def generate_cfdi_xml(sale_info, billing_profile, items, invoice_uuid, timestamp
         "Base": f"{subtotal:.2f}",
         "Impuesto": "002",
         "TipoFactor": "Tasa",
-        "TasaOCuota": "0.160000",
+        "TasaOCuota": f"{tax_rate/100:.6f}",
         "Importe": f"{total_impuestos:.2f}"
     })
     
@@ -200,21 +216,42 @@ def draw_simulated_qr(canvas, x, y, size):
                 
     canvas.restoreState()
 
-def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid, timestamp_str):
+def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid, timestamp_str, store_settings=None):
     """
     Genera un archivo PDF con un diseño premium representando la factura CFDI 4.0.
     Si ReportLab no está disponible, escribe un reporte básico de texto.
     """
     os.makedirs(os.path.dirname(pdf_path), exist_ok=True)
     
+    # Configurar valores dinámicos
+    tax_rate = 16.0
+    emisor_rfc = "AED180425EE3"
+    emisor_name = "ABARROTES ED & E"
+    lugar_expedicion = "64000"
+
+    if store_settings:
+        if "tax_rate" in store_settings and store_settings["tax_rate"] is not None:
+            tax_rate = float(store_settings["tax_rate"])
+        if store_settings.get("rfc"):
+            emisor_rfc = store_settings["rfc"]
+        if store_settings.get("store_name"):
+            emisor_name = store_settings["store_name"]
+        if store_settings.get("address"):
+            import re
+            cp_match = re.findall(r'\b\d{5}\b', store_settings["address"])
+            if cp_match:
+                lugar_expedicion = cp_match[-1]
+
+    tax_factor = 1 + (tax_rate / 100)
+    
     subtotal = 0.0
     descuento_total = sale_info.get("discount", 0.0)
     for item in items:
-        subtotal += item["quantity"] * item["price"] / 1.16
+        subtotal += item["quantity"] * item["price"] / tax_factor
         
     subtotal = round(subtotal, 2)
     descuento_total = round(descuento_total, 2)
-    total_impuestos = round(sum((item["quantity"] * item["price"]) - (item["quantity"] * item["price"] / 1.16) for item in items), 2)
+    total_impuestos = round(sum((item["quantity"] * item["price"]) - (item["quantity"] * item["price"] / tax_factor) for item in items), 2)
     total = round(subtotal - descuento_total + total_impuestos, 2)
     
     if not REPORTLAB_AVAILABLE:
@@ -225,8 +262,8 @@ def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid,
             f.write(f"FOLIO FISCAL (UUID): {invoice_uuid}\n")
             f.write(f"FECHA TIMBRADO: {timestamp_str}\n\n")
             f.write(f"EMISOR:\n")
-            f.write(f" - Nombre: ABARROTES ED E\n")
-            f.write(f" - RFC: AED180425EE3\n")
+            f.write(f" - Nombre: {emisor_name}\n")
+            f.write(f" - RFC: {emisor_rfc}\n")
             f.write(f" - Régimen Fiscal: 626 - Régimen Simplificado de Confianza\n\n")
             f.write(f"RECEPTOR:\n")
             f.write(f" - Nombre: {billing_profile['razon_social']}\n")
@@ -240,7 +277,7 @@ def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid,
             f.write(f" - Subtotal: ${subtotal:.2f}\n")
             if descuento_total > 0:
                 f.write(f" - Descuento: ${descuento_total:.2f}\n")
-            f.write(f" - IVA (16%): ${total_impuestos:.2f}\n")
+            f.write(f" - IVA ({tax_rate:.1f}%): ${total_impuestos:.2f}\n")
             f.write(f" - Total: ${total:.2f}\n")
         return
         
@@ -315,7 +352,7 @@ def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid,
     # Encabezado (Logo / Nombre Empresa y Datos del CFDI)
     header_data = [
         [
-            Paragraph("<b>ABARROTES ED & E</b><br/>RFC: AED180425EE3<br/>Régimen Fiscal: 626 - Régimen Simplificado de Confianza<br/>Lugar de Expedición: 64000", style_normal),
+            Paragraph(f"<b>{emisor_name.upper()}</b><br/>RFC: {emisor_rfc.upper()}<br/>Régimen Fiscal: 626 - Régimen Simplificado de Confianza<br/>Lugar de Expedición: {lugar_expedicion}", style_normal),
             Paragraph("<font size=14 color='#1e293b'><b>FACTURA ELECTRÓNICA</b></font><br/><b>Folio Fiscal (UUID):</b><br/>" + invoice_uuid + "<br/><b>Fecha de Emisión:</b> " + timestamp_str + "<br/><b>Uso CFDI:</b> G03 - Gastos en general", style_normal)
         ]
     ]
@@ -365,7 +402,7 @@ def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid,
     ]
     
     for item in items:
-        price_unit = item["price"] / 1.16
+        price_unit = item["price"] / tax_factor
         item_total = item["quantity"] * price_unit
         
         table_data.append([
@@ -398,7 +435,7 @@ def generate_cfdi_pdf(pdf_path, sale_info, billing_profile, items, invoice_uuid,
     if descuento_total > 0:
         totals_data.append([Paragraph("<b>Descuento:</b>", style_normal), Paragraph(f"-${descuento_total:.2f}", style_normal)])
     totals_data.extend([
-        [Paragraph("<b>IVA (16%):</b>", style_normal), Paragraph(f"${total_impuestos:.2f}", style_normal)],
+        [Paragraph(f"<b>IVA ({tax_rate:.1f}%):</b>", style_normal), Paragraph(f"${total_impuestos:.2f}", style_normal)],
         [Paragraph("<b>Total:</b>", style_header_label), Paragraph(f"<b>${total:.2f}</b>", style_header_label)]
     ])
     

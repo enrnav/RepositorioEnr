@@ -6,6 +6,10 @@ import Inventory from './pages/Inventory';
 import Sales from './pages/Sales';
 import Users from './pages/Users';
 import Invoices from './pages/Invoices';
+import Suppliers from './pages/Suppliers';
+import Purchases from './pages/Purchases';
+import Settings from './pages/Settings';
+import Customers from './pages/Customers';
 
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -53,6 +57,16 @@ function App() {
               <Inventory />
             </ProtectedRoute>
           } />
+          <Route path="/suppliers" element={
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+              <Suppliers />
+            </ProtectedRoute>
+          } />
+          <Route path="/purchases" element={
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+              <Purchases />
+            </ProtectedRoute>
+          } />
           <Route path="/billing" element={
             <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
               <Invoices />
@@ -63,6 +77,12 @@ function App() {
               <Users />
             </ProtectedRoute>
           } />
+          <Route path="/settings" element={
+            <ProtectedRoute allowedRoles={['admin', 'supervisor']}>
+              <Settings />
+            </ProtectedRoute>
+          } />
+          <Route path="/customers" element={<Customers />} />
           <Route path="/sales" element={<Sales />} />
         </Route>
       </Routes>
@@ -71,3 +91,4 @@ function App() {
 }
 
 export default App;
+

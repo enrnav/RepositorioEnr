@@ -1,7 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, Bell, LogOut, ShoppingCart, Users, Menu, X, Leaf, Keyboard, Receipt } from 'lucide-react';
-import { fetchInventory, fetchActiveShift } from '../api';
+import { 
+  LayoutDashboard, 
+  Package, 
+  Bell, 
+  LogOut, 
+  ShoppingCart, 
+  Users, 
+  Menu, 
+  X, 
+  Leaf, 
+  Keyboard, 
+  Receipt, 
+  Truck, 
+  ClipboardList, 
+  Settings as SettingsIcon, 
+  UserCheck 
+} from 'lucide-react';
+import { fetchInventory, fetchActiveShift, fetchStoreSettings } from '../api';
 import FloatingStoreIconsBg from './FloatingStoreIconsBg';
 
 
@@ -37,6 +53,9 @@ const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [activeShift, setActiveShift] = useState(null);
+  const [storeSettings, setStoreSettings] = useState({
+    store_name: 'ABARROTES ED & E'
+  });
   
   const userStr = sessionStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : { role: 'cajero', username: '', full_name: '' };
@@ -47,7 +66,6 @@ const Layout = () => {
   const checkStock = async () => {
     try {
       const inventory = await fetchInventory();
-      // filter stock below custom product min_stock
       const lowStock = inventory.filter(item => item.quantity <= (item.min_stock ?? 3));
       setLowStockItems(lowStock);
     } catch (err) {
@@ -64,6 +82,17 @@ const Layout = () => {
     }
   };
 
+  const checkStoreSettings = async () => {
+    try {
+      const data = await fetchStoreSettings();
+      if (data && data.store_name) {
+        setStoreSettings(data);
+      }
+    } catch (err) {
+      console.error("Error fetching settings in layout:", err);
+    }
+  };
+
   useEffect(() => {
     if (isStaff) {
       checkStock();
@@ -74,16 +103,25 @@ const Layout = () => {
 
   useEffect(() => {
     checkShift();
+    checkStoreSettings();
     window.addEventListener("shiftChanged", checkShift);
-    return () => window.removeEventListener("shiftChanged", checkShift);
+    window.addEventListener("store_settings_updated", checkStoreSettings);
+    return () => {
+      window.removeEventListener("shiftChanged", checkShift);
+      window.removeEventListener("store_settings_updated", checkStoreSettings);
+    };
   }, []);
 
   const navItems = [
     { name: 'Panel', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin', 'supervisor'] },
     { name: 'Punto de Venta', path: '/sales', icon: ShoppingCart, allowedRoles: ['admin', 'supervisor', 'cajero'] },
+    { name: 'Clientes', path: '/customers', icon: UserCheck, allowedRoles: ['admin', 'supervisor', 'cajero'] },
     { name: 'Inventario', path: '/inventory', icon: Package, allowedRoles: ['admin', 'supervisor'] },
+    { name: 'Compras', path: '/purchases', icon: ClipboardList, allowedRoles: ['admin', 'supervisor'] },
+    { name: 'Proveedores', path: '/suppliers', icon: Truck, allowedRoles: ['admin', 'supervisor'] },
     { name: 'Facturación', path: '/billing', icon: Receipt, allowedRoles: ['admin', 'supervisor'] },
     { name: 'Usuarios', path: '/users', icon: Users, allowedRoles: ['admin'] },
+    { name: 'Ajustes', path: '/settings', icon: SettingsIcon, allowedRoles: ['admin', 'supervisor'] },
   ];
 
   const renderHotkeys = () => {
@@ -142,16 +180,15 @@ const Layout = () => {
   if (!isStaff) {
     // Layout for normal Cajero (no sidebar, full screen POS)
     return (
-      <div className="flex flex-col h-screen w-screen max-w-full overflow-hidden bg-brand-50 font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
+      <div className="flex flex-col h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
         {/* Background floating store icons animation */}
         <FloatingStoreIconsBg />
 
         <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100 relative">
           <div className="flex items-center space-x-3 shrink-0 select-none">
             <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm" />
-            <div className="flex flex-col items-start">
-              <span className="text-lg font-black text-brand-900 tracking-tight leading-none">ABARROTES</span>
-              <span className="text-[10px] font-black text-chiluda-red tracking-widest mt-1.5 uppercase leading-none">ED & E</span>
+            <div className="flex flex-col items-start max-w-[180px]">
+              <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
             </div>
           </div>
           
@@ -188,7 +225,7 @@ const Layout = () => {
 
   // Layout for Staff (Admin and Supervisor, includes sidebar and notifications)
   return (
-    <div className="flex h-screen w-screen max-w-full overflow-hidden bg-brand-50 font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
+    <div className="flex h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
       {/* Background floating store icons animation */}
       <FloatingStoreIconsBg />
 
@@ -213,9 +250,8 @@ const Layout = () => {
 
         <div className="h-20 flex items-center space-x-3 px-6 border-b border-stone-200 select-none bg-white">
           <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain animate-fade-in" />
-          <div className="flex flex-col items-start">
-            <span className="text-lg font-black text-brand-900 tracking-tight leading-none">ABARROTES</span>
-            <span className="text-[10px] font-black text-chiluda-red tracking-widest mt-1.5 uppercase leading-none">ED & E</span>
+          <div className="flex flex-col items-start max-w-[180px]">
+            <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
           </div>
         </div>
         
@@ -277,9 +313,8 @@ const Layout = () => {
             </button>
             <div className="flex items-center space-x-2 lg:hidden select-none">
               <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-12 w-auto object-contain animate-fade-in" />
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-black text-brand-900 tracking-tight leading-none">ABARROTES</span>
-                <span className="text-[8px] font-black text-chiluda-red tracking-widest mt-1 uppercase leading-none">ED & E</span>
+              <div className="flex flex-col items-start max-w-[140px]">
+                <span className="text-xs font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
               </div>
             </div>
           </div>

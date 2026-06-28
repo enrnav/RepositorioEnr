@@ -3,13 +3,13 @@ import { createPortal } from 'react-dom';
 import { 
   Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, 
   X, Printer, CreditCard, Banknote, History, Coins, ArrowRight, AlertCircle, Lock,
-  Package, Keyboard
+  Package, Keyboard, UserCheck
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
   fetchInventory, checkoutSales, fetchRecentSales, cancelSale, 
   fetchActiveShift, openShift, closeShift, addCashMovement, fetchShiftReport,
-  fetchActiveShiftsAdmin, closeShiftAdmin
+  fetchActiveShiftsAdmin, closeShiftAdmin, fetchStoreSettings, fetchCustomers
 } from '../api';
 
 
@@ -20,9 +20,27 @@ const Sales = () => {
   const [cart, setCart] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Store Settings & Customers
+  const [storeSettings, setStoreSettings] = useState({
+    store_name: 'Abarrotes ED & E',
+    phone: '',
+    email: '',
+    address: '',
+    tax_rate: 16.0,
+    ticket_footer: '¡Gracias por preferirnos!'
+  });
+  const [customers, setCustomers] = useState([]);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [customerSearchTerm, setCustomerSearchTerm] = useState('');
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  
+  // Shift Ticket Printing
+  const [showShiftTicketModal, setShowShiftTicketModal] = useState(false);
+  const [lastShiftReport, setLastShiftReport] = useState(null);
+  
   // Checkout & Payment
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState(null); // 'efectivo' | 'tarjeta' | 'mixto'
+  const [paymentMethod, setPaymentMethod] = useState(null); // 'efectivo' | 'tarjeta' | 'mixto' | 'credito'
   const [amountPaidCash, setAmountPaidCash] = useState('');
   const [amountPaidCard, setAmountPaidCard] = useState('');
   const [cartDiscount, setCartDiscount] = useState('0'); // percentage or fixed amount
@@ -130,7 +148,17 @@ const Sales = () => {
       return;
     }
     try {
+      const shiftId = activeShift.id;
       await closeShift(cashReal);
+      
+      try {
+        const report = await fetchShiftReport(shiftId);
+        setLastShiftReport(report);
+        setShowShiftTicketModal(true);
+      } catch (err) {
+        console.error("Error loading final shift report for ticket", err);
+      }
+
       window.dispatchEvent(new Event("shiftChanged"));
       showAlert("Caja Cerrada", "El turno de caja ha sido cerrado correctamente.", "success");
       setActiveShift(null);
@@ -195,6 +223,15 @@ const Sales = () => {
     }
     try {
       await closeShiftAdmin(shiftId, cashReal);
+      
+      try {
+        const report = await fetchShiftReport(shiftId);
+        setLastShiftReport(report);
+        setShowShiftTicketModal(true);
+      } catch (err) {
+        console.error("Error loading final shift report for ticket as admin", err);
+      }
+
       showAlert("Caja Cerrada", "El turno de caja del cajero ha sido cerrado correctamente.", "success");
       setAdminCloseReal('');
       setSelectedShiftToClose(null);
@@ -220,9 +257,36 @@ const Sales = () => {
     }
   };
 
+  const loadStoreSettings = async () => {
+    try {
+      const data = await fetchStoreSettings();
+      if (data) {
+        setStoreSettings(data);
+      }
+    } catch (error) {
+      console.error("Error loading store settings", error);
+    }
+  };
+
+  const loadCustomersData = async (query = '') => {
+    try {
+      const data = await fetchCustomers(query);
+      setCustomers(data);
+    } catch (error) {
+      console.error("Error loading customers", error);
+    }
+  };
+
   useEffect(() => {
     verifyShift();
     loadData();
+    loadStoreSettings();
+    loadCustomersData();
+
+    window.addEventListener("store_settings_updated", loadStoreSettings);
+    return () => {
+      window.removeEventListener("store_settings_updated", loadStoreSettings);
+    };
   }, []);
 
   // Keyboard Shortcuts Handler
@@ -407,7 +471,15 @@ const Sales = () => {
     const cashVal = parseFloat(amountPaidCash);
     const cardVal = parseFloat(amountPaidCard);
 
-    if (paymentMethod === 'efectivo') {
+    if (paymentMethod === 'credito') {
+      if (!selectedCustomer) {
+        showAlert("Cliente Requerido", "Debes seleccionar un cliente registrado para vender a crédito.", "warning");
+        setIsProcessing(false);
+        return;
+      }
+      actualPaidCash = 0;
+      actualPaidCard = 0;
+    } else if (paymentMethod === 'efectivo') {
       actualPaidCash = isNaN(cashVal) ? cartTotal : cashVal;
       actualPaidCard = 0;
       if (actualPaidCash < cartTotal) {
@@ -439,28 +511,30 @@ const Sales = () => {
       cash_amount: actualPaidCash,
       card_amount: actualPaidCard,
       discount: cartDiscountTotal,
-      shift_id: activeShift ? activeShift.id : null
+      shift_id: activeShift ? activeShift.id : null,
+      customer_id: selectedCustomer ? selectedCustomer.id : null
     };
 
     try {
       await checkoutSales(checkoutData);
       
       // Calculate change
-      const change = paymentMethod === 'tarjeta' ? 0 : (actualPaidCash + actualPaidCard) - cartTotal;
+      const change = (paymentMethod === 'tarjeta' || paymentMethod === 'credito') ? 0 : (actualPaidCash + actualPaidCard) - cartTotal;
       
       setLastSaleData({
         items: [...cart],
         subtotal: subtotalTotal,
         discount: cartDiscountTotal,
         total: cartTotal,
-        paymentMethod: paymentMethod,
+        paymentMethod: paymentMethod === 'credito' ? 'Crédito/Fiado' : paymentMethod,
         cashPaid: actualPaidCash,
         cardPaid: actualPaidCard,
         change: change,
         date: new Date(),
         saleId: Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
         cashier: user.full_name,
-        shiftId: activeShift ? activeShift.id : null
+        shiftId: activeShift ? activeShift.id : null,
+        customerName: selectedCustomer ? selectedCustomer.name : null
       });
       
       // Reset cart and states
@@ -469,6 +543,8 @@ const Sales = () => {
       setAmountPaidCash('');
       setAmountPaidCard('');
       setPaymentMethod(null);
+      setSelectedCustomer(null);
+      setCustomerSearchTerm('');
       
       await loadData();
       if (activeShift) {
@@ -626,7 +702,7 @@ const Sales = () => {
       {/* Header and Shift Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
         <h2 className="text-2xl sm:text-3xl font-extrabold text-brand-900 tracking-tight flex items-center animate-fade-in">
-          <ShoppingCart className="mr-3 text-chiluda-red w-8 h-8" />
+          <ShoppingCart className="mr-3 text-chiluda-red w-8 h-8 shrink-0 animate-bounce" />
           Punto de Venta
         </h2>
         
@@ -667,7 +743,7 @@ const Sales = () => {
         {/* Left Column: Products Grid */}
         <div className={`flex-1 space-y-6 ${activeTab === 'products' ? 'block' : 'hidden lg:block'}`}>
           {/* Search bar */}
-          <div className="bg-white/5 backdrop-blur-[2px] p-3 sm:p-4 rounded-3xl shadow-soft border border-white/40 flex items-center animate-slide-up">
+          <div className="bg-white/10 backdrop-blur-[3px] p-3 sm:p-4 rounded-3xl shadow-soft border border-white/40 flex items-center animate-slide-up">
             <div className="relative w-full">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input 
@@ -734,7 +810,7 @@ const Sales = () => {
                   <div 
                     key={item.id} 
                     onClick={() => item.quantity > 0 && handleProductSelect(item)}
-                    className={`bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-sm border border-white/40 overflow-hidden transition-all duration-300 flex flex-col group animate-slide-up ${item.quantity > 0 ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1.5 hover:border-[#064e3b]/30 active:scale-95' : 'opacity-70'}`}
+                    className={`bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-sm border border-white/40 overflow-hidden transition-all duration-300 flex flex-col group animate-slide-up ${item.quantity > 0 ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1.5 hover:border-[#064e3b]/30 active:scale-95' : 'opacity-70'}`}
                     style={{ animationDelay: `${i * 0.02}s` }}
                   >
                     <div className="p-3 sm:p-5 flex-1 relative flex flex-col justify-between">
@@ -784,7 +860,7 @@ const Sales = () => {
 
         {/* Right Column: Shopping Cart Sidebar */}
         {(activeShift || isAdmin) && (
-          <div className={`w-full lg:w-[420px] bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-glass border border-white/40 flex flex-col lg:h-[calc(100vh-8rem)] lg:sticky lg:top-24 overflow-hidden animate-slide-up ${
+          <div className={`w-full lg:w-[420px] bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-glass border border-white/40 flex flex-col lg:h-[calc(100vh-8rem)] lg:sticky lg:top-24 overflow-hidden animate-slide-up ${
             activeTab === 'cart' ? 'flex h-[calc(100vh-12rem)]' : 'hidden lg:flex'
           }`} style={{ animationDelay: '0.05s' }}>
             {/* Cart Header */}
@@ -943,12 +1019,75 @@ const Sales = () => {
             <div className="p-6 space-y-6 overflow-y-auto flex-1">
               {!paymentMethod ? (
                 <div className="space-y-6">
+                  {/* Buscador de Cliente */}
+                  <div className="relative pb-4 border-b border-gray-100">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Cliente Asociado:</label>
+                    {selectedCustomer ? (
+                      <div className="flex items-center justify-between bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-100 font-bold">
+                        <div>
+                          <div className="text-sm">{selectedCustomer.name}</div>
+                          <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
+                            Deuda: ${selectedCustomer.current_balance.toFixed(2)} | Límite: ${selectedCustomer.credit_limit.toFixed(2)}
+                          </div>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => { setSelectedCustomer(null); setCustomerSearchTerm(''); }}
+                          className="p-1 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-all"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <div className="relative">
+                          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Buscar cliente por nombre..."
+                            value={customerSearchTerm}
+                            onChange={(e) => {
+                              setCustomerSearchTerm(e.target.value);
+                              loadCustomersData(e.target.value);
+                              setShowCustomerDropdown(true);
+                            }}
+                            onFocus={() => setShowCustomerDropdown(true)}
+                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs"
+                          />
+                        </div>
+                        {showCustomerDropdown && customers.length > 0 && (
+                          <>
+                            <div className="fixed inset-0 z-10" onClick={() => setShowCustomerDropdown(false)} />
+                            <div className="absolute left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-25 divide-y divide-slate-100">
+                              {customers.map(c => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedCustomer(c);
+                                    setShowCustomerDropdown(false);
+                                  }}
+                                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors text-xs flex flex-col"
+                                >
+                                  <span className="font-semibold text-slate-800">{c.name}</span>
+                                  <span className="text-[10px] text-slate-500 mt-0.5">
+                                    Deuda: ${c.current_balance.toFixed(2)} | Límite: ${c.credit_limit.toFixed(2)}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="text-center pb-4 border-b border-gray-100">
                     <span className="text-gray-500 text-xs font-bold uppercase tracking-wider block mb-1">Monto a cobrar:</span>
                     <span className="text-4xl font-black text-chiluda-red">${cartTotal.toFixed(2)}</span>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-2.5">
+                  <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod('efectivo')}
                       className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-chiluda-red hover:bg-red-50/30 transition-all group"
@@ -973,6 +1112,18 @@ const Sales = () => {
                     >
                       <Coins size={32} className="text-gray-400 group-hover:text-purple-500 mb-2 transition-colors" />
                       <span className="font-extrabold text-xs text-gray-700 group-hover:text-purple-600">Pago Mixto</span>
+                    </button>
+                    <button
+                      onClick={() => setPaymentMethod('credito')}
+                      disabled={!selectedCustomer}
+                      className={`flex flex-col items-center justify-center p-4 bg-white border-2 rounded-2xl transition-all group ${
+                        selectedCustomer 
+                          ? 'border-gray-100 hover:border-emerald-600 hover:bg-emerald-50/30' 
+                          : 'border-gray-100 opacity-40 cursor-not-allowed'
+                      }`}
+                    >
+                      <UserCheck size={32} className={`mb-2 transition-colors ${selectedCustomer ? 'text-gray-400 group-hover:text-emerald-600' : 'text-gray-300'}`} />
+                      <span className={`font-extrabold text-xs transition-colors ${selectedCustomer ? 'text-gray-700 group-hover:text-emerald-700' : 'text-gray-400'}`}>Crédito / Fiar</span>
                     </button>
                   </div>
                 </div>
@@ -1060,10 +1211,19 @@ const Sales = () => {
                   )}
 
                   {paymentMethod === 'tarjeta' && (
-                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 text-blue-800 text-center flex flex-col items-center gap-2">
+                    <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 text-blue-800 text-center flex flex-col items-center gap-2 animate-fade-in">
                       <CreditCard size={32} className="text-blue-500" />
                       <p className="font-bold text-sm">Cobro por Tarjeta bancaria</p>
                       <p className="text-xs opacity-75">Favor de deslizar o insertar la tarjeta en la terminal bancaria por el monto exacto de: <strong>${cartTotal.toFixed(2)}</strong></p>
+                    </div>
+                  )}
+
+                  {paymentMethod === 'credito' && (
+                    <div className="bg-emerald-50/50 p-5 rounded-2xl border border-emerald-100 text-emerald-800 text-center flex flex-col items-center gap-2 animate-fade-in">
+                      <UserCheck size={32} className="text-emerald-600 animate-bounce" />
+                      <p className="font-bold text-sm">Cobro a Crédito / Fiado</p>
+                      <p className="text-xs opacity-75">Se registrará el monto de <strong>${cartTotal.toFixed(2)}</strong> como saldo deudor en la cuenta de <strong>{selectedCustomer?.name}</strong>.</p>
+                      <p className="text-[10px] text-emerald-600 font-semibold mt-1">Saldo deudor previo: ${selectedCustomer?.current_balance.toFixed(2)} | Límite: ${selectedCustomer?.credit_limit.toFixed(2)}</p>
                     </div>
                   )}
 
@@ -1248,10 +1408,18 @@ const Sales = () => {
             
             <div className="p-6 overflow-y-auto flex-1 min-h-0 font-mono text-[11px] text-gray-800 print:overflow-visible">
               <div className="text-center mb-4 flex flex-col items-center">
-                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">Abarrotes ED & E</h2>
-                <p className="text-[9px] text-gray-500 font-semibold tracking-wide uppercase">Tu mercado de confianza</p>
+                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">{storeSettings.store_name}</h2>
+                {storeSettings.address && (
+                  <p className="text-[9px] text-gray-500 font-semibold tracking-wide uppercase max-w-[250px]">{storeSettings.address}</p>
+                )}
+                {storeSettings.phone && (
+                  <p className="text-[9px] text-gray-500">Tel: {storeSettings.phone}</p>
+                )}
                 <p className="text-[9px] text-gray-500 mt-2">{lastSaleData.date.toLocaleString()}</p>
                 <p className="text-[10px] text-brand-900 font-bold mt-1">Ticket #{lastSaleData.saleId}</p>
+                {lastSaleData.customerName && (
+                  <p className="text-[10px] text-emerald-700 font-bold mt-1">Cliente: {lastSaleData.customerName}</p>
+                )}
                 <p className="text-[9px] text-gray-400">Turno Caja #{lastSaleData.shiftId} | Atendido por: {lastSaleData.cashier}</p>
               </div>
               
@@ -1309,11 +1477,11 @@ const Sales = () => {
                   )}
                 </div>
               </div>
-
+ 
               <div className="flex flex-col items-center mt-5">
                 <QRCodeSVG value={`https://abarrotesedye.com/ticket/${lastSaleData.saleId}`} size={100} level="L" />
                 <p className="text-center text-[9px] text-gray-400 mt-2 max-w-[200px]">Escanea para ticket digital</p>
-                <p className="text-center font-bold text-[10px] text-gray-800 mt-3">¡Gracias por preferirnos!</p>
+                <p className="text-center font-bold text-[10px] text-gray-800 mt-3">{storeSettings.ticket_footer || "¡Gracias por preferirnos!"}</p>
               </div>
             </div>
             
@@ -1333,6 +1501,129 @@ const Sales = () => {
                 className="flex-1 py-3.5 rounded-xl font-bold text-white bg-chiluda-red hover:bg-chiluda-darkred shadow-lg transition-all text-sm"
               >
                 Nueva Venta
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Shift Closure Ticket Modal */}
+      {showShiftTicketModal && lastShiftReport && createPortal(
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4 print:p-0 print:bg-white print:items-start">
+          <div id="printable-shift-ticket" className="bg-white rounded-3xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] print:max-h-none print:shadow-none print:rounded-none">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 print:hidden">
+              <h3 className="text-lg font-black text-brand-900">Corte de Caja Completo</h3>
+              <button onClick={() => setShowShiftTicketModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto flex-1 min-h-0 font-mono text-[11px] text-gray-800 print:overflow-visible">
+              <div className="text-center mb-4 flex flex-col items-center">
+                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">{storeSettings.store_name}</h2>
+                <p className="text-[10px] font-black text-gray-500 mt-1 uppercase">REPORTE DE CIERRE DE CAJA</p>
+                <p className="text-[9px] text-gray-400 mt-2">Impreso: {new Date().toLocaleString()}</p>
+              </div>
+              
+              <div className="border-t border-b border-dashed border-gray-300 py-2.5 mb-3 space-y-1.5">
+                <div className="flex justify-between">
+                  <span>Turno ID:</span>
+                  <span className="font-bold">#{lastShiftReport.shift.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Cajero:</span>
+                  <span className="font-bold">{lastShiftReport.shift.cashier_name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Apertura:</span>
+                  <span>{new Date(lastShiftReport.shift.start_time).toLocaleString()}</span>
+                </div>
+                {lastShiftReport.shift.end_time && (
+                  <div className="flex justify-between">
+                    <span>Cierre:</span>
+                    <span>{new Date(lastShiftReport.shift.end_time).toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span>Estado:</span>
+                  <span className="font-black uppercase text-red-600">{lastShiftReport.shift.status}</span>
+                </div>
+              </div>
+              
+              <div className="space-y-1.5 mb-4">
+                <div className="font-bold border-b border-gray-150 pb-1 mb-1 text-[10px] text-gray-500 uppercase">Resumen de Caja</div>
+                <div className="flex justify-between">
+                  <span>Fondo Inicial:</span>
+                  <span>${lastShiftReport.shift.initial_cash.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Ventas en Efectivo:</span>
+                  <span>+${lastShiftReport.totals.cash_sales.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-emerald-600">
+                  <span>Abonos Recibidos:</span>
+                  <span>+${lastShiftReport.totals.cash_entries.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-red-600">
+                  <span>Salidas/Retiros:</span>
+                  <span>-${lastShiftReport.totals.cash_withdrawals.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-black text-brand-900 border-t border-gray-100 pt-1.5">
+                  <span>Efectivo Esperado:</span>
+                  <span>${lastShiftReport.shift.final_cash_expected.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-black text-brand-900">
+                  <span>Efectivo Real Contado:</span>
+                  <span>${lastShiftReport.shift.final_cash_real?.toFixed(2) || "0.00"}</span>
+                </div>
+                
+                {lastShiftReport.shift.difference !== 0 && (
+                  <div className={`flex justify-between font-black border-t border-gray-100 pt-1.5 ${lastShiftReport.shift.difference < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    <span>{lastShiftReport.shift.difference < 0 ? 'FALTANTE (DIFERENCIA):' : 'SOBRANTE (DIFERENCIA):'}</span>
+                    <span>${lastShiftReport.shift.difference.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-1.5 mb-4 border-t border-gray-100 pt-3">
+                <div className="font-bold border-b border-gray-150 pb-1 mb-1 text-[10px] text-gray-500 uppercase">Otros Métodos de Venta</div>
+                <div className="flex justify-between">
+                  <span>Ventas con Tarjeta:</span>
+                  <span>${lastShiftReport.totals.card_sales.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Ventas a Crédito (Fiado):</span>
+                  <span>${lastShiftReport.totals.credit_sales?.toFixed(2) || "0.00"}</span>
+                </div>
+                <div className="flex justify-between font-bold text-gray-700 border-t border-gray-100 pt-1.5">
+                  <span>Total Ventas Brutas:</span>
+                  <span>${(lastShiftReport.totals.cash_sales + lastShiftReport.totals.card_sales + (lastShiftReport.totals.credit_sales || 0)).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-red-500">
+                  <span>Ventas Canceladas:</span>
+                  <span>-${lastShiftReport.totals.cancelled_sales_total.toFixed(2)}</span>
+                </div>
+              </div>
+              
+              <div className="text-center text-[9px] text-stone-400 mt-6 pt-3 border-t border-dashed border-stone-200">
+                Fin del Reporte de Turno. Firma Cajero / Supervisor
+              </div>
+            </div>
+            
+            <div className="p-4 border-t border-gray-100 flex gap-2 bg-gray-50 print:hidden">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-3.5 rounded-xl font-bold text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 transition-all flex items-center justify-center space-x-2 shadow-sm text-sm"
+              >
+                <Printer size={16} />
+                <span>Imprimir Corte</span>
+              </button>
+              <button
+                onClick={() => setShowShiftTicketModal(false)}
+                className="flex-1 py-3.5 rounded-xl font-bold text-white bg-chiluda-red hover:bg-chiluda-darkred shadow-lg transition-all text-sm"
+              >
+                Cerrar
               </button>
             </div>
           </div>

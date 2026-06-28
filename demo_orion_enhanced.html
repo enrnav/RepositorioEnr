@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diseños Orion Avanzados - Abarrotes ED & E</title>
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Share+Tech+Mono&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            outfit: ['Outfit', 'sans-serif'],
+            mono: ['Share Tech Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* VARIABLES DE DISEÑO HUD DINÁMICAS Y ALTAMENTE VISTOSAS */
+    :root {
+      /* MODO CLARO (Default - Estilo "Aurora Glass" Ultra Vistoso) */
+      --bg-space: #ffffff;
+      --card-bg: rgba(255, 255, 255, 0.85);
+      --card-border: rgba(255, 255, 255, 0.7);
+      --text-main: #0f172a;
+      --text-muted: #475569;
+      --grid-dot: rgba(99, 102, 241, 0.07);
+      --orbit-line: rgba(99, 102, 241, 0.16);
+      --gravity-line: rgba(99, 102, 241, 0.22);
+      
+      --solar-sun: #D2143A;
+      --hud-kpis: #2563eb; /* Azul Eléctrico vibrante */
+      --hud-goal: #10b981; /* Verde Esmeralda vivo */
+      --hud-chart: #a855f7; /* Púrpura brillante */
+      --hud-table: #06b6d4; /* Turquesa Brillante */
+      
+      --dust-color: rgba(99, 102, 241, 0.55);
+      --dust-glow: rgba(99, 102, 241, 0.35);
+      --nebula-opacity: 0.55; /* Mayor intensidad de auroras traseras */
+      --canvas-bg: rgba(255, 255, 255, 0.45);
+      --canvas-border: rgba(255, 255, 255, 0.65);
+      --glass-glow: rgba(99, 102, 241, 0.05);
+    }
+
+    /* MODO OSCURO (Activado con clase .dark-mode) */
+    .dark-mode {
+      --bg-space: #03010a;
+      --card-bg: rgba(10, 8, 22, 0.85);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --grid-dot: rgba(255, 255, 255, 0.02);
+      --orbit-line: rgba(255, 255, 255, 0.07);
+      --gravity-line: rgba(255, 255, 255, 0.12);
+      
+      --hud-kpis: #3b82f6;
+      --hud-goal: #10b981;
+      --hud-chart: #a855f7;
+      --hud-table: #06b6d4;
+      
+      --dust-color: #ffffff;
+      --dust-glow: #ffffff;
+      --nebula-opacity: 0.22;
+      --canvas-bg: rgba(15, 12, 30, 0.2);
+      --canvas-border: rgba(255, 255, 255, 0.05);
+      --glass-glow: rgba(0, 0, 0, 0.4);
+    }
+
+    body {
+      background-color: var(--bg-space);
+      background-image: radial-gradient(at 0% 0%, #eff6ff 0px, transparent 50%), 
+                        radial-gradient(at 50% 0%, #f5f3ff 0px, transparent 50%), 
+                        radial-gradient(at 100% 0%, #ecfdf5 0px, transparent 50%), 
+                        radial-gradient(at 0% 100%, #fff1f2 0px, transparent 50%), 
+                        radial-gradient(at 100% 100%, #fafaf9 0px, transparent 50%);
+      background-attachment: fixed;
+      color: var(--text-main);
+      transition: background-color 0.4s ease, color 0.4s ease, background-image 0.4s ease;
+      overflow-x: hidden;
+    }
+
+    body.dark-mode {
+      background-image: radial-gradient(at 0% 0%, #0d0921 0px, transparent 50%),
+                        radial-gradient(at 50% 0%, #051410 0px, transparent 50%),
+                        radial-gradient(at 100% 100%, #17041b 0px, transparent 50%) !important;
+    }
+
+    /* 1. Luminous Nebula Backdrop (Dynamic morphing loop) */
+    .nebula-glow {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(130px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: var(--nebula-opacity);
+      transition: opacity 0.6s ease, transform 0.1s ease-out;
+    }
+
+    #glow-1 { animation: auroraDrift-1 25s infinite ease-in-out; }
+    #glow-2 { animation: auroraDrift-2 32s infinite ease-in-out; }
+    #glow-3 { animation: auroraDrift-3 28s infinite ease-in-out; }
+    #glow-4 { animation: auroraDrift-4 35s infinite ease-in-out; }
+
+    @keyframes auroraDrift-1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(60px, -40px) scale(1.15); }
+      66% { transform: translate(-30px, 30px) scale(0.9); }
+    }
+    @keyframes auroraDrift-2 {
+      0%, 100% { transform: translate(0, 0) scale(1.05); }
+      33% { transform: translate(-50px, 60px) scale(0.95); }
+      66% { transform: translate(40px, -30px) scale(1.1); }
+    }
+    @keyframes auroraDrift-3 {
+      0%, 100% { transform: translate(0, 0) scale(0.95); }
+      50% { transform: translate(30px, -50px) scale(1.15); }
+    }
+    @keyframes auroraDrift-4 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      50% { transform: translate(-60px, -20px) scale(0.85); }
+    }
+
+    .space-dust {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: var(--dust-color);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.45;
+      box-shadow: 0 0 10px var(--dust-glow);
+      transition: background-color 0.4s ease, box-shadow 0.4s ease;
+      animation: floatDust 8s infinite ease-in-out;
+    }
+
+    @keyframes floatDust {
+      0%, 100% { opacity: 0.3; transform: translateY(0px) scale(0.9); }
+      50% { opacity: 0.7; transform: translateY(-15px) scale(1.1); }
+    }
+
+    /* Target Reticle (HUD lock-on visual) */
+    .target-reticle {
+      position: absolute;
+      width: 116px;
+      height: 116px;
+      pointer-events: none;
+      z-index: 5;
+      opacity: 0;
+      transform: scale(1.35) rotate(45deg);
+      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      color: inherit;
+    }
+
+    /* When hovering a planet wrapper, or if the planet has active class */
+    .orbit-wrapper:hover .target-reticle,
+    .orbit-wrapper.active-state .target-reticle {
+      opacity: 0.85;
+      transform: scale(1) rotate(0deg);
+    }
+
+    .orbit-wrapper.active-state .target-reticle {
+      animation: spinReticle 15s infinite linear;
+      opacity: 1;
+    }
+
+    @keyframes spinReticle {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .reticle-bracket {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-style: solid;
+      border-color: currentColor;
+      opacity: 0.95;
+      transition: border-color 0.4s ease;
+    }
+    .reticle-tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+    .reticle-tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+    .reticle-bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+    .reticle-br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+    .reticle-scan-ring {
+      position: absolute;
+      inset: 6px;
+      animation: pulseReticleRing 2.5s infinite ease-in-out;
+      opacity: 0.65;
+    }
+
+    @keyframes pulseReticleRing {
+      0%, 100% { transform: scale(0.96); opacity: 0.4; }
+      50% { transform: scale(1.04); opacity: 0.9; }
+    }
+
+    /* 2. Glassmorphism spheres styling with polished white reflections */
+    .sphere {
+      position: relative;
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      cursor: pointer;
+      user-select: none;
+      overflow: visible !important;
+      transition: box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      z-index: 10;
+    }
+
+    /* White crystal rim glossy effect */
+    .sphere::after {
+      content: '';
+      position: absolute;
+      inset: 2.5px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%, rgba(0, 0, 0, 0.25) 100%);
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    .sphere:hover {
+      transform: scale(1.08) !important;
+      z-index: 30 !important;
+    }
+
+    /* Central Sun Core with Expanding AI waves */
+    .sphere-sun-gradient {
+      background: radial-gradient(circle at 30% 30%, #ffe4e6 0%, #ff5a79 40%, #d2143a 80%, #9f1239 100%) !important;
+      box-shadow: 0 12px 35px rgba(210, 20, 58, 0.35), inset -6px -6px 15px rgba(0,0,0,0.7), inset 6px 6px 15px rgba(255,255,255,0.45) !important;
+    }
+
+    .dark-mode .sphere-sun-gradient {
+      background: radial-gradient(circle at 35% 30%, #ff9ebb 0%, #D2143A 48%, #88001a 85%, #3c000b 100%) !important;
+      box-shadow: 0 0 50px rgba(210, 20, 58, 0.55), inset -10px -10px 25px rgba(0,0,0,0.85), inset 10px 10px 20px rgba(255,255,255,0.45) !important;
+    }
+
+    /* Planet Custom Gradients & Glowing Shadows */
+    .sphere-kpis-color {
+      background: radial-gradient(circle at 30% 30%, #93c5fd 0%, #2563eb 50%, #1e40af 100%) !important;
+      box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35), inset -6px -6px 15px rgba(0,0,0,0.7), inset 6px 6px 15px rgba(255,255,255,0.45) !important;
+    }
+    .dark-mode .sphere-kpis-color {
+      background: radial-gradient(circle at 35% 30%, #60a5fa 0%, #2563eb 52%, #1e3a8a 100%) !important;
+      box-shadow: 0 0 35px rgba(37, 99, 235, 0.45), inset 0 0 15px rgba(255,255,255,0.4) !important;
+    }
+
+    .sphere-goal-color {
+      background: radial-gradient(circle at 30% 30%, #a7f3d0 0%, #10b981 50%, #065f46 100%) !important;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.35), inset -6px -6px 15px rgba(0,0,0,0.7), inset 6px 6px 15px rgba(255,255,255,0.45) !important;
+    }
+    .dark-mode .sphere-goal-color {
+      background: radial-gradient(circle at 35% 30%, #34d399 0%, #10b981 52%, #064e3b 100%) !important;
+      box-shadow: 0 0 35px rgba(16, 185, 129, 0.45), inset 0 0 15px rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .sphere-chart-color {
+      background: radial-gradient(circle at 30% 30%, #f3e8ff 0%, #a855f7 50%, #6b21a8 100%) !important;
+      box-shadow: 0 10px 30px rgba(168, 85, 247, 0.35), inset -6px -6px 15px rgba(0,0,0,0.7), inset 6px 6px 15px rgba(255,255,255,0.45) !important;
+    }
+    .dark-mode .sphere-chart-color {
+      background: radial-gradient(circle at 35% 30%, #d8b4fe 0%, #a855f7 52%, #4c1d95 100%) !important;
+      box-shadow: 0 0 35px rgba(168, 85, 247, 0.45), inset 0 0 15px rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .sphere-table-color {
+      background: radial-gradient(circle at 30% 30%, #cffafe 0%, #06b6d4 50%, #0369a1 100%) !important;
+      box-shadow: 0 10px 30px rgba(6, 182, 212, 0.35), inset -6px -6px 15px rgba(0,0,0,0.7), inset 6px 6px 15px rgba(255,255,255,0.45) !important;
+    }
+    .dark-mode .sphere-table-color {
+      background: radial-gradient(circle at 35% 30%, #67e8f9 0%, #06b6d4 52%, #083344 100%) !important;
+      box-shadow: 0 0 35px rgba(6, 182, 212, 0.45), inset 0 0 15px rgba(255, 255, 255, 0.4) !important;
+    }
+
+    .sphere-sun-glow {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(210, 20, 58, 0.48) 0%, rgba(210, 20, 58, 0.18) 50%, transparent 70%);
+      border-radius: 50%;
+      filter: url(#solar-plasma) blur(3px);
+      z-index: 2;
+      pointer-events: none;
+      animation: pulse-glow 7s ease-in-out infinite;
+    }
+
+    @keyframes pulse-glow {
+      0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.8; }
+      50% { transform: scale(1.15) rotate(180deg); opacity: 1; }
+    }
+
+    /* Concentric Expanding AI Wave ripples on Sun hover */
+    .ai-wave-ripple {
+      position: absolute;
+      border: 1.8px solid rgba(210, 20, 58, 0.55);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0;
+      width: 130px;
+      height: 130px;
+    }
+
+    .sphere-sun:hover ~ .ai-wave-ripple {
+      animation: rippleExpand 2s infinite cubic-bezier(0.1, 0.8, 0.3, 1);
+    }
+
+    @keyframes rippleExpand {
+      0% {
+        transform: scale(0.95);
+        opacity: 0.8;
+        border-color: rgba(210, 20, 58, 0.65);
+        box-shadow: 0 0 10px rgba(210, 20, 58, 0.25);
+      }
+      100% {
+        transform: scale(2.3);
+        opacity: 0;
+        border-color: rgba(210, 20, 58, 0.0);
+        box-shadow: 0 0 30px rgba(210, 20, 58, 0);
+      }
+    }
+
+    /* 3. Orbit flow paths and interactive connectors */
+    .orion-canvas circle {
+      stroke-linecap: round;
+      transition: stroke 0.3s ease, stroke-width 0.3s ease, stroke-dasharray 0.3s ease, filter 0.3s ease;
+    }
+
+    @keyframes flowOrbit {
+      from { stroke-dashoffset: 300; }
+      to { stroke-dashoffset: 0; }
+    }
+
+    .orbit-flow-anim {
+      animation: flowOrbit 18s infinite linear;
+    }
+
+    .orbit-active {
+      stroke-width: 2px !important;
+      stroke-dasharray: none !important;
+      animation: none !important;
+    }
+
+    /* Gravity Lines and Pulse Energy Node */
+    .orion-canvas line {
+      transition: stroke 0.3s ease, stroke-width 0.3s ease, stroke-dasharray 0.3s ease, filter 0.3s ease;
+    }
+
+    .orion-canvas line.active-gravity {
+      stroke-width: 1.8px !important;
+      stroke: var(--accent-color) !important;
+      filter: drop-shadow(0 0 5px var(--accent-glow));
+      stroke-dasharray: none !important;
+    }
+
+    /* Traveling Glow Pulse Dot on Gravity Connectors */
+    .energy-pulse-dot {
+      fill: var(--accent-color);
+      filter: drop-shadow(0 0 6px var(--accent-color));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .energy-pulse-dot.active {
+      opacity: 1;
+      animation: pulseTravel 3s infinite ease-in-out;
+    }
+
+    @keyframes pulseTravel {
+      0% { offset-distance: 0%; }
+      50% { offset-distance: 100%; }
+      100% { offset-distance: 0%; }
+    }
+
+    /* Saturn 3D Rings - High contrast */
+    .planet-ring-wrapper {
+      position: absolute;
+      width: 154%;
+      height: 36%;
+      top: 32%;
+      left: -27%;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: rotateX(70deg) rotateY(-15deg);
+      box-shadow: 0 0 12px rgba(255, 255, 255, 0.2), inset 0 0 12px rgba(255, 255, 255, 0.2);
+      animation: rotateRing 15s infinite linear;
+      z-index: 4;
+    }
+
+    @keyframes rotateRing {
+      from { transform: rotateX(70deg) rotateY(-15deg) rotateZ(0deg); }
+      to { transform: rotateX(70deg) rotateY(-15deg) rotateZ(360deg); }
+    }
+
+    /* Moon satellites */
+    .moon-satellite {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 30%, #ffffff 0%, #cbd5e1 45%, #475569 90%);
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.7), inset -2px -2px 4px rgba(0,0,0,0.6);
+      top: 50%;
+      left: 50%;
+      margin-top: -4.5px;
+      margin-left: -4.5px;
+      animation: orbitMoon 8s infinite linear;
+      z-index: 6;
+      pointer-events: none;
+    }
+
+    @keyframes orbitMoon {
+      from { transform: rotate(0deg) translateX(55px) rotate(0deg); }
+      to { transform: rotate(360deg) translateX(55px) rotate(-360deg); }
+    }
+
+    /* 4. Tech calibration rings rotating in opposite directions */
+    .calibration-ring-outer {
+      transform-origin: 360px 360px;
+      animation: rotateRingCw 50s infinite linear;
+    }
+
+    .calibration-ring-inner {
+      transform-origin: 360px 360px;
+      animation: rotateRingCcw 35s infinite linear;
+    }
+
+    @keyframes rotateRingCw {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes rotateRingCcw {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(-360deg); }
+    }
+
+    /* 5. Cyberpunk HUD cards styling - High gloss and neon shadows */
+    .hud-card {
+      background: var(--card-bg);
+      border: 2px solid var(--hud-color);
+      box-shadow: 0 25px 50px var(--glass-glow), 0 0 35px var(--hud-glow), inset 0 0 0 1.5px rgba(255, 255, 255, 0.45);
+      backdrop-filter: blur(35px);
+      -webkit-backdrop-filter: blur(35px);
+      position: absolute;
+      z-index: 50;
+      border-radius: 16px;
+      overflow: hidden;
+      opacity: 0;
+      transform: scale(0.9) translateY(15px);
+      transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+      pointer-events: none;
+      color: var(--text-main);
+    }
+
+    .dark-mode .hud-card {
+      box-shadow: 0 25px 50px var(--glass-glow), 0 0 35px var(--hud-glow), inset 0 0 0 1.5px rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .hud-card.active {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+      pointer-events: auto;
+    }
+
+    /* Scanlines effect inside cards */
+    .hud-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.05) 50%
+      );
+      background-size: 100% 4px;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.15;
+    }
+
+    .dark-mode .hud-card::before {
+      background: linear-gradient(
+        rgba(18, 16, 16, 0) 50%, 
+        rgba(0, 0, 0, 0.25) 50%
+      );
+      background-size: 100% 4px;
+      opacity: 0.18;
+    }
+
+    /* Decorative brackets */
+    .hud-bracket {
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border-style: solid;
+      border-color: var(--hud-color);
+      pointer-events: none;
+      z-index: 10;
+      opacity: 0.85;
+      transition: border-color 0.4s ease;
+    }
+    .hud-bracket-tl { top: -2px; left: -2px; border-width: 2.5px 0 0 2.5px; }
+    .hud-bracket-tr { top: -2px; right: -2px; border-width: 2.5px 2.5px 0 0; }
+    .hud-bracket-bl { bottom: -2px; left: -2px; border-width: 0 0 2.5px 2.5px; }
+    .hud-bracket-br { bottom: -2px; right: -2px; border-width: 0 2.5px 2.5px 0; }
+
+    /* Boot Sequence terminal text styling */
+    .boot-text-line {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10.5px;
+      color: var(--hud-color);
+      font-weight: bold;
+      opacity: 0.95;
+      overflow: hidden;
+      white-space: nowrap;
+      border-right: 2px solid transparent;
+    }
+
+    @keyframes typingText {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    @keyframes cursorBlink {
+      from, to { border-color: transparent; }
+      50% { border-color: var(--hud-color); }
+    }
+
+    /* Canvas styling changes */
+    .orion-canvas-container {
+      background: var(--canvas-bg);
+      border: 2.5px solid var(--canvas-border);
+      box-shadow: 0 25px 50px -15px rgba(0, 0, 0, 0.08), inset 0 0 30px rgba(255, 255, 255, 0.5);
+      transition: background-color 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+    }
+
+    .orion-canvas-container::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: 
+        radial-gradient(var(--grid-dot) 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+      background-position: center;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .theme-toggle-btn {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* 3D Hologram Deck Perspective */
+    .orion-canvas-container {
+      perspective: 1200px;
+    }
+    
+    .orion-deck-tilted {
+      transform: rotateX(62deg) rotateZ(-22deg);
+      transform-style: preserve-3d;
+      transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .orbit-wrapper {
+      position: absolute !important;
+      left: 50% !important;
+      top: 50% !important;
+      transform-style: preserve-3d;
+      will-change: transform;
+      pointer-events: none;
+    }
+    
+    .planet-shadow-base {
+      position: absolute;
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      filter: blur(10px);
+      opacity: 0.65;
+      transform: translate3d(0, 0, 0) scale(1);
+      transition: all 0.4s ease;
+      z-index: 1;
+      pointer-events: none;
+    }
+    
+    .altitude-laser {
+      position: absolute;
+      width: 1.5px;
+      height: 60px;
+      transform-origin: bottom center;
+      transform: translate3d(0, 0, 0) rotateX(-90deg);
+      background: linear-gradient(to top, currentColor 0%, rgba(255, 255, 255, 0.1) 85%, transparent 100%);
+      opacity: 0.55;
+      transition: all 0.4s ease;
+      z-index: 2;
+      pointer-events: none;
+    }
+    
+    .floating-planet-body {
+      position: absolute;
+      transform-style: preserve-3d;
+      transform: translate3d(0, 0, 60px) rotateZ(22deg) rotateX(-62deg);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 10;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Hover & Active focus transitions */
+    .orbit-wrapper:hover .floating-planet-body,
+    .orbit-wrapper.active-state .floating-planet-body {
+      transform: translate3d(0, 0, 80px) rotateZ(22deg) rotateX(-62deg);
+    }
+    
+    .orbit-wrapper:hover .planet-shadow-base,
+    .orbit-wrapper.active-state .planet-shadow-base {
+      opacity: 0.9;
+      transform: translate3d(0, 0, 0) scale(0.85);
+      filter: blur(7px);
+    }
+    
+    .orbit-wrapper:hover .altitude-laser,
+    .orbit-wrapper.active-state .altitude-laser {
+      height: 80px;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body class="min-h-screen p-6 font-sans relative">
+
+  <!-- Luminous Aurora Mesh Glow points (Vibrant neon backdrops) -->
+  <div id="glow-1" class="nebula-glow w-[380px] h-[380px] bg-cyan-400 top-[10%] left-[8%]"></div>
+  <div id="glow-2" class="nebula-glow w-[440px] h-[440px] bg-emerald-400 bottom-[12%] right-[8%]"></div>
+  <div id="glow-3" class="nebula-glow w-[340px] h-[340px] bg-purple-500 top-[35%] right-[25%]"></div>
+  <div id="glow-4" class="nebula-glow w-[280px] h-[280px] bg-amber-400 bottom-[35%] left-[20%]"></div>
+
+  <!-- Space Dust Particles Container -->
+  <div id="dust-field" class="absolute inset-0 overflow-hidden pointer-events-none z-1"></div>
+
+  <div class="max-w-7xl mx-auto relative z-10">
+    
+    <!-- Top HUD Navigation Bar -->
+    <header class="flex justify-between items-center border-b border-black/10 dark:border-white/10 pb-6 mb-8 transition-colors">
+      <div class="flex items-center space-x-3 select-none">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-950 border border-rose-400 flex items-center justify-center font-outfit font-black text-white text-sm shadow-[0_2px_10px_rgba(210,20,58,0.25)]">
+          ED
+        </div>
+        <div>
+          <h1 class="text-lg font-black tracking-wider uppercase leading-none">Abarrotes ED & E</h1>
+          <span class="text-[9px] font-mono text-stone-500 dark:text-stone-400 uppercase tracking-widest mt-1 block">Orion Core Cockpit v2.0 // HIGH_VIBRANCY_CALIBRATION</span>
+        </div>
+      </div>
+      
+      <div class="flex gap-3">
+        <!-- THEME SWAP SWITCHER -->
+        <button 
+          id="btn-theme-toggle"
+          onclick="toggleThemeMode()" 
+          class="theme-toggle-btn px-4.5 py-2 bg-white dark:bg-white/10 hover:bg-black/5 dark:hover:bg-white/15 border border-stone-300 dark:border-white/10 text-stone-700 dark:text-stone-300 font-mono text-xs rounded-lg active:scale-95 flex items-center gap-2 shadow-sm font-bold"
+        >
+          <i id="theme-icon" data-lucide="moon" class="w-4 h-4"></i>
+          <span id="theme-text">Modo Oscuro</span>
+        </button>
+
+        <button 
+          id="btn-reboot"
+          onclick="triggerSystemReboot()" 
+          class="px-4 py-2 bg-rose-950/5 hover:bg-rose-900/10 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 border border-rose-500/30 text-rose-600 dark:text-rose-300 font-mono text-xs rounded-lg transition-all active:scale-95 flex items-center gap-2 shadow-sm"
+        >
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5 animate-spin-slow"></i>
+          <span>Reboot</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Orion Canvas Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[680px]">
+
+      <!-- Solar System Interactive Canvas Center -->
+      <div id="orion-canvas" class="lg:col-span-9 relative w-full h-[650px] orion-canvas-container overflow-hidden flex items-center justify-center p-6 rounded-[3rem] transition-all duration-300">
+        
+        <!-- Radar Scanning sweeps -->
+        <div class="absolute w-[520px] h-[520px] rounded-full overflow-hidden pointer-events-none z-0 opacity-10">
+          <div class="w-full h-full conic-gradient-sweep" style="background: conic-gradient(from 0deg, rgba(210, 20, 58, 0.45) 0deg, transparent 180deg);"></div>
+        </div>
+
+        <!-- 3D Hologram Deck tilt container -->
+        <div id="orion-3d-deck" class="orion-deck-tilted absolute w-[680px] h-[680px] flex items-center justify-center">
+
+          <!-- SOLAR SYSTEM SVG VIEWPORT -->
+          <svg class="absolute w-full h-full pointer-events-none text-stone-400 dark:text-stone-850 transition-colors" viewBox="0 0 720 720">
+            <defs>
+              <filter id="solar-plasma" x="-20%" y="-20%" width="140%" height="140%">
+                <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="3" result="noise">
+                  <animate attributeName="seed" values="1;100" dur="20s" repeatCount="indefinite"/>
+                </feTurbulence>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="10" xChannelSelector="R" yChannelSelector="G"/>
+              </filter>
+            </defs>
+            <!-- Central Solar Guides -->
+            <line x1="40" y1="360" x2="680" y2="360" stroke="var(--gravity-line)" strokeWidth="0.8" strokeDasharray="3 15" />
+            <line x1="360" y1="40" x2="360" y2="680" stroke="var(--gravity-line)" strokeWidth="0.8" strokeDasharray="3 15" />
+
+            <!-- Dynamic Calibration Ring Outer (Tick marks rotation) -->
+            <g class="calibration-ring-outer">
+              <circle cx="360" cy="360" r="350" stroke="var(--orbit-line)" strokeWidth="8" fill="none" strokeDasharray="1 10" />
+              <circle cx="360" cy="360" r="340" stroke="var(--orbit-line)" strokeWidth="2" fill="none" strokeDasharray="2 35" />
+            </g>
+
+            <!-- Dynamic Calibration Ring Inner (Opposite direction rotation) -->
+            <g class="calibration-ring-inner">
+              <circle cx="360" cy="360" r="310" stroke="var(--orbit-line)" strokeWidth="6" fill="none" strokeDasharray="3 15" />
+              <circle cx="360" cy="360" r="280" stroke="var(--orbit-line)" strokeWidth="1" fill="none" strokeDasharray="5 20" />
+            </g>
+
+            <!-- Concentric Orbit Paths -->
+            <circle id="orbit-ring-kpis" cx="360" cy="360" r="120" stroke="var(--orbit-line)" strokeWidth="1.2" fill="none" strokeDasharray="3 5" class="orbit-flow-anim" />
+            <circle id="orbit-ring-goal" cx="360" cy="360" r="120" stroke="var(--orbit-line)" strokeWidth="1.2" fill="none" strokeDasharray="3 5" class="orbit-flow-anim" />
+            <circle id="orbit-ring-chart" cx="360" cy="360" r="222" stroke="var(--orbit-line)" strokeWidth="1.2" fill="none" strokeDasharray="4 6" class="orbit-flow-anim" />
+            <circle id="orbit-ring-table" cx="360" cy="360" r="324" stroke="var(--orbit-line)" strokeWidth="1.2" fill="none" strokeDasharray="2 8" class="orbit-flow-anim" />
+
+            <!-- Dynamic Gravity Connection Lines (Center to Planet coordinates) -->
+            <line id="gravity-line-kpis" x1="360" y1="360" x2="360" y2="360" stroke="var(--gravity-line)" strokeWidth="0.8" strokeDasharray="2 3" />
+            <line id="gravity-line-goal" x1="360" y1="360" x2="360" y2="360" stroke="var(--gravity-line)" strokeWidth="0.8" strokeDasharray="2 3" />
+            <line id="gravity-line-chart" x1="360" y1="360" x2="360" y2="360" stroke="var(--gravity-line)" strokeWidth="0.8" strokeDasharray="2 3" />
+            <line id="gravity-line-table" x1="360" y1="360" x2="360" y2="360" stroke="var(--gravity-line)" strokeWidth="0.8" strokeDasharray="2 3" />
+
+            <!-- 1. Pulse Energy node SVG animation paths -->
+            <g>
+              <circle id="energy-dot-kpis" r="4" class="energy-pulse-dot" style="--accent-color: var(--hud-kpis);" />
+              <circle id="energy-dot-goal" r="4" class="energy-pulse-dot" style="--accent-color: var(--hud-goal);" />
+              <circle id="energy-dot-chart" r="4" class="energy-pulse-dot" style="--accent-color: var(--hud-chart);" />
+              <circle id="energy-dot-table" r="4" class="energy-pulse-dot" style="--accent-color: var(--hud-table);" />
+            </g>
+          </svg>
+
+          <!-- Spheres Wrapper -->
+          <div id="spheres-wrapper" class="absolute inset-0 flex items-center justify-center pointer-events-auto">
+            
+            <!-- Central Sun: AI Core Assistant (Billboarded) -->
+            <div class="absolute z-20 flex items-center justify-center animate-fade-in" style="transform: rotateZ(22deg) rotateX(-62deg);">
+              <div class="sphere-sun-glow"></div>
+              
+              <button 
+                id="sphere-sun" 
+                onclick="toggleCard('assistant')"
+                onmouseenter="onCoreHoverStart()"
+                onmouseleave="onCoreHoverEnd()"
+                class="sphere sphere-sun-gradient w-32 h-32 flex flex-col items-center justify-center text-center outline-none select-none"
+              >
+                <span class="text-[10px] font-black text-white/70 uppercase tracking-widest leading-none mb-1">Central</span>
+                <span class="text-sm font-outfit font-black text-white leading-tight uppercase px-3">ED & E</span>
+                <span class="text-[8px] font-bold text-white/50 uppercase mt-1 leading-none">Asistente</span>
+              </button>
+
+              <!-- Expanding Concentric AI Wave Rings -->
+              <div class="ai-wave-ripple" style="animation-delay: 0s;"></div>
+              <div class="ai-wave-ripple" style="animation-delay: 0.5s;"></div>
+              <div class="ai-wave-ripple" style="animation-delay: 1s;"></div>
+            </div>
+
+            <!-- KPIs Planet (Polished vibrant crystal look, floating 3D) -->
+            <div id="wrapper-kpis" class="orbit-wrapper absolute z-10 flex items-center justify-center">
+              <div class="planet-shadow-base" style="background: var(--hud-kpis); filter: drop-shadow(0 0 15px var(--hud-kpis));"></div>
+              <div class="altitude-laser" style="color: var(--hud-kpis);"></div>
+              <div class="floating-planet-body flex items-center justify-center">
+                <div class="moon-satellite"></div>
+                <div class="target-reticle" style="color: var(--hud-kpis);">
+                  <div class="reticle-bracket reticle-tl"></div>
+                  <div class="reticle-bracket reticle-tr"></div>
+                  <div class="reticle-bracket reticle-bl"></div>
+                  <div class="reticle-bracket reticle-br"></div>
+                  <svg class="reticle-scan-ring" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="0.8" fill="none" stroke-dasharray="8 12" />
+                  </svg>
+                </div>
+                <div 
+                  id="sphere-kpis"
+                  onclick="toggleCard('kpis')"
+                  onmouseenter="hoverPlanetStart('kpis', '#2563eb', 'rgba(37, 99, 235, 0.45)')"
+                  onmouseleave="hoverPlanetEnd('kpis')"
+                  class="sphere sphere-kpis-color w-24 h-24 flex flex-col items-center justify-center text-center"
+                >
+                  <span class="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1">KPIs</span>
+                  <span class="text-sm font-outfit font-extrabold text-white leading-none tracking-wide">$2,120.00</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Goal Planet (Polished vibrant crystal look, floating 3D) -->
+            <div id="wrapper-goal" class="orbit-wrapper absolute z-10 flex items-center justify-center">
+              <div class="planet-shadow-base" style="background: var(--hud-goal); filter: drop-shadow(0 0 15px var(--hud-goal));"></div>
+              <div class="altitude-laser" style="color: var(--hud-goal);"></div>
+              <div class="floating-planet-body flex items-center justify-center">
+                <div class="moon-satellite" style="animation-duration: 6s; animation-delay: -2.5s;"></div>
+                <div class="target-reticle" style="color: var(--hud-goal);">
+                  <div class="reticle-bracket reticle-tl"></div>
+                  <div class="reticle-bracket reticle-tr"></div>
+                  <div class="reticle-bracket reticle-bl"></div>
+                  <div class="reticle-bracket reticle-br"></div>
+                  <svg class="reticle-scan-ring" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="0.8" fill="none" stroke-dasharray="8 12" />
+                  </svg>
+                </div>
+                <div 
+                  id="sphere-goal"
+                  onclick="toggleCard('goal')"
+                  onmouseenter="hoverPlanetStart('goal', '#10b981', 'rgba(16, 185, 129, 0.45)')"
+                  onmouseleave="hoverPlanetEnd('goal')"
+                  class="sphere sphere-goal-color w-24 h-24 flex flex-col items-center justify-center text-center"
+                >
+                  <span class="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1">Meta</span>
+                  <span class="text-sm font-outfit font-extrabold text-white leading-none tracking-wide">60.5%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart Planet (with Saturn Rings, floating 3D) -->
+            <div id="wrapper-chart" class="orbit-wrapper absolute z-10 flex items-center justify-center">
+              <div class="planet-shadow-base" style="background: var(--hud-chart); filter: drop-shadow(0 0 15px var(--hud-chart));"></div>
+              <div class="altitude-laser" style="color: var(--hud-chart);"></div>
+              <div class="floating-planet-body flex items-center justify-center">
+                <div class="target-reticle" style="color: var(--hud-chart);">
+                  <div class="reticle-bracket reticle-tl"></div>
+                  <div class="reticle-bracket reticle-tr"></div>
+                  <div class="reticle-bracket reticle-bl"></div>
+                  <div class="reticle-bracket reticle-br"></div>
+                  <svg class="reticle-scan-ring" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="0.8" fill="none" stroke-dasharray="8 12" />
+                  </svg>
+                </div>
+                <div 
+                  id="sphere-chart"
+                  onclick="toggleCard('chart')"
+                  onmouseenter="hoverPlanetStart('chart', '#a855f7', 'rgba(168, 85, 247, 0.45)')"
+                  onmouseleave="hoverPlanetEnd('chart')"
+                  class="sphere sphere-chart-color w-24 h-24 flex flex-col items-center justify-center text-center"
+                >
+                  <!-- 3D Planet Saturn style ring -->
+                  <div class="planet-ring-wrapper" style="border-color: rgba(168, 85, 247, 0.55); box-shadow: 0 0 15px rgba(168, 85, 247, 0.25), inset 0 0 15px rgba(168, 85, 247, 0.25);"></div>
+                  <span class="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1">Gráfica</span>
+                  <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Historial</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Table/POS Planet (with Saturn Rings, floating 3D) -->
+            <div id="wrapper-table" class="orbit-wrapper absolute z-10 flex items-center justify-center">
+              <div class="planet-shadow-base" style="background: var(--hud-table); filter: drop-shadow(0 0 15px var(--hud-table));"></div>
+              <div class="altitude-laser" style="color: var(--hud-table);"></div>
+              <div class="floating-planet-body flex items-center justify-center">
+                <div class="target-reticle" style="color: var(--hud-table);">
+                  <div class="reticle-bracket reticle-tl"></div>
+                  <div class="reticle-bracket reticle-tr"></div>
+                  <div class="reticle-bracket reticle-bl"></div>
+                  <div class="reticle-bracket reticle-br"></div>
+                  <svg class="reticle-scan-ring" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="46" stroke="currentColor" stroke-width="0.8" fill="none" stroke-dasharray="8 12" />
+                  </svg>
+                </div>
+                <div 
+                  id="sphere-table"
+                  onclick="toggleCard('table')"
+                  onmouseenter="hoverPlanetStart('table', '#06b6d4', 'rgba(6, 182, 212, 0.45)')"
+                  onmouseleave="hoverPlanetEnd('table')"
+                  class="sphere sphere-table-color w-24 h-24 flex flex-col items-center justify-center text-center"
+                >
+                  <!-- 3D Saturn ring rotated -->
+                  <div class="planet-ring-wrapper" style="border-color: rgba(6, 182, 212, 0.55); box-shadow: 0 0 15px rgba(6, 182, 212, 0.25), inset 0 0 15px rgba(6, 182, 212, 0.25); animation-duration: 20s; transform: rotateX(65deg) rotateY(15deg);"></div>
+                  <span class="text-[10px] font-bold text-white/90 uppercase tracking-widest mb-1">Clasificación</span>
+                  <span class="text-xs font-outfit font-extrabold text-white leading-none tracking-wide">Tabla</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Floating HUD Console Cards Right Side (Hover/Click dynamic anchors) -->
+      <div class="lg:col-span-3 relative h-[650px] z-30">
+        
+        <!-- Welcome Mock Screen -->
+        <div id="welcome-panel" class="bg-white/80 dark:bg-stone-950/60 border border-stone-200 dark:border-white/10 rounded-xl p-6 h-full flex flex-col justify-between backdrop-blur-md transition-colors shadow-lg">
+          <div class="space-y-4">
+            <div class="flex items-center gap-2 text-rose-500">
+              <i data-lucide="orbit" class="w-5 h-5"></i>
+              <h2 class="font-outfit font-black uppercase text-sm tracking-wider">Centro de Monitoreo</h2>
+            </div>
+            
+            <div class="border-t border-black/5 dark:border-white/5 pt-4 text-xs space-y-2 leading-relaxed text-stone-600 dark:text-stone-400 transition-colors">
+              <p>Esta demo implementa mejoras críticas en base a las recomendaciones del plan:</p>
+              <ul class="list-disc list-inside space-y-1">
+                <li><strong class="text-stone-850 dark:text-stone-300">Glow Pulses:</strong> Nodos láser activos recorriendo los conectores.</li>
+                <li><strong class="text-stone-850 dark:text-stone-300">Calibration:</strong> Aros técnicos rotatorios alrededor del sistema.</li>
+                <li><strong class="text-stone-850 dark:text-stone-300">AI Waves:</strong> Ondas resonando en el Sol central al pasar el cursor.</li>
+                <li><strong class="text-stone-850 dark:text-stone-300">Boot Sequence:</strong> Carga simulada de terminales cibernéticos.</li>
+              </ul>
+              
+              <!-- AI Core Status inside Welcome Panel -->
+              <div class="flex justify-between items-center bg-black/5 dark:bg-white/5 p-2 rounded border border-black/5 dark:border-white/5 font-mono text-[10px] mt-3">
+                <span class="text-stone-500">AI Core Ripple</span>
+                <span id="stat-ai-status" class="text-rose-500 font-bold uppercase tracking-wider flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                  Standby
+                </span>
+              </div>
+              
+              <!-- System Log inside Welcome Panel -->
+              <div class="mt-3 border-t border-black/5 dark:border-white/10 pt-2.5">
+                <span class="text-[9px] text-stone-500 font-black uppercase tracking-wider block mb-1">Bitácora del Sistema</span>
+                <div id="system-terminal-log" class="h-20 overflow-y-auto font-mono text-[9px] text-stone-600 dark:text-stone-400 space-y-1 scrollbar-thin">
+                  <div class="text-emerald-600 dark:text-emerald-500">&gt; ORION_CORE INIT SUCCEEDED.</div>
+                  <div>&gt; ALL CALIBRATION PATHS ONLINE.</div>
+                  <div>&gt; THEME: HIGH_VIBRANCY_AURORA_GLASS.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="text-[10px] font-mono text-stone-500 uppercase tracking-wider text-center border-t border-black/5 dark:border-white/5 pt-4">
+            Abarrotes ED & E • Diseño Orion HUD v2
+          </div>
+        </div>
+
+        <!-- HUD CARD 1: KPI COCKPIT -->
+        <div id="card-kpis" class="hud-card w-full h-full p-6 flex flex-col justify-between" style="--hud-color: var(--hud-kpis); --hud-glow: rgba(30, 64, 175, 0.25);">
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
+          
+          <div>
+            <div class="flex justify-between items-start border-b border-blue-500/20 pb-3 mb-4">
+              <div>
+                <h3 class="font-outfit font-black text-blue-700 dark:text-blue-400 uppercase text-xs tracking-wider">Métricas Principales</h3>
+                <span class="text-[8px] font-mono text-stone-500 dark:text-stone-400 uppercase tracking-widest mt-0.5 block">SYS: KPI_SUMMARY_NODE_01 // SECURE</span>
+              </div>
+              <button onclick="closeCard()" class="text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div id="boot-text-kpis" class="space-y-1 mb-4 hidden font-mono text-[9px]"></div>
+
+            <div id="content-kpis" class="space-y-4">
+              <div class="grid grid-cols-2 gap-3 text-xs">
+                <div class="p-3 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 shadow-sm">
+                  <span class="text-[9px] text-stone-500 font-mono uppercase block mb-1">Ingresos Totales</span>
+                  <span class="font-outfit font-bold text-sm text-stone-850 dark:text-white">$2,120.00</span>
+                </div>
+                <div class="p-3 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 shadow-sm">
+                  <span class="text-[9px] text-stone-500 font-mono uppercase block mb-1">Ganancia Neta</span>
+                  <span class="font-outfit font-bold text-sm text-emerald-600 dark:text-emerald-400">$598.00</span>
+                </div>
+              </div>
+              <div class="p-3 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 text-xs flex justify-between items-center shadow-sm">
+                <div>
+                  <span class="text-[9px] text-stone-500 font-mono uppercase block mb-0.5">Margen Financiero</span>
+                  <span class="font-outfit font-bold text-stone-850 dark:text-white">28.2%</span>
+                </div>
+                <div class="h-8 w-8 bg-blue-500/10 rounded-full flex items-center justify-center">
+                  <i data-lucide="trending-up" class="w-4 h-4 text-blue-700 dark:text-blue-400"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button onclick="closeCard()" class="w-full py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-700 dark:text-blue-300 font-mono text-xs rounded uppercase tracking-wider font-bold">Cerrar Consola</button>
+        </div>
+
+        <!-- HUD CARD 2: GOALS COCKPIT -->
+        <div id="card-goal" class="hud-card w-full h-full p-6 flex flex-col justify-between" style="--hud-color: var(--hud-goal); --hud-glow: rgba(6, 95, 70, 0.25);">
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
+          
+          <div>
+            <div class="flex justify-between items-start border-b border-emerald-500/20 pb-3 mb-4">
+              <div>
+                <h3 class="font-outfit font-black text-emerald-700 dark:text-emerald-400 uppercase text-xs tracking-wider">Meta de Ventas</h3>
+                <span class="text-[8px] font-mono text-stone-500 dark:text-stone-400 uppercase tracking-widest mt-0.5 block">SYS: GOAL_COMPLIANCE_NODE_02 // ONLINE</span>
+              </div>
+              <button onclick="closeCard()" class="text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div id="boot-text-goal" class="space-y-1 mb-4 hidden font-mono text-[9px]"></div>
+
+            <div id="content-goal" class="space-y-4">
+              <div class="p-3 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 text-xs shadow-sm">
+                <div class="flex justify-between font-mono mb-2 text-stone-700 dark:text-stone-300">
+                  <span>Avance Diario</span>
+                  <span class="text-emerald-700 dark:text-emerald-400 font-bold">60.5%</span>
+                </div>
+                <div class="w-full bg-stone-300 dark:bg-stone-800 rounded-full h-2 overflow-hidden p-0.5 border border-black/5 dark:border-white/5">
+                  <div class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]" style="width: 60.5%;"></div>
+                </div>
+              </div>
+              <div class="p-3 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 text-xs text-stone-600 dark:text-stone-400 leading-relaxed shadow-sm">
+                El volumen de ventas actual se proyecta a superar el promedio del mes. Se recomienda reponer stock de refrescos y harinas.
+              </div>
+            </div>
+          </div>
+          <button onclick="closeCard()" class="w-full py-2 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-mono text-xs rounded uppercase tracking-wider font-bold">Cerrar Consola</button>
+        </div>
+
+        <!-- HUD CARD 3: CHART COCKPIT -->
+        <div id="card-chart" class="hud-card w-full h-full p-6 flex flex-col justify-between" style="--hud-color: var(--hud-chart); --hud-glow: rgba(107, 33, 168, 0.25); z-index: 60;">
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
+          
+          <div>
+            <div class="flex justify-between items-start border-b border-purple-500/20 pb-3 mb-4">
+              <div>
+                <h3 class="font-outfit font-black text-purple-700 dark:text-purple-400 uppercase text-xs tracking-wider">Historial Gráfico</h3>
+                <span class="text-[8px] font-mono text-stone-500 dark:text-stone-400 uppercase tracking-widest mt-0.5 block">SYS: HISTOGRAM_DATA_NODE_03 // COMPUTING</span>
+              </div>
+              <button onclick="closeCard()" class="text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div id="boot-text-chart" class="space-y-1 mb-4 hidden font-mono text-[9px]"></div>
+
+            <div id="content-chart" class="space-y-4">
+              <p class="text-xs text-stone-600 dark:text-stone-400 leading-relaxed">
+                Curvas de rentabilidad históricas consolidadas. Muestra las fluctuaciones comerciales registradas en los turnos.
+              </p>
+              <div class="p-3 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 text-xs font-mono space-y-2 shadow-sm">
+                <div class="text-[9px] uppercase tracking-wider text-purple-600 dark:text-purple-400 font-bold">Puntos de Muestreo</div>
+                <div class="flex justify-between text-stone-500">
+                  <span>08:00 - Apertura</span>
+                  <span class="text-stone-850 dark:text-white">$200.00</span>
+                </div>
+                <div class="flex justify-between text-stone-500">
+                  <span>14:00 - Turno 1</span>
+                  <span class="text-stone-850 dark:text-white">$1,200.00</span>
+                </div>
+                <div class="flex justify-between text-stone-500">
+                  <span>20:00 - Cierre</span>
+                  <span class="text-stone-850 dark:text-white">$2,120.00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button onclick="closeCard()" class="w-full py-2 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-700 dark:text-purple-300 font-mono text-xs rounded uppercase tracking-wider font-bold">Cerrar Consola</button>
+        </div>
+
+        <!-- HUD CARD 4: TABLE COCKPIT -->
+        <div id="card-table" class="hud-card w-full h-full p-6 flex flex-col justify-between" style="--hud-color: var(--hud-table); --hud-glow: rgba(3, 105, 161, 0.25);">
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
+          
+          <div>
+            <div class="flex justify-between items-start border-b border-cyan-500/20 pb-3 mb-4">
+              <div>
+                <h3 class="font-outfit font-black text-cyan-700 dark:text-cyan-400 uppercase text-xs tracking-wider">Tabla de Rendimiento</h3>
+                <span class="text-[8px] font-mono text-stone-500 dark:text-stone-400 uppercase tracking-widest mt-0.5 block">SYS: PRODUCT_LEADERBOARD_NODE_05 // SORTING</span>
+              </div>
+              <button onclick="closeCard()" class="text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div id="boot-text-table" class="space-y-1 mb-4 hidden font-mono text-[9px]"></div>
+
+            <div id="content-table" class="space-y-3">
+              <div class="text-[9px] uppercase tracking-wider text-cyan-600 dark:text-cyan-400 font-mono font-bold">Top Ventas Hoy</div>
+              <div class="space-y-2 text-xs">
+                <div class="flex justify-between p-2 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 shadow-sm">
+                  <span class="font-bold text-stone-850 dark:text-white">1. Huevo Blanco</span>
+                  <span class="text-cyan-600 dark:text-cyan-400 font-mono">120u / 32% marg.</span>
+                </div>
+                <div class="flex justify-between p-2 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 shadow-sm">
+                  <span class="font-bold text-stone-850 dark:text-white">2. Aceite Vegetal</span>
+                  <span class="text-cyan-600 dark:text-cyan-400 font-mono">85u / 20% marg.</span>
+                </div>
+                <div class="flex justify-between p-2 bg-black/5 dark:bg-white/5 rounded border border-stone-200 dark:border-white/5 shadow-sm">
+                  <span class="font-bold text-stone-850 dark:text-white">3. Leche Entera</span>
+                  <span class="text-cyan-600 dark:text-cyan-400 font-mono">70u / 18% marg.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button onclick="closeCard()" class="w-full py-2 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 font-mono text-xs rounded uppercase tracking-wider font-bold">Cerrar Consola</button>
+        </div>
+
+        <!-- HUD CARD 5: ASSISTANT COCKPIT -->
+        <div id="card-assistant" class="hud-card w-full h-full p-6 flex flex-col justify-between" style="--hud-color: var(--solar-sun); --hud-glow: rgba(210, 20, 58, 0.25);">
+          <div class="hud-bracket hud-bracket-tl"></div>
+          <div class="hud-bracket hud-bracket-tr"></div>
+          <div class="hud-bracket hud-bracket-bl"></div>
+          <div class="hud-bracket hud-bracket-br"></div>
+          
+          <div>
+            <div class="flex justify-between items-start border-b border-rose-500/20 pb-3 mb-4">
+              <div>
+                <h3 class="font-outfit font-black text-rose-600 dark:text-rose-500 uppercase text-xs tracking-wider">Asistente Virtual Core</h3>
+                <span class="text-[8px] font-mono text-stone-500 dark:text-stone-400 uppercase tracking-widest mt-0.5 block">SYS: COGNITIVE_ADVISORY_NODE_00 // RUNNING</span>
+              </div>
+              <button onclick="closeCard()" class="text-stone-500 hover:text-stone-800 dark:text-stone-400 dark:hover:text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div id="boot-text-assistant" class="space-y-1 mb-4 hidden font-mono text-[9px]"></div>
+
+            <div id="content-assistant" class="space-y-4 text-xs leading-relaxed text-stone-600 dark:text-stone-400">
+              <p>
+                <strong class="text-rose-600 dark:text-rose-400">Núcleo Central en línea.</strong> He analizado tu flujo de ventas: tienes un margen de utilidad excelente del 28.2%. 
+              </p>
+              <div class="p-3 bg-rose-500/5 rounded border border-rose-500/10 text-[11px] text-rose-700 dark:text-rose-300 font-bold shadow-sm">
+                Recomendación: 3 productos de inventario están cerca de llegar a su límite mínimo de stock. Abre la bitácora para ver el desglose.
+              </div>
+            </div>
+          </div>
+          <button onclick="closeCard()" class="w-full py-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-600 dark:text-rose-300 font-mono text-xs rounded uppercase tracking-wider font-bold">Cerrar Consola</button>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Technical Status Bar Bottom -->
+    <footer class="mt-8 pt-6 border-t border-black/10 dark:border-white/5 flex flex-col md:flex-row justify-between items-center text-[10px] font-mono text-stone-600 dark:text-stone-500 gap-4 transition-colors">
+      <div class="flex items-center gap-4">
+        <span>GRID STATUS: CALIBRATED</span>
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span>LATENCY: 12ms</span>
+      </div>
+      <div>
+        ABARROTES ED & E • ORION SYSTEM COCKPIT DESIGN PREVIEW © 2026
+      </div>
+    </footer>
+
+  </div>
+
+  <script>
+    // Global mockup state
+    let state = {
+      activeCard: null,
+      zoom: 1,
+      parallax: { x: 0, y: 0 },
+      isRebooting: false,
+      isDarkMode: false // Default is Light Mode (white)
+    };
+
+    // Initialize planets positions and dimensions
+    const planets = {
+      kpis: { angle: 45 * Math.PI / 180, radius: 120, speed: 0.15 },
+      goal: { angle: 225 * Math.PI / 180, radius: 120, speed: 0.15 },
+      chart: { angle: 120 * Math.PI / 180, radius: 222, speed: 0.10 },
+      table: { angle: 300 * Math.PI / 180, radius: 324, speed: 0.07 }
+    };
+
+    // Create background space dust particles
+    function initSpaceDust() {
+      const field = document.getElementById('dust-field');
+      field.innerHTML = '';
+      for (let i = 0; i < 45; i++) {
+        const d = document.createElement('div');
+        d.className = 'space-dust';
+        d.style.top = Math.random() * 100 + '%';
+        d.style.left = Math.random() * 100 + '%';
+        // Random scale
+        const scale = 0.5 + Math.random() * 1.5;
+        d.style.transform = `scale(${scale})`;
+        // Custom parallax factor
+        d.setAttribute('data-parallax-speed', 0.05 + Math.random() * 0.25);
+        field.appendChild(d);
+      }
+    }
+
+    // Toggle Light and Dark Mode dynamically
+    function toggleThemeMode() {
+      const body = document.body;
+      const themeBtn = document.getElementById('btn-theme-toggle');
+      const icon = document.getElementById('theme-icon');
+      const text = document.getElementById('theme-text');
+      
+      state.isDarkMode = !state.isDarkMode;
+      
+      if (state.isDarkMode) {
+        body.classList.add('dark-mode');
+        text.innerText = "Modo Claro";
+        themeBtn.classList.remove('shadow-sm');
+        themeBtn.classList.add('shadow-md');
+        icon.setAttribute('data-lucide', 'sun');
+        appendLog("Cambiando a Modo Oscuro (Premium Space).");
+      } else {
+        body.classList.remove('dark-mode');
+        text.innerText = "Modo Oscuro";
+        themeBtn.classList.remove('shadow-md');
+        themeBtn.classList.add('shadow-sm');
+        icon.setAttribute('data-lucide', 'moon');
+        appendLog("Cambiando a Modo Claro (Aurora Glass).");
+      }
+      
+      // Re-render icons to match new icons attributes
+      lucide.createIcons();
+    }
+
+    // Update coordinate positions of gravity line connectors
+    function updateGravityLines(pId, x, y) {
+      const line = document.getElementById(`gravity-line-${pId}`);
+      if (line) {
+        line.setAttribute('x2', 360 + x);
+        line.setAttribute('y2', 360 + y);
+      }
+      // Update traveling energy dots
+      const dot = document.getElementById(`energy-dot-${pId}`);
+      if (dot) {
+        if (state.activeCard === pId || document.getElementById(`sphere-${pId}`).classList.contains('active-hover-state')) {
+          dot.setAttribute('cx', 360 + x);
+          dot.setAttribute('cy', 360 + y);
+        } else {
+          dot.setAttribute('cx', 360);
+          dot.setAttribute('cy', 360);
+        }
+      }
+    }
+
+    // Interactive Hover Handlers
+    function hoverPlanetStart(pId, color, glowColor) {
+      document.getElementById(`sphere-${pId}`).classList.add('active-hover-state');
+      
+      // Update SVG Gravity Line stroke colors and values
+      const line = document.getElementById(`gravity-line-${pId}`);
+      if (line) {
+        line.setAttribute('stroke', color);
+        line.setAttribute('stroke-width', '1.8');
+        line.setAttribute('stroke-dasharray', 'none');
+        line.style.filter = `drop-shadow(0 0 5px ${glowColor})`;
+      }
+
+      // Update Orbit Path glowing styles
+      const orbit = document.getElementById(`orbit-ring-${pId}`);
+      if (orbit) {
+        orbit.setAttribute('stroke-width', '2.2');
+        orbit.setAttribute('stroke-dasharray', 'none');
+        orbit.style.stroke = color;
+        orbit.style.filter = `drop-shadow(0 0 6px ${glowColor})`;
+      }
+
+      // Start the energy pulse dot
+      const dot = document.getElementById(`energy-dot-${pId}`);
+      if (dot) {
+        dot.classList.add('active');
+      }
+
+      appendLog(`Conectado al Sector de ${pId.toUpperCase()} // Eje Gravitacional Estable.`);
+    }
+
+    function hoverPlanetEnd(pId) {
+      document.getElementById(`sphere-${pId}`).classList.remove('active-hover-state');
+      
+      const line = document.getElementById(`gravity-line-${pId}`);
+      if (line) {
+        line.setAttribute('stroke', 'var(--gravity-line)');
+        line.setAttribute('stroke-width', '0.8');
+        line.setAttribute('stroke-dasharray', '2 3');
+        line.style.filter = 'none';
+      }
+
+      const orbit = document.getElementById(`orbit-ring-${pId}`);
+      if (orbit) {
+        orbit.setAttribute('stroke-width', '1.2');
+        // Reset orbit dashes
+        if (pId === 'kpis' || pId === 'goal') orbit.setAttribute('stroke-dasharray', '3 5');
+        else if (pId === 'chart') orbit.setAttribute('stroke-dasharray', '4 6');
+        else if (pId === 'table') orbit.setAttribute('stroke-dasharray', '2 8');
+        
+        // Reset colors
+        orbit.style.stroke = 'var(--orbit-line)';
+        orbit.style.filter = 'none';
+      }
+
+      const dot = document.getElementById(`energy-dot-${pId}`);
+      if (dot) {
+        dot.classList.remove('active');
+      }
+    }
+
+    function onCoreHoverStart() {
+      document.getElementById('stat-ai-status').className = "text-rose-500 font-bold uppercase tracking-wider flex items-center gap-1";
+      document.getElementById('stat-ai-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> PROCESANDO';
+      appendLog("Escáner didáctico de IA en curso... Ondas resonando.");
+    }
+
+    // Reset Core Hover state
+    function onCoreHoverEnd() {
+      document.getElementById('stat-ai-status').className = "text-rose-500 font-bold uppercase tracking-wider flex items-center gap-1";
+      document.getElementById('stat-ai-status').innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Standby';
+    }
+
+    // Toggle and load cards with boot terminal sequence
+    function toggleCard(cardId) {
+      if (state.activeCard === cardId) {
+        closeCard();
+        return;
+      }
+      
+      // Hide all panels
+      closeCard(true);
+      state.activeCard = cardId;
+      
+      document.getElementById('welcome-panel').classList.add('hidden');
+      
+      // Activate target card
+      const targetCard = document.getElementById(`card-${cardId}`);
+      if (targetCard) {
+        targetCard.classList.add('active');
+        
+        // Toggle target lock active-state class on orbit wrapper
+        const wrapper = document.getElementById(`wrapper-${cardId}`);
+        if (wrapper) {
+          wrapper.classList.add('active-state');
+        }
+        
+        // Trigger Glitch Boot terminal typewriter sequence
+        triggerBootSequence(cardId);
+      }
+    }
+
+    // Close open cards
+    function closeCard(silent = false) {
+      if (state.activeCard) {
+        document.getElementById(`card-${state.activeCard}`).classList.remove('active');
+        
+        // Remove target lock active-state class from orbit wrapper
+        const wrapper = document.getElementById(`wrapper-${state.activeCard}`);
+        if (wrapper) {
+          wrapper.classList.remove('active-state');
+        }
+      }
+      state.activeCard = null;
+      
+      if (!silent) {
+        document.getElementById('welcome-panel').classList.remove('hidden');
+        appendLog("Cerrando sesión de consola. Regresando a la vista general.");
+      }
+    }
+
+    // Glitch Terminal Boot Sequence Typewriter effect
+    function triggerBootSequence(cardId) {
+      const bootText = document.getElementById(`boot-text-${cardId}`);
+      const content = document.getElementById(`content-${cardId}`);
+      
+      if (!bootText || !content) return;
+      
+      // Hide actual content first
+      content.classList.add('hidden');
+      bootText.classList.remove('hidden');
+      bootText.innerHTML = '';
+
+      const logLines = [
+        `&gt; CONNECTING TO SATELLITE... OK`,
+        `&gt; PARSING TELEMETRY FRAME... OK`,
+        `&gt; MOUNTING GRID SECTOR [${cardId.toUpperCase()}]... OK`,
+        `&gt; INITIALIZING CONSOLE DISPLAY... DONE`
+      ];
+
+      let lineIdx = 0;
+      function printNextLine() {
+        if (lineIdx < logLines.length) {
+          const div = document.createElement('div');
+          div.className = 'boot-text-line';
+          div.innerHTML = logLines[lineIdx];
+          div.style.animation = 'typingText 0.3s steps(30) forwards, cursorBlink 0.4s infinite';
+          bootText.appendChild(div);
+          
+          lineIdx++;
+          setTimeout(printNextLine, 220);
+        } else {
+          // Finished booting
+          setTimeout(() => {
+            bootText.classList.add('hidden');
+            content.classList.remove('hidden');
+            appendLog(`Módulo de Consola [${cardId.toUpperCase()}] listo para interacción.`);
+          }, 300);
+        }
+      }
+      printNextLine();
+    }
+
+    // Terminal log appender
+    function appendLog(msg) {
+      const log = document.getElementById('system-terminal-log');
+      const div = document.createElement('div');
+      const time = new Date().toLocaleTimeString();
+      div.innerHTML = `<span class="text-stone-600">[${time}]</span> &gt; ${msg}`;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    // Reboot Simulation
+    function triggerSystemReboot() {
+      if (state.isRebooting) return;
+      state.isRebooting = true;
+      appendLog("INICIANDO RECONFIGURACIÓN COMPLETA DEL SISTEMA...");
+      
+      const canvas = document.getElementById('orion-canvas');
+      canvas.style.filter = 'hue-rotate(90deg) blur(5px)';
+      canvas.style.opacity = '0.3';
+      
+      closeCard(true);
+      
+      setTimeout(() => {
+        canvas.style.filter = '';
+        canvas.style.opacity = '';
+        state.isRebooting = false;
+        appendLog("SISTEMA REINICIADO. ÓRBITAS CALIBRADAS.");
+        triggerBootSequence('assistant');
+        toggleCard('assistant');
+      }, 1500);
+    }
+
+    // Animation Loop
+    let lastTime = 0;
+    function animateOrbits(timestamp) {
+      if (!lastTime) lastTime = timestamp;
+      const dt = (timestamp - lastTime) / 1000;
+      lastTime = timestamp;
+
+      // Update positions
+      Object.keys(planets).forEach(pId => {
+        const planet = planets[pId];
+        const wrapper = document.getElementById(`wrapper-${pId}`);
+        if (!wrapper) return;
+
+        // Pause rotation if the planet is active
+        const isPaused = state.activeCard === pId;
+
+        if (!isPaused && !state.isRebooting) {
+          planet.angle += planet.speed * dt;
+        }
+
+        const x = planet.radius * Math.cos(planet.angle);
+        const y = planet.radius * Math.sin(planet.angle);
+
+        wrapper.style.transform = `translate(-50%, -50%) translate(${x}px, ${y}px)`;
+
+        // Sync SVG line connectors
+        updateGravityLines(pId, x, y);
+      });
+
+      requestAnimationFrame(animateOrbits);
+    }
+
+    // Interactive mousemove parallax
+    document.addEventListener('mousemove', (e) => {
+      const rect = document.body.getBoundingClientRect();
+      const mouseX = (e.clientX / rect.width) - 0.5; // -0.5 to 0.5
+      const mouseY = (e.clientY / rect.height) - 0.5;
+
+      // Move glowing nebulas
+      document.getElementById('glow-1').style.transform = `translate(${mouseX * 70}px, ${mouseY * 70}px)`;
+      document.getElementById('glow-2').style.transform = `translate(${mouseX * -90}px, ${mouseY * -90}px)`;
+      document.getElementById('glow-3').style.transform = `translate(${mouseX * 50}px, ${mouseY * -50}px)`;
+      document.getElementById('glow-4').style.transform = `translate(${mouseX * -60}px, ${mouseY * 60}px)`;
+
+      // Move space dust
+      const dust = document.querySelectorAll('.space-dust');
+      dust.forEach(d => {
+        const speed = parseFloat(d.getAttribute('data-parallax-speed') || '0.1');
+        d.style.transform = `translate(${mouseX * speed * 300}px, ${mouseY * speed * 300}px)`;
+      });
+    });
+
+    // Start everything on load
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      initSpaceDust();
+      requestAnimationFrame(animateOrbits);
+      appendLog("Sistemas cargados correctamente. Modo Claro (Aurora Glass) activo.");
+    });
+  </script>
+</body>
+</html>

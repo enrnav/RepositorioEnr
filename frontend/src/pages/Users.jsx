@@ -166,7 +166,7 @@ const Users = () => {
     <div className="space-y-6">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
         <h2 className="text-xl sm:text-3xl font-black text-brand-900 tracking-tight animate-fade-in flex items-center gap-2">
-          <UsersIcon className="text-chiluda-red w-8 h-8 shrink-0" />
+          <UsersIcon className="text-chiluda-red w-8 h-8 shrink-0 animate-bounce" />
           <span>Gestión de Usuarios</span>
         </h2>
         <div className="flex flex-wrap gap-2.5 sm:gap-3 items-center animate-fade-in w-full xl:w-auto justify-center sm:justify-end shrink-0">
@@ -378,7 +378,7 @@ const Users = () => {
         document.body
       )}
 
-      <div className="bg-white/5 backdrop-blur-[2px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
+      <div className="bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead className="bg-brand-50/50 text-brand-900 text-[10px] md:text-xs uppercase tracking-wider">

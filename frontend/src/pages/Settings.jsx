@@ -421,7 +421,38 @@ const Settings = () => {
             </div>
           </div>
         </div>
-      </div>
+
+        {/* Guía de uso de backups */}
+        <div className="mt-8 pt-6 border-t border-slate-200/20 space-y-4">
+            <h3 className="text-xs font-black text-brand-900 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Manual de Uso: Copias de Seguridad (Backup)
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-500 font-semibold leading-relaxed">
+              <div className="bg-white/5 p-5 rounded-2xl border border-white/20 space-y-2.5">
+                <h4 className="font-bold text-slate-700 uppercase text-[10px] tracking-wider text-emerald-600">📥 ¿Qué contiene el archivo JSON de respaldo?</h4>
+                <p>El archivo de extensión <code>.json</code> es el formato recomendado del sistema y contiene la base de datos completa de tu negocio de forma estructurada:</p>
+                <ul className="list-disc pl-4 space-y-1 mt-1 text-slate-400">
+                  <li>Configuración de la tienda (Nombre de la tienda, RFC, Dirección, Ticket).</li>
+                  <li>Cuentas de Usuarios (Administradores, Cajeros, contraseñas encriptadas).</li>
+                  <li>Catálogo de Productos y Variantes (Códigos de barra, precios, costos, stock).</li>
+                  <li>Clientes y saldos a Crédito (Cuentas activas por cobrar de fiado).</li>
+                  <li>Historial de Turnos de Caja, Ventas realizadas y Entradas de compras.</li>
+                </ul>
+              </div>
+              <div className="bg-white/5 p-5 rounded-2xl border border-white/20 space-y-2.5">
+                <h4 className="font-bold text-slate-700 uppercase text-[10px] tracking-wider text-red-500">📤 Pasos para importar y restaurar información:</h4>
+                <ol className="list-decimal pl-4 space-y-1.5 mt-1 text-slate-400">
+                  <li>Haz clic en <strong>"Seleccionar Archivo JSON"</strong> en el panel de restauración de arriba.</li>
+                  <li>Busca y abre el archivo de respaldo descargado previamente (ej. <code>tienda_backup_2026-06-28.json</code>).</li>
+                  <li>Confirma la acción en la ventana de advertencia de tu navegador.</li>
+                  <li>El sistema limpiará automáticamente los datos actuales y cargará la información del respaldo.</li>
+                  <li>Al finalizar, el sistema se reiniciará automáticamente con toda la base de datos restaurada.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
     </div>
   );
 };

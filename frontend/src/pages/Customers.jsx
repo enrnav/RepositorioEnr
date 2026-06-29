@@ -290,42 +290,42 @@ const Customers = () => {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-center border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-100">
-                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cliente</th>
-                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Contacto</th>
-                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Límite de Crédito</th>
-                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Saldo Deudor</th>
-                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Acciones</th>
+                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Cliente</th>
+                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Contacto</th>
+                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Límite de Crédito</th>
+                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center">Saldo Deudor</th>
+                  <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center rounded-tr-xl">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {customers.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="p-4">
+                    <td className="p-4 text-center">
                       <div className="font-semibold text-slate-800">{c.name}</div>
                       <div className="text-xs text-slate-400">ID: {c.id}</div>
                     </td>
-                    <td className="p-4 space-y-1">
+                    <td className="p-4 space-y-1 text-center">
                       {c.phone && (
-                        <div className="flex items-center text-xs text-slate-600">
+                        <div className="flex items-center justify-center text-xs text-slate-600">
                           <Phone className="w-3.5 h-3.5 mr-1 text-slate-400" />
                           {c.phone}
                         </div>
                       )}
                       {c.email && (
-                        <div className="flex items-center text-xs text-slate-600">
+                        <div className="flex items-center justify-center text-xs text-slate-600">
                           <Mail className="w-3.5 h-3.5 mr-1 text-slate-400" />
                           {c.email}
                         </div>
                       )}
                       {!c.phone && !c.email && <span className="text-xs text-slate-400 italic">Sin datos</span>}
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 text-center">
                       <span className="font-medium text-slate-700">${c.credit_limit.toFixed(2)}</span>
                     </td>
-                    <td className="p-4">
+                    <td className="p-4 text-center">
                       <span className={`font-bold text-sm px-2.5 py-1 rounded-full ${
                         c.current_balance > 0 
                           ? 'bg-amber-50 text-amber-700 border border-amber-100' 
@@ -334,8 +334,8 @@ const Customers = () => {
                         ${c.current_balance.toFixed(2)}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-end space-x-2">
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center space-x-2">
                         <button
                           onClick={() => handlePaymentClick(c)}
                           className="flex items-center space-x-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-100 transition-all text-xs font-bold"

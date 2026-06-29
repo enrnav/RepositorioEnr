@@ -749,33 +749,35 @@ const Invoices = () => {
       {activeTab === 'history' && (
         <div className="bg-white/10 backdrop-blur-[3px] border border-white/40 rounded-3xl shadow-soft overflow-hidden animate-slide-up">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs md:text-sm">
+            <table className="w-full text-center border-collapse text-xs md:text-sm">
               <thead className="bg-stone-50 text-stone-500 uppercase font-black text-[10px] tracking-wider border-b border-stone-150">
                 <tr>
-                  <th className="px-4 py-4">Fecha Timbrado</th>
-                  <th className="px-4 py-4">Folio Fiscal (UUID)</th>
-                  <th className="px-4 py-4 text-right">Monto Total</th>
+                  <th className="px-4 py-4 text-center">Fecha Timbrado</th>
+                  <th className="px-4 py-4 text-center">Folio Fiscal (UUID)</th>
+                  <th className="px-4 py-4 text-center">Monto Total</th>
                   <th className="px-4 py-4 text-center">Estado</th>
-                  <th className="px-4 py-4 text-right rounded-tr-xl">Documentos / Acciones</th>
+                  <th className="px-4 py-4 text-center rounded-tr-xl">Documentos / Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100">
                 {loadingHistory ? (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-stone-500 flex flex-col items-center">
-                      <Loader className="animate-spin h-8 w-8 text-stone-400 mb-2" />
-                      Cargando historial de facturas fiscales...
+                    <td colSpan="5" className="px-6 py-12 text-center text-stone-500">
+                      <div className="flex flex-col items-center justify-center">
+                        <Loader className="animate-spin h-8 w-8 text-stone-400 mb-2" />
+                        <span>Cargando historial de facturas fiscales...</span>
+                      </div>
                     </td>
                   </tr>
                 ) : invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-stone-50/50 transition-all">
-                    <td className="px-4 py-3.5 font-semibold text-stone-600">
+                    <td className="px-4 py-3.5 font-semibold text-stone-600 text-center">
                       {new Date(inv.created_at).toLocaleString()}
                     </td>
-                    <td className="px-4 py-3.5 font-mono text-[10px] md:text-xs text-stone-700 tracking-wider">
+                    <td className="px-4 py-3.5 font-mono text-[10px] md:text-xs text-stone-700 tracking-wider text-center">
                       {inv.uuid}
                     </td>
-                    <td className="px-4 py-3.5 text-right font-black text-stone-850">
+                    <td className="px-4 py-3.5 text-center font-black text-stone-850">
                       ${inv.monto_total.toFixed(2)}
                     </td>
                     <td className="px-4 py-3.5 text-center">
@@ -787,8 +789,8 @@ const Invoices = () => {
                         {inv.status === 'cancelled' ? 'Cancelado SAT' : 'Vigente'}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-4 py-3.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2">
                         {/* Descargar XML */}
                         <a
                           href={`${API_URL}/billing/invoices/${inv.uuid}/xml`}
@@ -840,9 +842,11 @@ const Invoices = () => {
                 ))}
                 {!loadingHistory && invoices.length === 0 && (
                   <tr>
-                    <td colSpan="5" className="px-6 py-8 text-center text-stone-400 text-xs font-semibold flex flex-col items-center">
-                      <Receipt className="h-8 w-8 text-stone-300 mb-2 animate-pulse" />
-                      No hay registros de facturación timbrados en el sistema.
+                    <td colSpan="5" className="px-6 py-12 text-center text-stone-400 text-xs font-semibold">
+                      <div className="flex flex-col items-center justify-center">
+                        <Receipt className="h-8 w-8 text-stone-300 mb-2 animate-pulse" />
+                        <span>No hay registros de facturación timbrados en el sistema.</span>
+                      </div>
                     </td>
                   </tr>
                 )}

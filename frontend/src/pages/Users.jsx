@@ -380,26 +380,26 @@ const Users = () => {
 
       <div className="bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-center border-collapse">
             <thead className="bg-brand-50/50 text-brand-900 text-[10px] md:text-xs uppercase tracking-wider">
               <tr>
-                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold rounded-tl-xl">ID</th>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Nombre</th>
-                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold">Usuario</th>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Rol</th>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-right rounded-tr-xl">Acciones</th>
+                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold text-center rounded-tl-xl">ID</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Nombre</th>
+                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold text-center">Usuario</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Rol</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center rounded-tr-xl">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100/50">
               {users.map((u) => (
                 <tr key={u.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
-                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-gray-600 text-sm md:text-base">#{u.id}</td>
-                  <td className="px-4 md:px-6 py-3 md:py-4">
+                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-gray-600 text-sm md:text-base text-center">#{u.id}</td>
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-center">
                     <div className="text-sm font-bold text-gray-900">{u.full_name}</div>
                     <div className="text-xs text-gray-400 sm:hidden mt-0.5">@{u.username}</div>
                   </td>
-                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-gray-600 text-sm md:text-base">{u.username}</td>
-                  <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-gray-600 text-sm md:text-base text-center">{u.username}</td>
+                  <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
                     <span className={`px-3 py-1.5 inline-flex items-center text-xs font-black rounded-full border ${
                       u.role === 'admin' ? 'bg-purple-500/10 text-purple-800 border-purple-500/20' :
                       u.role === 'supervisor' ? 'bg-blue-500/10 text-blue-800 border-blue-500/20' :
@@ -413,8 +413,8 @@ const Users = () => {
                        u.role === 'supervisor' ? 'Supervisor' : 'Cajero'}
                     </span>
                   </td>
-                  <td className="px-4 md:px-6 py-3 md:py-4">
-                    <div className="flex items-center justify-end space-x-2 md:space-x-3">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-center">
+                    <div className="flex items-center justify-center space-x-2 md:space-x-3">
                       <button 
                         onClick={() => handleEditClick(u)}
                         className="text-gray-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 p-2.5 rounded-xl transition-all"
@@ -435,9 +435,11 @@ const Users = () => {
               ))}
               {users.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-8 text-center text-sm text-gray-500 flex flex-col items-center">
-                    <UsersIcon className="h-8 w-8 text-gray-300 mb-2" />
-                    No hay usuarios registrados o cargando...
+                  <td colSpan="5" className="px-6 py-12 text-center text-sm text-gray-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <UsersIcon className="h-8 w-8 text-gray-300 mb-2" />
+                      <span>No hay usuarios registrados o cargando...</span>
+                    </div>
                   </td>
                 </tr>
               )}

@@ -1880,25 +1880,25 @@ const Dashboard = () => {
           <h3 className="text-lg font-black text-brand-900">Clasificación de Productos y Márgenes</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-center border-collapse">
             <thead className="bg-stone-50 text-stone-605 text-[10px] font-black uppercase tracking-wider border-b border-stone-100">
               <tr>
-                <th className="px-6 py-4 font-black">Producto</th>
+                <th className="px-6 py-4 font-black text-center">Producto</th>
                 <th className="px-6 py-4 font-black text-center">Unidades Vendidas</th>
-                <th className="px-6 py-4 font-black text-right">Ingresos Totales</th>
-                <th className="px-6 py-4 font-black text-right">Costo Acumulado</th>
-                <th className="px-6 py-4 font-black text-right">Ganancia Neta</th>
+                <th className="px-6 py-4 font-black text-center">Ingresos Totales</th>
+                <th className="px-6 py-4 font-black text-center">Costo Acumulado</th>
+                <th className="px-6 py-4 font-black text-center">Ganancia Neta</th>
                 <th className="px-6 py-4 font-black text-center">Margen %</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs font-bold text-stone-700">
               {topProducts.map((p) => (
                 <tr key={p.product_id} className="hover:bg-stone-50/50 transition-colors">
-                  <td className="px-6 py-4 text-brand-900 font-extrabold">{p.product_name}</td>
+                  <td className="px-6 py-4 text-brand-900 font-extrabold text-center">{p.product_name}</td>
                   <td className="px-6 py-4 text-center text-stone-500">{p.quantity_sold} u.</td>
-                  <td className="px-6 py-4 text-right text-stone-600">${p.revenue.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right text-stone-600">${p.cost.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-right text-emerald-600 font-extrabold">${p.profit.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-center text-stone-600">${p.revenue.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-center text-stone-600">${p.cost.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-center text-emerald-600 font-extrabold">${p.profit.toFixed(2)}</td>
                   <td className="px-6 py-4 text-center">
                     <span className={`px-2.5 py-1 rounded-full font-black text-[10px] ${
                       p.margin_percentage > 30 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :

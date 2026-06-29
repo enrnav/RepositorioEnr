@@ -187,7 +187,7 @@ const Layout = () => {
         <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100 relative">
           <div className="flex items-center space-x-3 shrink-0 select-none">
             <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm" />
-            <div className="flex flex-col items-start max-w-[180px]">
+            <div className="hidden sm:flex flex-col items-start max-w-[180px]">
               <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
             </div>
           </div>
@@ -196,7 +196,7 @@ const Layout = () => {
             {renderHotkeys()}
             {renderShiftBadge()}
             
-            <div className="flex flex-col items-end mr-4 text-right">
+            <div className="hidden sm:flex flex-col items-end mr-4 text-right">
               <span className="text-xs font-extrabold text-brand-900 leading-none">{user.full_name}</span>
               <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Cajero</span>
             </div>
@@ -210,7 +210,7 @@ const Layout = () => {
               className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-5 sm:py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0"
             >
               <LogOut size={20} className="shrink-0" />
-              <span className="font-semibold text-xs sm:text-sm whitespace-nowrap">Cerrar Sesión</span>
+              <span className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden sm:inline">Cerrar Sesión</span>
             </Link>
           </div>
         </header>
@@ -242,7 +242,7 @@ const Layout = () => {
         {/* Mobile Sidebar Close Button */}
         <button 
           onClick={() => setIsSidebarOpen(false)}
-          className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-all duration-200 lg:hidden"
+          className="absolute top-4 right-4 p-2 text-stone-500 hover:text-brand-900 hover:bg-stone-100 rounded-xl transition-all duration-200 lg:hidden"
           aria-label="Cerrar menú"
         >
           <X size={20} />
@@ -255,7 +255,7 @@ const Layout = () => {
           </div>
         </div>
         
-        <nav className="flex-1 p-6 space-y-2">
+        <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
             if (!item.allowedRoles.includes(user.role)) return null;
             const Icon = item.icon;
@@ -281,7 +281,7 @@ const Layout = () => {
           })}
         </nav>
 
-        <div className="p-6 border-t border-white/10 flex flex-col gap-2">
+        <div className="p-6 border-t border-white/10 flex flex-col gap-2 flex-shrink-0">
           <div className="px-4 py-3 bg-white/5 rounded-xl text-xs text-gray-300 flex flex-col border border-white/10">
             <span className="font-black text-white text-sm">{user.full_name}</span>
             <span className="uppercase text-[9px] font-black text-[#4ade80] mt-1 tracking-wider">{user.role === 'admin' ? 'Administrador' : 'Supervisor'}</span>
@@ -313,7 +313,7 @@ const Layout = () => {
             </button>
             <div className="flex items-center space-x-2 lg:hidden select-none">
               <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-12 w-auto object-contain animate-fade-in" />
-              <div className="flex flex-col items-start max-w-[140px]">
+              <div className="hidden sm:flex flex-col items-start max-w-[140px]">
                 <span className="text-xs font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
               </div>
             </div>
@@ -349,7 +349,7 @@ const Layout = () => {
               className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0"
             >
               <LogOut size={18} className="shrink-0" />
-              <span className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden md:inline">Cerrar Sesión</span>
+              <span className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden lg:inline">Cerrar Sesión</span>
             </Link>
 
             {/* Notifications Dropdown */}

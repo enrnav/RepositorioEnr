@@ -959,11 +959,11 @@ const Inventory = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-center border-collapse">
             <thead className="bg-brand-50/50 text-brand-900 text-[10px] md:text-xs uppercase tracking-wider">
               <tr>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-bold rounded-tl-xl">Producto</th>
-                <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-right">Precio</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center rounded-tl-xl">Producto</th>
+                <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center">Precio</th>
                 <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center">Stock</th>
                 <th className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 font-bold text-center">Ingreso</th>
                 <th className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 font-bold text-center">Vendidos</th>
@@ -975,15 +975,15 @@ const Inventory = () => {
               {filteredInventory.map((item) => {
                 return (
                   <tr key={item.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
-                    <td className="px-3 md:px-6 py-3 md:py-4 max-w-[120px] md:max-w-none truncate">
-                      <div className="flex items-center space-x-3">
+                    <td className="px-3 md:px-6 py-3 md:py-4 max-w-[120px] md:max-w-none truncate text-center">
+                      <div className="flex items-center justify-center space-x-3">
                         <div className="truncate">
                           <span className="font-bold text-gray-950 text-sm md:text-base block truncate">{item.name}</span>
                           {item.barcode && <span className="text-[10px] md:text-xs text-gray-400 mt-0.5 block truncate">Cód: {item.barcode}</span>}
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4 text-right text-gray-600 text-sm md:text-base">
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
                       ${item.price.toFixed(2)}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
@@ -1004,7 +1004,7 @@ const Inventory = () => {
                         {Math.max(0, 50 - item.quantity)} u.
                       </span>
                     </td>
-                    <td className="px-3 md:px-6 py-3 md:py-4">
+                    <td className="px-3 md:px-6 py-3 md:py-4 text-center">
                       <div className="flex items-center justify-center space-x-2 md:space-x-3">
                         <button 
                           type="button" 

@@ -260,7 +260,7 @@ const Purchases = () => {
                 : 'text-stone-500 hover:text-stone-900'
             }`}
           >
-            Registrar Compra
+            Nueva Compra
           </button>
           <button
             onClick={() => setActiveTab('history')}
@@ -270,7 +270,7 @@ const Purchases = () => {
                 : 'text-stone-500 hover:text-stone-900'
             }`}
           >
-            Historial de Compras
+            Historial
           </button>
         </div>
       </div>
@@ -717,6 +717,17 @@ const Purchases = () => {
                   </table>
                 )}
               </div>
+
+              {purchaseItems.length > 0 && (
+                <div className="flex justify-end pt-4 border-t border-stone-100/50 flex-shrink-0">
+                  <button
+                    onClick={handleSubmitPurchase}
+                    className="px-6 py-3 bg-[#064e3b] text-white font-black text-xs uppercase tracking-wider rounded-full hover:bg-stone-850 hover:shadow-float active:scale-[0.98] transition-all shadow-md"
+                  >
+                    Registrar Entrada de Mercancía (${calculateTotal().toFixed(2)})
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -724,25 +735,25 @@ const Purchases = () => {
         // ================= HISTORY TAB =================
         <div className="bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-center border-collapse">
               <thead className="bg-brand-50/50 text-brand-900 text-[10px] md:text-xs uppercase tracking-wider">
                 <tr>
-                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold rounded-tl-xl">Entrada ID</th>
-                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Fecha / Hora</th>
-                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Proveedor</th>
-                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Factura / Ticket</th>
-                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-right">Costo Total</th>
-                  <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold">Encargado / Notas</th>
-                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-right rounded-tr-xl">Acciones</th>
+                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center rounded-tl-xl">Entrada ID</th>
+                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Fecha / Hora</th>
+                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Proveedor</th>
+                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Factura / Ticket</th>
+                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Costo Total</th>
+                  <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold text-center">Encargado / Notas</th>
+                  <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center rounded-tr-xl">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100/50 bg-transparent text-xs">
                 {purchases.map((p) => (
                   <tr key={p.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
-                    <td className="px-4 md:px-6 py-3 md:py-4 font-bold text-stone-850">#{p.id}</td>
-                    <td className="px-4 md:px-6 py-3 md:py-4 font-semibold text-stone-600 whitespace-nowrap">{formatDate(p.created_at)}</td>
-                    <td className="px-4 md:px-6 py-3 md:py-4 font-bold text-stone-800">{p.supplier_name}</td>
-                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                    <td className="px-4 md:px-6 py-3 md:py-4 font-bold text-stone-850 text-center">#{p.id}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 font-semibold text-stone-600 whitespace-nowrap text-center">{formatDate(p.created_at)}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 font-bold text-stone-800 text-center">{p.supplier_name}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
                       {p.invoice_number ? (
                         <span className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-md font-mono text-[10px] font-bold border border-stone-200/50">
                           {p.invoice_number}
@@ -751,21 +762,21 @@ const Purchases = () => {
                         <span className="text-stone-400 italic text-[11px]">Directo</span>
                       )}
                     </td>
-                    <td className="px-4 md:px-6 py-3 md:py-4 text-right font-black text-emerald-800">${p.total_cost.toFixed(2)}</td>
+                    <td className="px-4 md:px-6 py-3 md:py-4 text-center font-black text-emerald-800">${p.total_cost.toFixed(2)}</td>
                     
                     {/* User and Notes */}
-                    <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 max-w-xs font-semibold text-stone-500">
-                      <div className="flex flex-col gap-0.5">
+                    <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 max-w-xs font-semibold text-stone-500 text-center">
+                      <div className="flex flex-col gap-0.5 items-center justify-center">
                         <span className="text-stone-700 flex items-center gap-1"><User size={12} className="text-stone-400" /> {p.user_name}</span>
-                        {p.notes && <span className="text-stone-400 italic truncate" title={p.notes}>Nota: {p.notes}</span>}
+                        {p.notes && <span className="text-stone-400 italic truncate max-w-[200px]" title={p.notes}>Nota: {p.notes}</span>}
                       </div>
                     </td>
-
+ 
                     {/* Actions */}
-                    <td className="px-4 md:px-6 py-3 md:py-4 text-right">
+                    <td className="px-4 md:px-6 py-3 md:py-4 text-center">
                       <button
                         onClick={() => setViewingPurchase(p)}
-                        className="text-[#064e3b] hover:text-white hover:bg-[#064e3b] p-2 rounded-xl transition-all duration-200 inline-flex items-center gap-1.5 font-bold"
+                        className="text-[#064e3b] hover:text-white hover:bg-[#064e3b] p-2 rounded-xl transition-all duration-200 inline-flex items-center gap-1.5 font-bold justify-center"
                         title="Ver detalles"
                       >
                         <Eye size={15} />
@@ -777,10 +788,12 @@ const Purchases = () => {
 
                 {purchases.length === 0 && (
                   <tr>
-                    <td colSpan="7" className="px-6 py-12 text-center text-stone-500 flex flex-col items-center">
-                      <ClipboardList className="h-10 w-10 text-stone-300 mb-2" />
-                      <span className="font-bold text-stone-450">No hay compras registradas en el historial</span>
-                      <span className="text-stone-400 text-xs mt-1">Registra una entrada de mercancía en la pestaña anterior.</span>
+                    <td colSpan="7" className="px-6 py-12 text-center text-stone-500">
+                      <div className="flex flex-col items-center justify-center">
+                        <ClipboardList className="h-10 w-10 text-stone-300 mb-2" />
+                        <span className="font-bold text-stone-450">No hay compras registradas en el historial</span>
+                        <span className="text-stone-400 text-xs mt-1 font-semibold">Registra una entrada de mercancía en la pestaña anterior.</span>
+                      </div>
                     </td>
                   </tr>
                 )}

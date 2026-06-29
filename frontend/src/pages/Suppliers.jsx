@@ -352,27 +352,27 @@ const Suppliers = () => {
       {/* Suppliers Table */}
       <div className="bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-soft border border-white/40 overflow-hidden animate-slide-up">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-center border-collapse">
             <thead className="bg-brand-50/50 text-brand-900 text-[10px] md:text-xs uppercase tracking-wider">
               <tr>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold rounded-tl-xl">Nombre / Razón Social</th>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">RFC</th>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold">Contacto</th>
-                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold">Dirección y Notas</th>
-                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-right rounded-tr-xl">Acciones</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center rounded-tl-xl">Nombre / Razón Social</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">RFC</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center">Contacto</th>
+                <th className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 font-bold text-center">Dirección y Notas</th>
+                <th className="px-4 md:px-6 py-3 md:py-4 font-bold text-center rounded-tr-xl">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100/50 bg-transparent">
               {filteredSuppliers.map((s) => (
                 <tr key={s.id} className="hover:bg-brand-50/50 transition-all duration-200 group">
                   {/* Name */}
-                  <td className="px-4 md:px-6 py-3 md:py-4">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-center">
                     <div className="text-sm font-bold text-stone-900">{s.name}</div>
                     <div className="text-[10px] text-stone-400 mt-0.5">ID: #{s.id}</div>
                   </td>
                   
                   {/* RFC */}
-                  <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap">
+                  <td className="px-4 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
                     {s.rfc ? (
                       <span className="px-2.5 py-1 bg-stone-100 text-stone-700 rounded-md font-mono text-[10px] font-bold border border-stone-200/50">
                         {s.rfc}
@@ -383,8 +383,8 @@ const Suppliers = () => {
                   </td>
                   
                   {/* Contact info */}
-                  <td className="px-4 md:px-6 py-3 md:py-4 text-xs font-semibold text-stone-600">
-                    <div className="flex flex-col gap-1.5">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-xs font-semibold text-stone-600 text-center">
+                    <div className="flex flex-col gap-1.5 items-center justify-center">
                       {s.phone && (
                         <span className="flex items-center gap-1.5">
                           <Phone size={12} className="text-stone-400" />
@@ -402,10 +402,10 @@ const Suppliers = () => {
                       )}
                     </div>
                   </td>
-
+ 
                   {/* Address and Notes */}
-                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-xs font-semibold text-stone-500 max-w-xs">
-                    <div className="flex flex-col gap-1">
+                  <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-xs font-semibold text-stone-500 max-w-xs text-center">
+                    <div className="flex flex-col gap-1 items-center justify-center">
                       {s.address && (
                         <div className="flex items-start gap-1.5">
                           <MapPin size={12} className="text-stone-400 shrink-0 mt-0.5" />
@@ -425,8 +425,8 @@ const Suppliers = () => {
                   </td>
                   
                   {/* Actions */}
-                  <td className="px-4 md:px-6 py-3 md:py-4 text-right">
-                    <div className="flex items-center justify-end space-x-1 sm:space-x-2">
+                  <td className="px-4 md:px-6 py-3 md:py-4 text-center">
+                    <div className="flex items-center justify-center space-x-1 sm:space-x-2">
                       <button 
                         onClick={() => handleEditClick(s)}
                         className="text-stone-500 hover:text-blue-600 hover:bg-blue-50 active:bg-blue-100 p-2 rounded-xl transition-all"
@@ -448,10 +448,12 @@ const Suppliers = () => {
               
               {filteredSuppliers.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-12 text-center text-sm text-stone-500 flex flex-col items-center">
-                    <Truck className="h-10 w-10 text-stone-300 mb-2 animate-pulse" />
-                    <span className="font-bold text-stone-450">No se encontraron proveedores</span>
-                    <span className="text-stone-400 text-xs mt-1">Intenta con otro término de búsqueda o crea uno nuevo.</span>
+                  <td colSpan="5" className="px-6 py-12 text-center text-sm text-stone-500">
+                    <div className="flex flex-col items-center justify-center">
+                      <Truck className="h-10 w-10 text-stone-300 mb-2 animate-pulse" />
+                      <span className="font-bold text-stone-450">No se encontraron proveedores</span>
+                      <span className="text-stone-400 text-xs mt-1 font-semibold">Intenta con otro término de búsqueda o crea uno nuevo.</span>
+                    </div>
                   </td>
                 </tr>
               )}

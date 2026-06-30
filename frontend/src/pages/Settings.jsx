@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Save, Store, Receipt, AlertCircle, CheckCircle, Database, Download, UploadCloud } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Settings as SettingsIcon, Save, Store, Receipt, AlertCircle, CheckCircle, Database, Download, UploadCloud, HelpCircle, FileText } from 'lucide-react';
 import { fetchStoreSettings, updateStoreSettings, exportBackupDatabase, importBackupDatabase } from '../api';
 
 const Settings = () => {
@@ -24,6 +25,7 @@ const Settings = () => {
   const [importingBackup, setImportingBackup] = useState(false);
   const [backupError, setBackupError] = useState('');
   const [backupSuccess, setBackupSuccess] = useState('');
+  const [showBackupHelp, setShowBackupHelp] = useState(false);
 
   const handleExportBackup = async () => {
     setBackupError('');
@@ -335,9 +337,72 @@ const Settings = () => {
 
       {/* Sección de Respaldo de Base de Datos */}
       <div className="bg-white/10 backdrop-blur-[3px] rounded-[2.2rem] border border-white/40 shadow-lg p-6 md:p-8 space-y-6 mt-6">
-        <div className="flex items-center space-x-2 pb-2 border-b border-slate-100">
-          <Database className="w-5 h-5 text-emerald-600 animate-pulse" />
-          <h2 className="text-lg font-semibold text-slate-700">COPIAS DE SEGURIDAD (BACKUP)</h2>
+        <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+          <div className="flex items-center space-x-2">
+            <Database className="w-5 h-5 text-emerald-600 animate-pulse" />
+            <h2 className="text-lg font-semibold text-slate-700">COPIAS DE SEGURIDAD (BACKUP)</h2>
+          </div>
+          
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowBackupHelp(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black transition-all uppercase tracking-wider border border-emerald-200/20"
+            >
+              <HelpCircle size={13} className="animate-bounce" />
+              <span>Manual de Uso</span>
+            </button>
+            
+            {showBackupHelp && createPortal(
+              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                <div className="absolute inset-0" onClick={() => setShowBackupHelp(false)} />
+                
+                <div className="bg-white/95 backdrop-blur-2xl rounded-[2.2rem] shadow-glass w-full max-w-lg p-6 md:p-8 relative z-10 border border-white/55 animate-slide-up space-y-6">
+                  <div className="flex items-center justify-between pb-3 border-b border-emerald-100">
+                    <div className="flex items-center gap-2 text-emerald-800">
+                      <Database size={20} className="text-emerald-600 animate-pulse" />
+                      <span className="text-sm font-black uppercase tracking-wider">Manual de Backup</span>
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setShowBackupHelp(false)} 
+                      className="text-stone-400 hover:text-stone-605 font-bold text-xs uppercase"
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 text-left">
+                    <div>
+                      <h4 className="text-xs font-black text-emerald-800 uppercase tracking-wide mb-1.5">¿Qué contiene el respaldo?</h4>
+                      <p className="text-[12px] text-stone-500 leading-relaxed font-semibold">
+                        El archivo <code>.json</code> es el formato recomendado y contiene toda la información de tu negocio estructurada: configuración, cuentas de usuario, catálogo de productos, variantes, clientes, saldos a crédito e historial de ventas y compras.
+                      </p>
+                    </div>
+                    
+                    <div className="pt-4 border-t border-slate-100">
+                      <h4 className="text-xs font-black text-red-650 uppercase tracking-wide mb-1.5">Pasos para importar/restaurar</h4>
+                      <ol className="list-decimal pl-5 space-y-2 text-stone-500 text-[12px] leading-relaxed font-semibold">
+                        <li>Haz clic en <strong>"Seleccionar Archivo JSON"</strong> en el panel.</li>
+                        <li>Busca y abre el archivo de respaldo descargado (ej. <code>tienda_backup.json</code>).</li>
+                        <li>Confirma la ventana de advertencia de restauración en el navegador.</li>
+                        <li>El sistema se reiniciará automáticamente para cargar la base de datos limpia.</li>
+                      </ol>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowBackupHelp(false)}
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-md"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>,
+              document.body
+            )}
+          </div>
         </div>
 
         {backupError && (
@@ -358,7 +423,21 @@ const Settings = () => {
           {/* Exportar */}
           <div className="space-y-4 flex flex-col justify-between h-full bg-slate-50/30 p-5 rounded-2xl border border-slate-100">
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Descargar Respaldo</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Descargar Respaldo</h3>
+                <div className="relative group">
+                  <button
+                    type="button"
+                    className="text-stone-400 hover:text-stone-605 transition-colors p-0.5"
+                  >
+                    <HelpCircle size={14} />
+                  </button>
+                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:flex flex-col w-64 bg-stone-900 text-white text-[11px] p-4.5 rounded-2xl shadow-xl z-55 pointer-events-none before:content-[''] before:absolute before:top-full before:left-4 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-stone-900 leading-relaxed font-semibold">
+                    <span className="font-bold text-xs text-white mb-2 block uppercase tracking-wider text-center">Contenido del Respaldo JSON</span>
+                    <span>El archivo contiene la base de datos completa de tu negocio de forma estructurada: configuración, cuentas de usuarios, catálogo de productos y variantes, clientes, saldos a crédito e historial de ventas y compras.</span>
+                  </div>
+                </div>
+              </div>
               <p className="text-xs text-slate-400">
                 Exporta la información actual del sistema. Puedes guardarla como respaldo preventivo o para análisis de negocio.
               </p>
@@ -398,7 +477,24 @@ const Settings = () => {
           {/* Importar */}
           <div className="space-y-4 flex flex-col justify-between h-full bg-red-50/5 p-5 rounded-2xl border border-red-100/40">
             <div className="space-y-2">
-              <h3 className="text-sm font-bold text-red-600 uppercase tracking-wide">Restaurar Base de Datos</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-red-600 uppercase tracking-wide">Restaurar Base de Datos</h3>
+                <div className="relative group">
+                  <button
+                    type="button"
+                    className="text-stone-400 hover:text-stone-605 transition-colors p-0.5"
+                  >
+                    <HelpCircle size={14} />
+                  </button>
+                  <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex flex-col w-64 bg-stone-900 text-white text-[11px] p-4.5 rounded-2xl shadow-xl z-55 pointer-events-none before:content-[''] before:absolute before:top-full before:right-4 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-stone-900 leading-relaxed font-semibold">
+                    <span className="font-bold text-xs text-white mb-2 block uppercase tracking-wider text-center text-red-400">Pasos para Restaurar</span>
+                    <span className="mb-1 block">1. Haz clic en "Seleccionar Archivo JSON" abajo.</span>
+                    <span className="mb-1 block">2. Abre el archivo de respaldo descargado (ej. tienda_backup.json).</span>
+                    <span className="mb-1 block">3. Confirma la ventana de advertencia de tu navegador.</span>
+                    <span className="block">4. El sistema cargará el respaldo y se reiniciará automáticamente.</span>
+                  </div>
+                </div>
+              </div>
               <p className="text-xs text-slate-400">
                 Restaura una copia de seguridad previamente descargada en formato **JSON**. Reemplazará permanentemente el contenido actual.
               </p>
@@ -421,38 +517,7 @@ const Settings = () => {
             </div>
           </div>
         </div>
-
-        {/* Guía de uso de backups */}
-        <div className="mt-8 pt-6 border-t border-slate-200/20 space-y-4">
-            <h3 className="text-xs font-black text-brand-900 uppercase tracking-widest flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Manual de Uso: Copias de Seguridad (Backup)
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-500 font-semibold leading-relaxed">
-              <div className="bg-white/5 p-5 rounded-2xl border border-white/20 space-y-2.5">
-                <h4 className="font-bold text-slate-700 uppercase text-[10px] tracking-wider text-emerald-600">📥 ¿Qué contiene el archivo JSON de respaldo?</h4>
-                <p>El archivo de extensión <code>.json</code> es el formato recomendado del sistema y contiene la base de datos completa de tu negocio de forma estructurada:</p>
-                <ul className="list-disc pl-4 space-y-1 mt-1 text-slate-400">
-                  <li>Configuración de la tienda (Nombre de la tienda, RFC, Dirección, Ticket).</li>
-                  <li>Cuentas de Usuarios (Administradores, Cajeros, contraseñas encriptadas).</li>
-                  <li>Catálogo de Productos y Variantes (Códigos de barra, precios, costos, stock).</li>
-                  <li>Clientes y saldos a Crédito (Cuentas activas por cobrar de fiado).</li>
-                  <li>Historial de Turnos de Caja, Ventas realizadas y Entradas de compras.</li>
-                </ul>
-              </div>
-              <div className="bg-white/5 p-5 rounded-2xl border border-white/20 space-y-2.5">
-                <h4 className="font-bold text-slate-700 uppercase text-[10px] tracking-wider text-red-500">📤 Pasos para importar y restaurar información:</h4>
-                <ol className="list-decimal pl-4 space-y-1.5 mt-1 text-slate-400">
-                  <li>Haz clic en <strong>"Seleccionar Archivo JSON"</strong> en el panel de restauración de arriba.</li>
-                  <li>Busca y abre el archivo de respaldo descargado previamente (ej. <code>tienda_backup_2026-06-28.json</code>).</li>
-                  <li>Confirma la acción en la ventana de advertencia de tu navegador.</li>
-                  <li>El sistema limpiará automáticamente los datos actuales y cargará la información del respaldo.</li>
-                  <li>Al finalizar, el sistema se reiniciará automáticamente con toda la base de datos restaurada.</li>
-                </ol>
-              </div>
-            </div>
-          </div>
-        </div>
+      </div>
     </div>
   );
 };

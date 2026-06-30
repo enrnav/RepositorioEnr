@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Receipt, Search, Plus, FileText, Download, Mail, Trash2, Loader, CheckCircle, AlertCircle, Calendar, DollarSign, CreditCard } from 'lucide-react';
+import { Receipt, Search, Plus, FileText, Download, Mail, Trash2, Loader, CheckCircle, AlertCircle, Calendar, DollarSign, CreditCard, HelpCircle } from 'lucide-react';
 import { API_URL, fetchBillingProfiles, createBillingProfile, fetchTicketDetails, createInvoice, fetchInvoices, cancelInvoice } from '../api';
 
 const SAT_REGIMENES = [
@@ -23,6 +23,7 @@ const Invoices = () => {
   const [ticketSearchId, setTicketSearchId] = useState('');
   const [ticketDetails, setTicketDetails] = useState(null);
   const [searchingTicket, setSearchingTicket] = useState(false);
+  const [showBillingHelp, setShowBillingHelp] = useState(false);
 
   // Billing Profile state
   const [profiles, setProfiles] = useState([]);
@@ -357,7 +358,66 @@ const Invoices = () => {
           {/* Columna izquierda: Buscar y Detalles */}
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white/10 backdrop-blur-[3px] border border-white/40 rounded-3xl p-6 shadow-soft relative overflow-hidden">
-              <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase mb-4">Buscar Ticket de Venta</h3>
+              <div className="flex items-center justify-between gap-2 mb-4">
+                <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Buscar Ticket de Venta</h3>
+                
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => setShowBillingHelp(true)}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-[#064e3b]/10 text-[#064e3b] hover:bg-[#064e3b]/20 rounded-full text-[10px] font-black transition-all uppercase tracking-wider border border-[#064e3b]/20"
+                  >
+                    <HelpCircle size={13} className="animate-bounce" />
+                    <span>Guía de Facturación</span>
+                  </button>
+                  
+                  {showBillingHelp && createPortal(
+                    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                      <div className="absolute inset-0" onClick={() => setShowBillingHelp(false)} />
+                      
+                      <div className="bg-white/95 backdrop-blur-2xl rounded-[2.2rem] shadow-glass w-full max-w-md p-6 md:p-8 relative z-10 border border-white/55 animate-slide-up space-y-6">
+                        <div className="flex items-center justify-between pb-3 border-b border-stone-200">
+                          <div className="flex items-center gap-2 text-[#064e3b]">
+                            <FileText size={20} className="animate-pulse" />
+                            <span className="text-sm font-black uppercase tracking-wider">Guía de Facturación</span>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={() => setShowBillingHelp(false)} 
+                            className="text-stone-400 hover:text-stone-605 font-bold text-xs uppercase"
+                          >
+                            Cerrar
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          <p className="text-xs font-semibold text-stone-500 leading-relaxed uppercase tracking-wider mb-2">
+                            Sigue estos pasos para generar un CFDI 4.0:
+                          </p>
+                          
+                          <div className="p-4 bg-[#064e3b]/5 border border-[#064e3b]/10 rounded-2xl">
+                            <p className="text-[12px] font-semibold text-stone-655 space-y-3">
+                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">1.</strong> Localiza el número de ticket impreso en el comprobante de venta.</span>
+                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">2.</strong> Ingrésalo en el buscador y presiona "Buscar".</span>
+                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">3.</strong> Selecciona el perfil fiscal del cliente o regístralo si es nuevo.</span>
+                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">4.</strong> Presiona "Generar Factura" para timbrar con el SAT.</span>
+                            </p>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setShowBillingHelp(false)}
+                          className="w-full bg-[#064e3b] hover:bg-[#043327] text-white py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-md"
+                        >
+                          Entendido
+                        </button>
+                      </div>
+                    </div>,
+                    document.body
+                  )}
+                </div>
+              </div>
               <form onSubmit={handleSearchTicket} className="flex gap-3">
                 <div className="relative flex-1">
                   <input
@@ -594,20 +654,7 @@ const Invoices = () => {
                       </>
                     )}
                   </button>
-                </div>
-              </div>
-            )}
-
-            {!ticketDetails && (
-              <div className="bg-[#064e3b]/5 border border-[#064e3b]/10 rounded-3xl p-6 text-center text-[#064e3b] space-y-3">
-                <AlertCircle className="mx-auto text-[#064e3b] opacity-80" size={32} />
-                <h4 className="text-xs font-black uppercase">Instrucciones de Facturación</h4>
-                <p className="text-[11px] leading-relaxed font-semibold text-stone-600">
-                  1. Localiza el número de ticket impreso en el comprobante.<br/>
-                  2. Ingrésalo en el buscador de la izquierda.<br/>
-                  3. Selecciona el perfil de facturación del cliente o agrégalo en el formulario.<br/>
-                  4. Presiona "Generar Factura" para timbrar con el PAC de prueba.
-                </p>
+                         </div>
               </div>
             )}
           </div>
@@ -619,10 +666,21 @@ const Invoices = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-white/10 backdrop-blur-[3px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-4">
-              <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Consolidación de Tickets de Venta</h3>
-              <p className="text-stone-500 text-xs font-semibold leading-relaxed">
-                Genera la factura global diaria, semanal o mensual del Público en General. Introduce los números de ticket separados por comas para agruparlos en un único CFDI estructurado.
-              </p>
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Consolidación de Tickets de Venta</h3>
+                <div className="relative group">
+                  <button
+                    type="button"
+                    className="text-stone-400 hover:text-stone-650 transition-colors p-1"
+                  >
+                    <HelpCircle size={15} />
+                  </button>
+                  <div className="absolute left-0 bottom-full mb-2 hidden group-hover:flex flex-col w-64 bg-stone-900 text-white text-[11px] p-4.5 rounded-2xl shadow-xl z-55 pointer-events-none before:content-[''] before:absolute before:top-full before:left-4 before:-translate-x-1/2 before:border-4 before:border-transparent before:border-t-stone-900 leading-relaxed font-semibold">
+                    <span className="font-bold text-xs text-white mb-2 block uppercase tracking-wider text-center">Facturación Global</span>
+                    <span>Genera la factura global diaria, semanal o mensual del Público en General. Introduce los números de ticket separados por comas para agruparlos en un único CFDI estructurado de ventas globales.</span>
+                  </div>
+                </div>
+              </div>
               <form onSubmit={handlePreviewGlobal} className="flex gap-3 items-end">
                 <div className="flex-1">
                   <label className="block text-[10px] font-black text-stone-400 mb-1.5 uppercase tracking-widest">Números de Ticket a Consolidar</label>

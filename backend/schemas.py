@@ -315,6 +315,5 @@ class CustomerPaymentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
-
-
+class WhatsAppSendRequest(BaseModel):
+    phone_number: str

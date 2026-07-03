@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, lazyload
@@ -12,7 +12,7 @@ from datetime import datetime, timedelta
 import os
 import uuid
 from services import facturacion
-
+from services.whatsapp import send_whatsapp_message, format_ticket_message
 
 router = APIRouter()
 
@@ -685,7 +685,9 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
             shift.final_cash_expected += cash_sale_total
         
         db.commit()
-        return {"message": "Venta procesada exitosamente"}
+        db.refresh(sale_record)
+        return {"message": "Venta procesada exitosamente", "sale_id": sale_record.id}
+
         
     except Exception as e:
         db.rollback()
@@ -2196,6 +2198,283 @@ def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Us
             "total": round(pm_total, 2)
         }
     }
+
+
+# ==========================================
+# WEBHOOK DE WHATSAPP
+# ==========================================
+
+@router.get("/webhook/whatsapp")
+def verificar_webhook(request: Request):
+    """
+    Meta llama a esta ruta GET para validar que tu servidor está en línea
+    y que tienes el token secreto correcto.
+    """
+    params = request.query_params
+    token_verificacion = "MiTokenSecretoDeWhatsApp123"  # Este token lo defines tú en el portal de Meta
+    
+    hub_mode = params.get("hub.mode")
+    hub_verify_token = params.get("hub.verify_token")
+    hub_challenge = params.get("hub.challenge")
+    
+    if hub_mode == "subscribe" and hub_verify_token == token_verificacion:
+        # Debemos responder con el challenge en texto plano
+        return Response(content=hub_challenge, media_type="text/plain")
+        
+    return Response(content="Token de verificación incorrecto", status_code=403)
+
+
+@router.post("/webhook/whatsapp")
+async def recibir_mensaje_whatsapp(request: Request, db: Session = Depends(get_db)):
+    """
+    Aquí llegarán los mensajes reales de WhatsApp enviados por los usuarios.
+    Soporta tanto la API oficial de Meta (Cloud API) como el Easy API de OpenWA.
+    Detecta el patrón 'agregar producto: NOMBRE, precio: X, cantidad: Y'
+    y lo registra en la base de datos.
+    """
+    try:
+        payload = await request.json()
+        print("Mensaje de WhatsApp recibido:", payload)
+        
+        message_text = None
+        sender = None
+        is_openwa = False
+        
+        # 1. Detectar si el payload es de OpenWA Easy API
+        if "event" in payload and payload["event"] == "message" and "data" in payload:
+            data = payload["data"]
+            message_text = data.get("body")
+            sender = data.get("from")
+            is_openwa = True
+            print(f"Mensaje de OpenWA de {sender}: {message_text}")
+            
+        # 2. Detectar si es de la API oficial de Meta (Cloud API)
+        elif "entry" in payload:
+            for entry in payload["entry"]:
+                for change in entry.get("changes", []):
+                    value = change.get("value", {})
+                    if "messages" in value:
+                        for message in value["messages"]:
+                            if "text" in message:
+                                message_text = message["text"]["body"]
+                                sender = message.get("from")
+                                print(f"Mensaje de Meta de {sender}: {message_text}")
+                                
+        if message_text:
+            text_lower = message_text.lower().strip()
+            
+            if text_lower.startswith("agregar producto:"):
+                # Extraer los datos del producto
+                # Formato esperado: "agregar producto: Nombre, precio: X, cantidad: Y"
+                datos_str = message_text[len("agregar producto:"):].strip()
+                
+                # Separar por comas
+                partes = [p.strip() for p in datos_str.split(",")]
+                if len(partes) >= 1:
+                    nombre = partes[0]
+                    precio = 0.0
+                    cantidad = 0
+                    
+                    # Buscar precio y cantidad en las partes restantes
+                    for parte in partes[1:]:
+                        parte_lower = parte.lower()
+                        if parte_lower.startswith("precio:"):
+                            try:
+                                precio = float(parte_lower.replace("precio:", "").strip())
+                            except ValueError:
+                                pass
+                        elif parte_lower.startswith("cantidad:") or parte_lower.startswith("stock:"):
+                            try:
+                                cantidad = int(parte_lower.replace("cantidad:", "").replace("stock:", "").strip())
+                            except ValueError:
+                                pass
+                    
+                    # Registrar en la base de datos
+                    nuevo_prod = models.Product(
+                        name=nombre,
+                        price=precio,
+                        quantity=cantidad,
+                        sat_key="01010101",
+                        sat_unit_key="H87"
+                    )
+                    db.add(nuevo_prod)
+                    db.commit()
+                    db.refresh(nuevo_prod)
+                    
+                    success_msg = f"Producto '{nombre}' agregado exitosamente via WhatsApp con precio={precio} y cantidad={cantidad}."
+                    print(success_msg)
+                    
+                    # Si viene de OpenWA, enviamos confirmación automática
+                    if is_openwa and sender:
+                        send_whatsapp_message(
+                            sender, 
+                            f"✅ *Producto registrado con éxito*\n\n"
+                            f"📦 *Nombre:* {nombre}\n"
+                            f"💵 *Precio:* ${precio:,.2f}\n"
+                            f"🔢 *Stock inicial:* {cantidad}"
+                        )
+                        
+    except Exception as e:
+        print(f"Error procesando el Webhook de WhatsApp: {e}")
+        
+    return {"status": "recibido"}
+
+
+# ==========================================
+# ENVÍO DE TICKETS Y FACTURAS POR WHATSAPP
+# ==========================================
+
+@router.post("/sales/{sale_id}/whatsapp")
+def send_sale_ticket_whatsapp(
+    sale_id: int,
+    req_body: schemas.WhatsAppSendRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Formatea el ticket de compra y lo envía al número de WhatsApp especificado usando OpenWA.
+    """
+    ref_sale = db.query(models.SaleHistory).filter(models.SaleHistory.id == sale_id).first()
+    if not ref_sale:
+        raise HTTPException(status_code=404, detail="Venta no encontrada")
+        
+    sales = db.query(
+        models.SaleHistory.id,
+        models.SaleHistory.product_id,
+        models.SaleHistory.variant_id,
+        models.SaleHistory.quantity,
+        models.SaleHistory.price_sold,
+        models.SaleHistory.discount,
+        models.SaleHistory.created_at,
+        models.SaleHistory.payment_method,
+        models.SaleHistory.cash_amount,
+        models.SaleHistory.card_amount,
+        models.Product.name.label("product_name")
+    ).join(
+        models.Product, models.Product.id == models.SaleHistory.product_id
+    ).filter(
+        models.SaleHistory.created_at == ref_sale.created_at
+    ).all()
+
+    if not sales:
+        raise HTTPException(status_code=404, detail="No se encontraron artículos para esta venta")
+
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    store_settings_dict = {
+        "store_name": settings.store_name if settings else "ABARROTES ED & E",
+        "address": settings.address if settings else "",
+        "phone": settings.phone if settings else "",
+        "ticket_footer": settings.ticket_footer if settings else "¡Gracias por su compra!"
+    }
+
+    customer_name = None
+    if ref_sale.customer_id:
+        cust = db.query(models.Customer).filter(models.Customer.id == ref_sale.customer_id).first()
+        if cust:
+            customer_name = cust.name
+
+    cashier_name = "N/A"
+    if ref_sale.user_id:
+        cashier = db.query(models.User).filter(models.User.id == ref_sale.user_id).first()
+        if cashier:
+            cashier_name = cashier.full_name
+
+    items = []
+    subtotal = 0.0
+    discount_total = 0.0
+
+    for s in sales:
+        price = s.price_sold or 0.0
+        item_subtotal = price * s.quantity
+        subtotal += item_subtotal
+        discount_total += s.discount or 0.0
+        items.append({
+            "product_name": s.product_name,
+            "quantity": s.quantity,
+            "price": price,
+            "discount": s.discount
+        })
+
+    tax_rate = settings.tax_rate if settings else 16.0
+    tax_factor = 1 + (tax_rate / 100)
+    total = round(subtotal - discount_total, 2)
+    subtotal_no_tax = round((subtotal - discount_total) / tax_factor, 2)
+
+    cash_paid = sum(s.cash_amount for s in sales)
+    card_paid = sum(s.card_amount for s in sales)
+
+    sale_data = {
+        "id": sale_id,
+        "created_at": ref_sale.created_at,
+        "cashier": cashier_name,
+        "customer_name": customer_name,
+        "items": items,
+        "subtotal": subtotal_no_tax,
+        "discount": discount_total,
+        "total": total,
+        "payment_method": ref_sale.payment_method,
+        "cash_amount": cash_paid,
+        "card_amount": card_paid
+    }
+
+    msg = format_ticket_message(sale_data, store_settings_dict)
+    success = send_whatsapp_message(req_body.phone_number, msg)
+    if not success:
+        raise HTTPException(status_code=500, detail="No se pudo enviar el ticket por WhatsApp. Verifique la conexión con OpenWA.")
+        
+    return {"status": "success", "message": "Ticket enviado exitosamente por WhatsApp."}
+
+
+@router.post("/billing/invoices/{invoice_id}/whatsapp")
+def send_invoice_whatsapp(
+    invoice_id: int,
+    req_body: schemas.WhatsAppSendRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    """
+    Envía los detalles de la factura y los enlaces de descarga PDF/XML vía WhatsApp usando OpenWA.
+    """
+    inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    if not inv:
+        raise HTTPException(status_code=404, detail="Factura no encontrada")
+
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    store_name = settings.store_name if settings else "ABARROTES ED & E"
+
+    base_url = str(request.base_url).rstrip("/")
+    # Construir enlaces de descarga basados en el host actual
+    xml_link = f"{base_url}/api/billing/invoices/{inv.uuid}/xml"
+    pdf_link = f"{base_url}/api/billing/invoices/{inv.uuid}/pdf"
+
+    msg_lines = [
+        "🧾 *FACTURA ELECTRÓNICA CFDI 4.0*",
+        f"🏢 *{store_name}*",
+        "-----------------------------------------",
+        f"🆔 *Folio Fiscal (UUID):*",
+        f"_{inv.uuid}_",
+        f"📅 *Fecha Certificación:* {inv.created_at}",
+        f"💵 *Monto Total:* ${inv.monto_total:,.2f} MXN",
+        f"📊 *Estado:* {'Vigente' if inv.status == 'active' else 'Cancelado'}",
+        "-----------------------------------------",
+        "📄 *Descargar PDF:*",
+        pdf_link,
+        "",
+        "🔗 *Descargar XML:*",
+        xml_link,
+        "-----------------------------------------",
+        "¡Gracias por su preferencia!"
+    ]
+
+    msg = "\n".join(msg_lines)
+    success = send_whatsapp_message(req_body.phone_number, msg)
+    if not success:
+        raise HTTPException(status_code=500, detail="No se pudo enviar la factura por WhatsApp.")
+        
+    return {"status": "success", "message": "Factura enviada exitosamente por WhatsApp."}
+
+
 
 
 

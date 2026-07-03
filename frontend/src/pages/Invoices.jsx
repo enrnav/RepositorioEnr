@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Receipt, Search, Plus, FileText, Download, Mail, Trash2, Loader, CheckCircle, AlertCircle, Calendar, DollarSign, CreditCard, HelpCircle } from 'lucide-react';
-import { API_URL, fetchBillingProfiles, createBillingProfile, fetchTicketDetails, createInvoice, fetchInvoices, cancelInvoice } from '../api';
+import { API_URL, fetchBillingProfiles, createBillingProfile, fetchTicketDetails, createInvoice, fetchInvoices, cancelInvoice, sendInvoiceWhatsApp } from '../api';
 
 const SAT_REGIMENES = [
   { code: '601', name: 'General de Ley Personas Morales' },
@@ -54,6 +54,12 @@ const Invoices = () => {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [confirmCancelInvoiceId, setConfirmCancelInvoiceId] = useState(null);
+
+  // WhatsApp states
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
+  const [whatsAppInvoiceId, setWhatsAppInvoiceId] = useState(null);
+  const [whatsAppPhoneNumber, setWhatsAppPhoneNumber] = useState('');
+  const [sendingInvoiceWhatsApp, setSendingInvoiceWhatsApp] = useState(false);
 
   // User session role verification
   const userStr = sessionStorage.getItem('user');
@@ -292,6 +298,27 @@ const Invoices = () => {
     } catch (err) {
       const msg = err.response?.data?.detail || "Ocurrió un error al intentar solicitar la cancelación al SAT.";
       showErrorModal(msg);
+    }
+  };
+
+  const handleOpenWhatsAppModal = (invoice) => {
+    setWhatsAppInvoiceId(invoice.id);
+    setWhatsAppPhoneNumber('');
+    setShowWhatsAppModal(true);
+  };
+
+  const handleSendInvoiceWhatsApp = async () => {
+    if (!whatsAppPhoneNumber || !whatsAppInvoiceId) return;
+    setSendingInvoiceWhatsApp(true);
+    try {
+      await sendInvoiceWhatsApp(whatsAppInvoiceId, whatsAppPhoneNumber);
+      setSuccessMsg("La factura y sus enlaces XML/PDF han sido enviados por WhatsApp con éxito.");
+      setShowWhatsAppModal(false);
+    } catch (err) {
+      console.error(err);
+      showErrorModal(err.response?.data?.detail || "No se pudo enviar la factura por WhatsApp.");
+    } finally {
+      setSendingInvoiceWhatsApp(false);
     }
   };
 
@@ -884,6 +911,17 @@ const Invoices = () => {
                           <Mail size={15} />
                         </button>
 
+                        {/* Enviar WhatsApp */}
+                        <button
+                          onClick={() => handleOpenWhatsAppModal(inv)}
+                          className="p-1.5 text-stone-400 hover:text-emerald-600 rounded-lg hover:bg-stone-50"
+                          title="Enviar por WhatsApp"
+                        >
+                          <svg className="w-[15px] h-[15px]" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.849.002-2.634-1.023-5.11-2.89-6.977-1.866-1.869-4.346-2.9-6.983-2.901-5.441 0-9.866 4.414-9.869 9.85-.001 1.737.453 3.428 1.316 4.922L1.887 22.12l4.76-1.966zm13.111-7.798c-.29-.145-1.713-.846-1.977-.942-.264-.096-.456-.145-.648.145-.191.29-.741.942-.909 1.134-.168.192-.336.216-.626.072-.29-.145-1.223-.45-2.33-1.439-.861-.768-1.443-1.717-1.612-2.007-.168-.29-.018-.447.127-.591.13-.13.29-.336.435-.505.145-.168.192-.29.29-.481.096-.191.048-.36-.024-.505-.072-.145-.648-1.56-.889-2.138-.234-.564-.471-.488-.648-.497-.168-.008-.36-.008-.553-.008-.193 0-.507.072-.771.36-.264.29-1.009.987-1.009 2.406 0 1.419 1.033 2.79 1.177 2.984.145.192 2.033 3.106 4.927 4.354.688.297 1.225.474 1.643.606.692.22 1.322.19 1.82.115.556-.084 1.713-.7 1.953-1.373.24-.672.24-1.25.168-1.372-.072-.12-.264-.192-.553-.337z"/>
+                          </svg>
+                        </button>
+
                         {/* Cancelar Factura */}
                         {inv.status !== 'cancelled' && (user.role === 'admin' || user.role === 'supervisor') && (
                           <button
@@ -1046,6 +1084,49 @@ const Invoices = () => {
                   className="px-4 py-2 bg-chiluda-red text-white rounded-xl hover:bg-chiluda-darkred transition-colors w-full font-bold text-xs uppercase"
                 >
                   Confirmar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+      {/* SEND INVOICE VIA WHATSAPP DIALOG */}
+      {showWhatsAppModal && createPortal(
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] shadow-soft w-full max-w-sm overflow-hidden animate-slide-up border border-stone-100">
+            <div className="p-6 text-center space-y-4">
+              <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto">
+                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.413 9.863-9.849.002-2.634-1.023-5.11-2.89-6.977-1.866-1.869-4.346-2.9-6.983-2.901-5.441 0-9.866 4.414-9.869 9.85-.001 1.737.453 3.428 1.316 4.922L1.887 22.12l4.76-1.966zm13.111-7.798c-.29-.145-1.713-.846-1.977-.942-.264-.096-.456-.145-.648.145-.191.29-.741.942-.909 1.134-.168.192-.336.216-.626.072-.29-.145-1.223-.45-2.33-1.439-.861-.768-1.443-1.717-1.612-2.007-.168-.29-.018-.447.127-.591.13-.13.29-.336.435-.505.145-.168.192-.29.29-.481.096-.191.048-.36-.024-.505-.072-.145-.648-1.56-.889-2.138-.234-.564-.471-.488-.648-.497-.168-.008-.36-.008-.553-.008-.193 0-.507.072-.771.36-.264.29-1.009.987-1.009 2.406 0 1.419 1.033 2.79 1.177 2.984.145.192 2.033 3.106 4.927 4.354.688.297 1.225.474 1.643.606.692.22 1.322.19 1.82.115.556-.084 1.713-.7 1.953-1.373.24-.672.24-1.25.168-1.372-.072-.12-.264-.192-.553-.337z"/>
+                </svg>
+              </div>
+              <h3 className="text-lg font-black text-gray-900 uppercase">Enviar Factura por WhatsApp</h3>
+              <p className="text-gray-500 text-xs font-semibold">
+                Ingresa el número de WhatsApp del cliente para enviar los enlaces de descarga del XML y PDF.
+              </p>
+              
+              <input
+                type="text"
+                placeholder="Ej. 5218112345678"
+                value={whatsAppPhoneNumber}
+                onChange={(e) => setWhatsAppPhoneNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                className="w-full px-4 py-3 border border-stone-200 rounded-2xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 text-center"
+              />
+
+              <div className="flex space-x-3 justify-center pt-2">
+                <button
+                  onClick={() => setShowWhatsAppModal(false)}
+                  className="px-4 py-2 border border-stone-200 text-stone-750 rounded-xl hover:bg-stone-50 transition-colors w-full font-bold text-xs uppercase"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSendInvoiceWhatsApp}
+                  disabled={sendingInvoiceWhatsApp || !whatsAppPhoneNumber}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-colors w-full font-bold text-xs uppercase disabled:opacity-50"
+                >
+                  {sendingInvoiceWhatsApp ? 'Enviando...' : 'Enviar'}
                 </button>
               </div>
             </div>

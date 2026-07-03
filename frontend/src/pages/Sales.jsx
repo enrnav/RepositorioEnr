@@ -9,7 +9,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import { 
   fetchInventory, checkoutSales, fetchRecentSales, cancelSale, 
   fetchActiveShift, openShift, closeShift, addCashMovement, fetchShiftReport,
-  fetchActiveShiftsAdmin, closeShiftAdmin, fetchStoreSettings, fetchCustomers
+  fetchActiveShiftsAdmin, closeShiftAdmin, fetchStoreSettings, fetchCustomers,
+  sendTicketWhatsApp
 } from '../api';
 
 
@@ -50,6 +51,8 @@ const Sales = () => {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [lastSaleData, setLastSaleData] = useState(null);
   const [activeTab, setActiveTab] = useState('products'); // 'products' | 'cart'
+  const [whatsAppPhone, setWhatsAppPhone] = useState('');
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   
   // Shift (Control de Caja)
   const [activeShift, setActiveShift] = useState(null);
@@ -516,7 +519,8 @@ const Sales = () => {
     };
 
     try {
-      await checkoutSales(checkoutData);
+      const response = await checkoutSales(checkoutData);
+      const serverSaleId = response?.sale_id || Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
       
       // Calculate change
       const change = (paymentMethod === 'tarjeta' || paymentMethod === 'credito') ? 0 : (actualPaidCash + actualPaidCard) - cartTotal;
@@ -531,11 +535,15 @@ const Sales = () => {
         cardPaid: actualPaidCard,
         change: change,
         date: new Date(),
-        saleId: Math.floor(Math.random() * 1000000).toString().padStart(6, '0'),
+        saleId: serverSaleId,
         cashier: user.full_name,
         shiftId: activeShift ? activeShift.id : null,
         customerName: selectedCustomer ? selectedCustomer.name : null
       });
+
+      // Auto-prefill customer phone if available
+      const customerPhone = selectedCustomer?.phone || '';
+      setWhatsAppPhone(customerPhone);
       
       // Reset cart and states
       setCart([]);
@@ -561,6 +569,20 @@ const Sales = () => {
       await loadData();
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleSendTicketWhatsApp = async () => {
+    if (!whatsAppPhone || !lastSaleData?.saleId) return;
+    setSendingWhatsApp(true);
+    try {
+      await sendTicketWhatsApp(lastSaleData.saleId, whatsAppPhone);
+      showAlert("WhatsApp Enviado", "El ticket de compra se ha enviado exitosamente por WhatsApp.", "success");
+    } catch (err) {
+      console.error(err);
+      showAlert("Error WhatsApp", err.response?.data?.detail || "No se pudo enviar el ticket por WhatsApp.", "error");
+    } finally {
+      setSendingWhatsApp(false);
     }
   };
 
@@ -1482,6 +1504,29 @@ const Sales = () => {
                 <QRCodeSVG value={`https://abarrotesedye.com/ticket/${lastSaleData.saleId}`} size={100} level="L" />
                 <p className="text-center text-[9px] text-gray-400 mt-2 max-w-[200px]">Escanea para ticket digital</p>
                 <p className="text-center font-bold text-[10px] text-gray-800 mt-3">{storeSettings.ticket_footer || "¡Gracias por preferirnos!"}</p>
+              </div>
+
+              {/* Panel de WhatsApp (escondido al imprimir) */}
+              <div className="border-t border-dashed border-gray-300 pt-4 mt-4 print:hidden space-y-2">
+                <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider text-left">
+                  Enviar ticket por WhatsApp
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ej. 5218112345678"
+                    value={whatsAppPhone}
+                    onChange={(e) => setWhatsAppPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent transition-all shadow-inner"
+                  />
+                  <button
+                    onClick={handleSendTicketWhatsApp}
+                    disabled={sendingWhatsApp || !whatsAppPhone}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 disabled:scale-100"
+                  >
+                    {sendingWhatsApp ? 'Enviando...' : 'Enviar'}
+                  </button>
+                </div>
               </div>
             </div>
             

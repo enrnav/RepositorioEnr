@@ -524,3 +524,28 @@ export const fetchCustomerHistory = async (id) => {
         throw error;
     }
 };
+
+export const sendTicketWhatsApp = async (saleId, phoneNumber) => {
+    try {
+        const response = await axios.post(`${API_URL}/sales/${saleId}/whatsapp`, {
+            phone_number: phoneNumber
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error sending ticket ${saleId} via WhatsApp:`, error);
+        throw error;
+    }
+};
+
+export const sendInvoiceWhatsApp = async (invoiceId, phoneNumber) => {
+    try {
+        const response = await axios.post(`${API_URL}/billing/invoices/${invoiceId}/whatsapp`, {
+            phone_number: phoneNumber
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Error sending invoice ${invoiceId} via WhatsApp:`, error);
+        throw error;
+    }
+};
+

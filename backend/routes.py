@@ -185,6 +185,7 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 
     # Verificar estado del Tenant si tiene uno
     sub_status = "active"
+    subdomain = None
     if db_user.tenant_id:
         tenant = db.query(models.Tenant).filter(models.Tenant.id == db_user.tenant_id).first()
         if not tenant:
@@ -200,6 +201,7 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
             except Exception:
                 pass
         sub_status = tenant.subscription_status
+        subdomain = tenant.subdomain
         
     access_token = auth.create_access_token(data={
         "sub": db_user.username, 
@@ -216,7 +218,8 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
             "username": db_user.username, 
             "full_name": db_user.full_name,
             "role": db_user.role,
-            "subscription_status": sub_status
+            "subscription_status": sub_status,
+            "subdomain": subdomain
         }
     }
 

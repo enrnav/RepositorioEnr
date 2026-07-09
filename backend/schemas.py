@@ -54,6 +54,7 @@ class UserResponse(BaseModel):
     username: str
     full_name: str
     role: str
+    subdomain: Optional[str] = None
 
     class Config:
         from_attributes = True

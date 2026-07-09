@@ -106,6 +106,9 @@ const Login = () => {
         const data = await response.json();
         sessionStorage.setItem('user', JSON.stringify(data.user));
         sessionStorage.setItem('token', data.access_token);
+        if (data.user.subdomain) {
+          localStorage.setItem('last_tenant_subdomain', data.user.subdomain);
+        }
         if (data.user.role === 'admin') {
           navigate('/dashboard');
         } else {

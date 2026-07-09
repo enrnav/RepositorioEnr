@@ -2,17 +2,34 @@ from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
 from sqlalchemy.orm import relationship
 from database import Base
 
+class Tenant(Base):
+    __tablename__ = "tenants"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    subdomain = Column(String, unique=True, index=True, nullable=True)
+    subscription_status = Column(String, default="active") # active, trialing, past_due, canceled
+    plan_tier = Column(String, default="free") # free, premium
+    created_at = Column(String)
+    stripe_customer_id = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
+    subscription_end = Column(String, nullable=True)
+    last_payment_date = Column(String, nullable=True)
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     username = Column(String, unique=True, index=True)
     full_name = Column(String)
     hashed_password = Column(String)
     role = Column(String, default="user")
 
+    tenant = relationship("Tenant")
+
 class Product(Base):
     __tablename__ = "products"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     name = Column(String, index=True)
     barcode = Column(String, index=True, nullable=True)
     price = Column(Float)
@@ -26,10 +43,12 @@ class Product(Base):
     sat_unit_key = Column(String, default="H87")
     
     variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="joined")
+    tenant = relationship("Tenant")
 
 class ProductVariant(Base):
     __tablename__ = "product_variants"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     product_id = Column(Integer, ForeignKey("products.id"), index=True)
     name = Column(String, index=True)
     barcode = Column(String, index=True, nullable=True)
@@ -41,16 +60,20 @@ class ProductVariant(Base):
     sat_unit_key = Column(String, default="H87")
 
     product = relationship("Product", back_populates="variants")
+    tenant = relationship("Tenant")
 
 class Notification(Base):
     __tablename__ = "notifications"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     message = Column(String)
     is_read = Column(Boolean, default=False)
+    tenant = relationship("Tenant")
 
 class Shift(Base):
     __tablename__ = "shifts"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     user_id = Column(Integer, index=True)
     start_time = Column(String)
     end_time = Column(String, nullable=True)
@@ -59,19 +82,23 @@ class Shift(Base):
     final_cash_expected = Column(Float, default=0.0)
     difference = Column(Float, nullable=True)
     status = Column(String, default="open") # "open", "closed"
+    tenant = relationship("Tenant")
 
 class CashMovement(Base):
     __tablename__ = "cash_movements"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     shift_id = Column(Integer, index=True)
     type = Column(String) # "entrada", "salida", "retiro_parcial"
     amount = Column(Float)
     reason = Column(String)
     created_at = Column(String)
+    tenant = relationship("Tenant")
 
 class SaleHistory(Base):
     __tablename__ = "sales_history"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     product_id = Column(Integer, index=True)
     variant_id = Column(Integer, index=True, nullable=True)
     shift_id = Column(Integer, index=True, nullable=True)
@@ -89,10 +116,12 @@ class SaleHistory(Base):
     authorized_by = Column(String, nullable=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id"), index=True, nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"), index=True, nullable=True)
+    tenant = relationship("Tenant")
 
 class ProductReturn(Base):
     __tablename__ = "product_returns"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     sale_id = Column(Integer, index=True)
     product_id = Column(Integer, index=True)
     quantity = Column(Integer)
@@ -100,43 +129,51 @@ class ProductReturn(Base):
     reason = Column(String)
     authorized_by = Column(String, nullable=True)
     created_at = Column(String)
+    tenant = relationship("Tenant")
 
 
 class BillingProfile(Base):
     __tablename__ = "billing_profiles"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     rfc = Column(String, unique=True, index=True)
     razon_social = Column(String, index=True)
     regimen_fiscal = Column(String)
     codigo_postal = Column(String)
     correo = Column(String)
+    tenant = relationship("Tenant")
 
 
 class Invoice(Base):
     __tablename__ = "invoices"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     uuid = Column(String, unique=True, index=True)
     monto_total = Column(Float)
     xml_url = Column(String, nullable=True)
     pdf_url = Column(String, nullable=True)
     created_at = Column(String)
     status = Column(String, default="active") # "active", "cancelled"
+    tenant = relationship("Tenant")
 
 
 class Supplier(Base):
     __tablename__ = "suppliers"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     name = Column(String, index=True)
     rfc = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
     address = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+    tenant = relationship("Tenant")
 
 
 class Purchase(Base):
     __tablename__ = "purchases"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
     invoice_number = Column(String, nullable=True)
     total_cost = Column(Float, default=0.0)
@@ -146,6 +183,7 @@ class Purchase(Base):
 
     supplier = relationship("Supplier")
     items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
+    tenant = relationship("Tenant")
 
 
 class PurchaseItem(Base):
@@ -166,6 +204,7 @@ class PurchaseItem(Base):
 class StoreSettings(Base):
     __tablename__ = "store_settings"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     store_name = Column(String, default="ABARROTES ED & E")
     rfc = Column(String, nullable=True)
     phone = Column(String, nullable=True)
@@ -173,27 +212,35 @@ class StoreSettings(Base):
     address = Column(String, nullable=True)
     tax_rate = Column(Float, default=16.0)
     ticket_footer = Column(String, default="¡Gracias por su compra!")
+    logo_url = Column(String, nullable=True)
+    primary_color = Column(String, default="#064E3B")
+    accent_color = Column(String, default="#064E3B")
+    tenant = relationship("Tenant")
 
 
 class Customer(Base):
     __tablename__ = "customers"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     name = Column(String, index=True)
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
     credit_limit = Column(Float, default=0.0)
     current_balance = Column(Float, default=0.0)
+    tenant = relationship("Tenant")
 
 
 class CustomerPayment(Base):
     __tablename__ = "customer_payments"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
     customer_id = Column(Integer, ForeignKey("customers.id"))
     shift_id = Column(Integer, nullable=True)
     user_id = Column(Integer, ForeignKey("users.id"))
     amount = Column(Float)
     created_at = Column(String)
     notes = Column(String, nullable=True)
+    tenant = relationship("Tenant")
 
 
 

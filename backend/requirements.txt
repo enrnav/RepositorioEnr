@@ -4,6 +4,12 @@ sqlalchemy>=2.0.23
 pydantic>=2.10.0
 openpyxl>=3.1.2
 passlib>=1.7.4
+fastapi>=0.115.0
+uvicorn>=0.24.0.post1
+sqlalchemy>=2.0.23
+pydantic>=2.10.0
+openpyxl>=3.1.2
+passlib>=1.7.4
 bcrypt==3.2.2
 python-jose>=3.3.0
 python-multipart>=0.0.6
@@ -12,3 +18,5 @@ reportlab>=4.0.0
 
 # Monitoreo de Datadog APM (Descomentar para instalar)
 # ddtrace>=2.0.0
+
+stripe>=9.0.0

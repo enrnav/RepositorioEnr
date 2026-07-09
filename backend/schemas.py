@@ -1,6 +1,36 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+# Tenant Schemas
+class TenantBase(BaseModel):
+    name: str
+    subdomain: Optional[str] = None
+
+class TenantCreate(TenantBase):
+    pass
+
+class TenantResponse(TenantBase):
+    id: int
+    subscription_status: str
+    plan_tier: str
+    created_at: str
+
+    class Config:
+        from_attributes = True
+
+class TenantRegisterRequest(BaseModel):
+    store_name: str
+    subdomain: Optional[str] = None
+    admin_name: str
+    admin_username: str
+    admin_password: str
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = None
+    accent_color: Optional[str] = None
+
+class TenantPlanChangeRequest(BaseModel):
+    plan_tier: str
+
 # User Schemas
 class UserCreate(BaseModel):
     username: str
@@ -20,6 +50,7 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
+    tenant_id: Optional[int] = None
     username: str
     full_name: str
     role: str
@@ -258,9 +289,9 @@ class PurchaseResponse(BaseModel):
     supplier_name: Optional[str] = None
     user_name: Optional[str] = None
 
+
     class Config:
         from_attributes = True
-
 
 # Store Settings Schemas
 class StoreSettingsBase(BaseModel):
@@ -271,6 +302,9 @@ class StoreSettingsBase(BaseModel):
     address: Optional[str] = None
     tax_rate: float = 16.0
     ticket_footer: Optional[str] = "¡Gracias por su compra!"
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = "#064E3B"
+    accent_color: Optional[str] = "#064E3B"
 
 class StoreSettingsCreate(StoreSettingsBase):
     pass
@@ -317,3 +351,25 @@ class CustomerPaymentResponse(BaseModel):
 
 class WhatsAppSendRequest(BaseModel):
     phone_number: str
+
+# SuperAdmin Schemas
+class SuperAdminTenantResponse(BaseModel):
+    id: int
+    name: str
+    subdomain: Optional[str] = None
+    subscription_status: str
+    plan_tier: str
+    created_at: str
+    admin_username: Optional[str] = None
+    admin_name: Optional[str] = None
+    product_count: int
+    sale_count: int
+    last_payment_date: Optional[str] = None
+    subscription_end: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class SuperAdminTenantUpdate(BaseModel):
+    plan_tier: str
+    subscription_status: str

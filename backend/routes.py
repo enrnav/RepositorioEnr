@@ -18,7 +18,7 @@ router = APIRouter()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -36,18 +36,133 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(models.User).filter(models.User.username == token_data.username).first()
     if user is None:
         raise credentials_exception
+        
+    # Verificar estado del Tenant si tiene uno
+    if user.tenant_id:
+        tenant = db.query(models.Tenant).filter(models.Tenant.id == user.tenant_id).first()
+        if not tenant:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tienda no encontrada."
+            )
+        
+        # Check if subscription has expired
+        if tenant.plan_tier == 'premium' and tenant.subscription_end:
+            try:
+                now_str = datetime.utcnow().isoformat()
+                if now_str > tenant.subscription_end and tenant.subscription_status == 'active':
+                    tenant.subscription_status = 'suspended'
+                    db.commit()
+            except Exception as e:
+                print("Error checking subscription expiration:", e)
+                
+        # If suspended, block all endpoints EXCEPT billing, superadmin, and basic auth information
+        path = request.url.path
+        if tenant.subscription_status not in ["active", "trialing"]:
+            is_billing_route = "/billing" in path or "/superadmin" in path or "/auth/tenant" in path or "/auth/users" in path
+            if not is_billing_route:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Suscripción inactiva. Por favor verifique sus pagos."
+                )
+            
     return user
 
+@router.get("/auth/tenant-branding/{subdomain}")
+def get_tenant_branding(subdomain: str, db: Session = Depends(get_db)):
+    tenant = db.query(models.Tenant).filter(models.Tenant.subdomain == subdomain).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada")
+    
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.tenant_id == tenant.id).first()
+    if not settings:
+        return {
+            "store_name": tenant.name,
+            "logo_url": None,
+            "primary_color": "#064E3B",
+            "accent_color": "#DC2626"
+        }
+    
+    return {
+        "store_name": settings.store_name,
+        "logo_url": settings.logo_url,
+        "primary_color": settings.primary_color,
+        "accent_color": settings.accent_color
+    }
+
+@router.post("/auth/register-tenant")
+def register_tenant(req: schemas.TenantRegisterRequest, db: Session = Depends(get_db)):
+    # 1. Validar si usuario admin ya existe
+    existing_user = db.query(models.User).filter(models.User.username == req.admin_username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="El usuario administrador ya existe")
+
+    # 2. Validar subdominio único si se provee
+    if req.subdomain:
+        existing_tenant = db.query(models.Tenant).filter(models.Tenant.subdomain == req.subdomain).first()
+        if existing_tenant:
+            raise HTTPException(status_code=400, detail="El subdominio ya está registrado")
+
+    try:
+        # 3. Crear el Tenant
+        db_tenant = models.Tenant(
+            name=req.store_name,
+            subdomain=req.subdomain or str(uuid.uuid4())[:8],
+            subscription_status="active",
+            plan_tier="free",  # Default to free plan
+            created_at=datetime.utcnow().isoformat()
+        )
+        db.add(db_tenant)
+        db.commit()
+        db.refresh(db_tenant)
+
+        # 4. Crear el usuario Administrador para el Tenant
+        hashed_password = auth.get_password_hash(req.admin_password)
+        db_user = models.User(
+            tenant_id=db_tenant.id,
+            username=req.admin_username,
+            full_name=req.admin_name,
+            hashed_password=hashed_password,
+            role="admin"
+        )
+        db.add(db_user)
+
+        # 5. Crear StoreSettings por defecto para este Tenant
+        db_settings = models.StoreSettings(
+            tenant_id=db_tenant.id,
+            store_name=req.store_name,
+            ticket_footer="¡Gracias por su compra!",
+            logo_url=req.logo_url,
+            primary_color=req.primary_color or "#064E3B",
+            accent_color=req.accent_color or "#064E3B"
+        )
+        db.add(db_settings)
+
+        db.commit()
+        return {
+            "message": "Tenant and Admin created successfully", 
+            "tenant_id": db_tenant.id,
+            "subdomain": db_tenant.subdomain
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/auth/register")
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def register(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     existing_user = db.query(models.User).filter(models.User.username == user.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="El usuario ya existe")
+
+    # Validar permisos
+    if current_user.role not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes para registrar usuarios")
         
     # Hash the password
     hashed_password = auth.get_password_hash(user.password)
     
     db_user = models.User(
+        tenant_id=current_user.tenant_id,
         username=user.username, 
         full_name=user.full_name, 
         hashed_password=hashed_password,
@@ -67,32 +182,83 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
             detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    # Verificar estado del Tenant si tiene uno
+    sub_status = "active"
+    if db_user.tenant_id:
+        tenant = db.query(models.Tenant).filter(models.Tenant.id == db_user.tenant_id).first()
+        if not tenant:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tienda no encontrada")
         
-    access_token = auth.create_access_token(data={"sub": db_user.username, "role": db_user.role})
+        # Check if subscription has expired
+        if tenant.plan_tier == 'premium' and tenant.subscription_end:
+            try:
+                now_str = datetime.utcnow().isoformat()
+                if now_str > tenant.subscription_end and tenant.subscription_status == 'active':
+                    tenant.subscription_status = 'suspended'
+                    db.commit()
+            except Exception:
+                pass
+        sub_status = tenant.subscription_status
+        
+    access_token = auth.create_access_token(data={
+        "sub": db_user.username, 
+        "role": db_user.role,
+        "tenant_id": db_user.tenant_id
+    })
     
     return {
         "access_token": access_token, 
         "token_type": "bearer",
         "user": {
             "id": db_user.id, 
+            "tenant_id": db_user.tenant_id,
             "username": db_user.username, 
             "full_name": db_user.full_name,
-            "role": db_user.role
+            "role": db_user.role,
+            "subscription_status": sub_status
         }
     }
+
+@router.get("/auth/tenant", response_model=schemas.TenantResponse)
+def get_current_tenant(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=404, detail="No se encontró tienda vinculada a tu usuario")
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada")
+    return tenant
+
+@router.post("/auth/tenant/change-plan", response_model=schemas.TenantResponse)
+def change_tenant_plan(req: schemas.TenantPlanChangeRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if current_user.role != 'admin':
+        raise HTTPException(status_code=403, detail="Solo el administrador de la tienda puede cambiar de plan")
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=404, detail="No se encontró tienda vinculada a tu usuario")
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada")
+    
+    tenant.plan_tier = req.plan_tier
+    db.commit()
+    db.refresh(tenant)
+    return tenant
 
 @router.get("/auth/users", response_model=List[schemas.UserResponse])
 def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    return db.query(models.User).all()
+    return db.query(models.User).filter(models.User.tenant_id == current_user.tenant_id).all()
 
 @router.put("/auth/users/{user_id}", response_model=schemas.UserResponse)
 def update_user(user_id: int, user_data: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role != 'admin' and current_user.id != user_id:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    db_user = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.tenant_id == current_user.tenant_id
+    ).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
@@ -113,7 +279,10 @@ def delete_user(user_id: int, db: Session = Depends(get_db), current_user: model
     if current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    db_user = db.query(models.User).filter(models.User.id == user_id).first()
+    db_user = db.query(models.User).filter(
+        models.User.id == user_id,
+        models.User.tenant_id == current_user.tenant_id
+    ).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
@@ -216,7 +385,7 @@ def get_product_image_search(q: str, db: Session = Depends(get_db), current_user
 
 @router.get("/inventory/", response_model=List[schemas.ProductResponse])
 def get_inventory(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    products = db.query(models.Product).all()
+    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
     return products
 
 @router.post("/inventory/", response_model=schemas.ProductResponse)
@@ -224,10 +393,20 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
+    # Validar límite de plan gratis
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
+    if tenant and tenant.plan_tier == 'free':
+        prod_count = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).count()
+        if prod_count >= 50:
+            raise HTTPException(
+                status_code=400,
+                detail="Límite del plan gratuito alcanzado (máximo 50 productos). Por favor, actualiza tu cuenta a Premium."
+            )
+
     prod_data = product.dict()
     variants_data = prod_data.pop("variants", [])
     
-    db_product = models.Product(**prod_data)
+    db_product = models.Product(**prod_data, tenant_id=current_user.tenant_id)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
@@ -235,6 +414,7 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
     if variants_data:
         for v in variants_data:
             db_var = models.ProductVariant(
+                tenant_id=current_user.tenant_id,
                 product_id=db_product.id,
                 name=v["name"],
                 barcode=v.get("barcode"),
@@ -251,7 +431,10 @@ def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db)
 def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    db_product = db.query(models.Product).filter(
+        models.Product.id == product_id,
+        models.Product.tenant_id == current_user.tenant_id
+    ).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
     
@@ -262,10 +445,14 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
         setattr(db_product, key, value)
     
     # Sync variants (simple delete and recreate)
-    db.query(models.ProductVariant).filter(models.ProductVariant.product_id == product_id).delete()
+    db.query(models.ProductVariant).filter(
+        models.ProductVariant.product_id == product_id,
+        models.ProductVariant.tenant_id == current_user.tenant_id
+    ).delete()
     if variants_data:
         for v in variants_data:
             db_var = models.ProductVariant(
+                tenant_id=current_user.tenant_id,
                 product_id=db_product.id,
                 name=v["name"],
                 barcode=v.get("barcode"),
@@ -283,7 +470,10 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
 def delete_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    db_product = db.query(models.Product).filter(
+        models.Product.id == product_id,
+        models.Product.tenant_id == current_user.tenant_id
+    ).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
     
@@ -293,6 +483,13 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current_user:
 
 @router.post("/inventory/{product_id}/sell", response_model=schemas.ProductResponse)
 def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    db_product = db.query(models.Product).filter(
+        models.Product.id == product_id,
+        models.Product.tenant_id == current_user.tenant_id
+    ).first()
+    if not db_product:
+        raise HTTPException(status_code=404, detail="Product not found")
+        
     from sqlalchemy import text
     try:
         db.execute(
@@ -304,6 +501,17 @@ def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = 
             }
         )
         db.commit()
+        
+        # Actualizar tenant_id en el registro de venta recién creado por el SP vender_producto
+        latest_sale = db.query(models.SaleHistory).filter(
+            models.SaleHistory.product_id == product_id,
+            models.SaleHistory.tenant_id == None
+        ).order_by(models.SaleHistory.id.desc()).first()
+        if latest_sale:
+            latest_sale.tenant_id = current_user.tenant_id
+            latest_sale.user_id = current_user.id
+            db.commit()
+            
     except Exception as e:
         db.rollback()
         # Parse error message to show a clean response
@@ -318,17 +526,21 @@ def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = 
                 error_msg = orig_msg.split("\n")[0].strip()
         raise HTTPException(status_code=400, detail=error_msg)
         
-    db_product = db.query(models.Product).filter(models.Product.id == product_id).first()
-    if not db_product:
-        raise HTTPException(status_code=404, detail="Product not found")
+    db_product = db.query(models.Product).filter(
+        models.Product.id == product_id,
+        models.Product.tenant_id == current_user.tenant_id
+    ).first()
     return db_product
 
 @router.get("/inventory/sales_report")
 def get_sales_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    products = db.query(models.Product).all()
-    sales = db.query(models.SaleHistory).filter(models.SaleHistory.is_cancelled == False).all()
+    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
+    sales = db.query(models.SaleHistory).filter(
+        models.SaleHistory.tenant_id == current_user.tenant_id,
+        models.SaleHistory.is_cancelled == False
+    ).all()
     
     now = datetime.utcnow()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -346,7 +558,7 @@ def get_sales_report(db: Session = Depends(get_db), current_user: models.User = 
         def get_sale_revenue(s):
             price = s.price_sold if s.price_sold is not None else p.price
             return (price * s.quantity) - s.discount
-
+ 
         revenue_today = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.created_at) >= today_start)
         revenue_week = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.created_at) >= week_start)
         revenue_month = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.created_at) >= month_start)
@@ -373,7 +585,7 @@ def get_sales_report(db: Session = Depends(get_db), current_user: models.User = 
 def get_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    products = db.query(models.Product).all()
+    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
     total_stock = sum(p.quantity for p in products)
     total_sold = sum(p.sold for p in products)
     low_stock = sum(1 for p in products if p.quantity < 20)
@@ -401,6 +613,8 @@ def get_recent_sales(db: Session = Depends(get_db), current_user: models.User = 
         models.Product, models.Product.id == models.SaleHistory.product_id
     ).outerjoin(
         models.User, models.User.id == models.SaleHistory.user_id
+    ).filter(
+        models.SaleHistory.tenant_id == current_user.tenant_id
     ).order_by(
         models.SaleHistory.id.desc()
     ).limit(50).all()
@@ -429,7 +643,10 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
         if not cancel_data.auth_username or not cancel_data.auth_password:
             raise HTTPException(status_code=403, detail="Las cancelaciones están restringidas para cajeros. Se requieren credenciales de Supervisor o Administrador.")
         
-        supervisor_user = db.query(models.User).filter(models.User.username == cancel_data.auth_username).first()
+        supervisor_user = db.query(models.User).filter(
+            models.User.username == cancel_data.auth_username,
+            models.User.tenant_id == current_user.tenant_id
+        ).first()
         if not supervisor_user or not auth.verify_password(cancel_data.auth_password, supervisor_user.hashed_password):
             raise HTTPException(status_code=403, detail="Usuario o contraseña del supervisor incorrectos.")
         
@@ -440,7 +657,8 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
     # Cancelar venta transaccional en python
     try:
         sale = db.query(models.SaleHistory).filter(
-            models.SaleHistory.id == sale_id
+            models.SaleHistory.id == sale_id,
+            models.SaleHistory.tenant_id == current_user.tenant_id
         ).with_for_update().first()
         
         if not sale:
@@ -459,16 +677,25 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
             
         # Devolver stock
         if sale.variant_id:
-            var = db.query(models.ProductVariant).filter(models.ProductVariant.id == sale.variant_id).with_for_update().first()
+            var = db.query(models.ProductVariant).filter(
+                models.ProductVariant.id == sale.variant_id,
+                models.ProductVariant.tenant_id == current_user.tenant_id
+            ).with_for_update().first()
             if var:
                 var.quantity += qty_to_cancel
                 var.sold -= qty_to_cancel
-            prod = db.query(models.Product).filter(models.Product.id == sale.product_id).options(lazyload(models.Product.variants)).with_for_update().first()
+            prod = db.query(models.Product).filter(
+                models.Product.id == sale.product_id,
+                models.Product.tenant_id == current_user.tenant_id
+            ).options(lazyload(models.Product.variants)).with_for_update().first()
             if prod:
                 prod.quantity += qty_to_cancel
                 prod.sold -= qty_to_cancel
         else:
-            prod = db.query(models.Product).filter(models.Product.id == sale.product_id).options(lazyload(models.Product.variants)).with_for_update().first()
+            prod = db.query(models.Product).filter(
+                models.Product.id == sale.product_id,
+                models.Product.tenant_id == current_user.tenant_id
+            ).options(lazyload(models.Product.variants)).with_for_update().first()
             if prod:
                 prod.quantity += qty_to_cancel
                 prod.sold -= qty_to_cancel
@@ -480,7 +707,11 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
         card_refund = (sale.card_amount or 0.0) * ratio
         
         if sale.shift_id:
-            shift = db.query(models.Shift).filter(models.Shift.id == sale.shift_id, models.Shift.status == "open").first()
+            shift = db.query(models.Shift).filter(
+                models.Shift.id == sale.shift_id,
+                models.Shift.tenant_id == current_user.tenant_id,
+                models.Shift.status == "open"
+            ).first()
             if shift:
                 cash_to_deduct = 0.0
                 if sale.payment_method == "efectivo":
@@ -494,6 +725,7 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
         
         # Guardar registro en product_returns
         prod_return = models.ProductReturn(
+            tenant_id=current_user.tenant_id,
             sale_id=sale.id,
             product_id=sale.product_id,
             quantity=qty_to_cancel,
@@ -547,6 +779,8 @@ def get_returns_report(db: Session = Depends(get_db), current_user: models.User 
         models.Product.name.label("product_name")
     ).join(
         models.Product, models.Product.id == models.ProductReturn.product_id
+    ).filter(
+        models.ProductReturn.tenant_id == current_user.tenant_id
     ).order_by(
         models.ProductReturn.id.desc()
     ).all()
@@ -574,6 +808,7 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
     if checkout_data.shift_id is not None:
         shift = db.query(models.Shift).filter(
             models.Shift.id == checkout_data.shift_id,
+            models.Shift.tenant_id == current_user.tenant_id,
             models.Shift.status == "open"
         ).first()
         if not shift and current_user.role != 'admin':
@@ -586,11 +821,17 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
     if checkout_data.payment_method == "credito":
         if not checkout_data.customer_id:
             raise HTTPException(status_code=400, detail="Debe seleccionar un cliente para realizar una venta a crédito.")
-        customer = db.query(models.Customer).filter(models.Customer.id == checkout_data.customer_id).with_for_update().first()
+        customer = db.query(models.Customer).filter(
+            models.Customer.id == checkout_data.customer_id,
+            models.Customer.tenant_id == current_user.tenant_id
+        ).with_for_update().first()
         if not customer:
             raise HTTPException(status_code=404, detail="El cliente seleccionado no existe.")
     elif checkout_data.customer_id:
-        customer = db.query(models.Customer).filter(models.Customer.id == checkout_data.customer_id).first()
+        customer = db.query(models.Customer).filter(
+            models.Customer.id == checkout_data.customer_id,
+            models.Customer.tenant_id == current_user.tenant_id
+        ).first()
 
     try:
         now_str = datetime.utcnow().isoformat()
@@ -600,21 +841,26 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
         for item in checkout_data.items:
             if item.variant_id:
                 var = db.query(models.ProductVariant).filter(
-                    models.ProductVariant.id == item.variant_id
+                    models.ProductVariant.id == item.variant_id,
+                    models.ProductVariant.tenant_id == current_user.tenant_id
                 ).with_for_update().first()
                 if not var:
                     raise HTTPException(status_code=404, detail=f"La variante con ID {item.variant_id} no existe.")
                 if var.quantity < item.quantity:
                     raise HTTPException(status_code=400, detail=f"Stock insuficiente para la variante {var.name}. Disponible: {var.quantity}, Solicitado: {item.quantity}")
                 
-                prod = db.query(models.Product).filter(models.Product.id == var.product_id).first()
+                prod = db.query(models.Product).filter(
+                    models.Product.id == var.product_id,
+                    models.Product.tenant_id == current_user.tenant_id
+                ).first()
                 price = var.price if var.price is not None else prod.price
                 cost = var.cost_price if var.cost_price is not None else prod.cost_price
                 subtotal += price * item.quantity
                 items_to_process.append((item, var, prod, price, cost))
             else:
                 prod = db.query(models.Product).filter(
-                    models.Product.id == item.product_id
+                    models.Product.id == item.product_id,
+                    models.Product.tenant_id == current_user.tenant_id
                 ).options(lazyload(models.Product.variants)).with_for_update().first()
                 if not prod:
                     raise HTTPException(status_code=404, detail=f"El producto con ID {item.product_id} no existe.")
@@ -659,6 +905,7 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
                 prod.sold += qty
                 
             sale_record = models.SaleHistory(
+                tenant_id=current_user.tenant_id,
                 product_id=prod.id,
                 variant_id=var.id if var else None,
                 shift_id=shift.id if shift else None,
@@ -699,6 +946,7 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
 def get_active_shift(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     shift = db.query(models.Shift).filter(
         models.Shift.user_id == current_user.id,
+        models.Shift.tenant_id == current_user.tenant_id,
         models.Shift.status == "open"
     ).first()
     return shift
@@ -707,12 +955,14 @@ def get_active_shift(db: Session = Depends(get_db), current_user: models.User = 
 def open_shift(shift_data: schemas.ShiftCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     existing = db.query(models.Shift).filter(
         models.Shift.user_id == current_user.id,
+        models.Shift.tenant_id == current_user.tenant_id,
         models.Shift.status == "open"
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya tienes un turno de caja abierto.")
         
     new_shift = models.Shift(
+        tenant_id=current_user.tenant_id,
         user_id=current_user.id,
         start_time=datetime.utcnow().isoformat(),
         initial_cash=shift_data.initial_cash,
@@ -728,6 +978,7 @@ def open_shift(shift_data: schemas.ShiftCreate, db: Session = Depends(get_db), c
 def close_shift(close_data: schemas.ShiftClose, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     shift = db.query(models.Shift).filter(
         models.Shift.user_id == current_user.id,
+        models.Shift.tenant_id == current_user.tenant_id,
         models.Shift.status == "open"
     ).first()
     if not shift:
@@ -746,12 +997,14 @@ def close_shift(close_data: schemas.ShiftClose, db: Session = Depends(get_db), c
 def add_cash_movement(movement: schemas.CashMovementCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     shift = db.query(models.Shift).filter(
         models.Shift.user_id == current_user.id,
+        models.Shift.tenant_id == current_user.tenant_id,
         models.Shift.status == "open"
     ).first()
     if not shift:
         raise HTTPException(status_code=400, detail="No tienes un turno de caja abierto para registrar movimientos.")
         
     db_mov = models.CashMovement(
+        tenant_id=current_user.tenant_id,
         shift_id=shift.id,
         type=movement.type,
         amount=movement.amount,
@@ -776,11 +1029,17 @@ def get_all_active_shifts(db: Session = Depends(get_db), current_user: models.Us
     if current_user.role != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
         
-    active_shifts = db.query(models.Shift).filter(models.Shift.status == "open").all()
+    active_shifts = db.query(models.Shift).filter(
+        models.Shift.status == "open",
+        models.Shift.tenant_id == current_user.tenant_id
+    ).all()
     
     result = []
     for s in active_shifts:
-        user = db.query(models.User).filter(models.User.id == s.user_id).first()
+        user = db.query(models.User).filter(
+            models.User.id == s.user_id,
+            models.User.tenant_id == current_user.tenant_id
+        ).first()
         result.append({
             "id": s.id,
             "user_id": s.user_id,
@@ -800,6 +1059,7 @@ def close_any_shift(shift_id: int, close_data: schemas.ShiftClose, db: Session =
         
     shift = db.query(models.Shift).filter(
         models.Shift.id == shift_id,
+        models.Shift.tenant_id == current_user.tenant_id,
         models.Shift.status == "open"
     ).first()
     if not shift:
@@ -809,21 +1069,26 @@ def close_any_shift(shift_id: int, close_data: schemas.ShiftClose, db: Session =
     shift.final_cash_real = close_data.final_cash_real
     shift.difference = close_data.final_cash_real - shift.final_cash_expected
     shift.status = "closed"
-    
     db.commit()
     db.refresh(shift)
     return shift
 
 @router.get("/shifts/{shift_id}/report")
 def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    shift = db.query(models.Shift).filter(models.Shift.id == shift_id).first()
+    shift = db.query(models.Shift).filter(
+        models.Shift.id == shift_id,
+        models.Shift.tenant_id == current_user.tenant_id
+    ).first()
     if not shift:
         raise HTTPException(status_code=404, detail="Turno no encontrado.")
         
     if current_user.role == "cajero" and shift.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para ver el reporte de otros turnos.")
         
-    movements = db.query(models.CashMovement).filter(models.CashMovement.shift_id == shift.id).all()
+    movements = db.query(models.CashMovement).filter(
+        models.CashMovement.shift_id == shift.id,
+        models.CashMovement.tenant_id == current_user.tenant_id
+    ).all()
     
     sales = db.query(
         models.SaleHistory.id,
@@ -838,7 +1103,8 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
     ).join(
         models.Product, models.Product.id == models.SaleHistory.product_id
     ).filter(
-        models.SaleHistory.shift_id == shift.id
+        models.SaleHistory.shift_id == shift.id,
+        models.SaleHistory.tenant_id == current_user.tenant_id
     ).all()
     
     cash_sales = 0.0
@@ -874,7 +1140,10 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
     entries = sum(m.amount for m in movements if m.type == "entrada")
     withdrawals = sum(m.amount for m in movements if m.type in ["salida", "retiro_parcial"])
     
-    cajero = db.query(models.User).filter(models.User.id == shift.user_id).first()
+    cajero = db.query(models.User).filter(
+        models.User.id == shift.user_id,
+        models.User.tenant_id == current_user.tenant_id
+    ).first()
     
     return {
         "shift": {
@@ -915,8 +1184,11 @@ def get_profit_margin_report(db: Session = Depends(get_db), current_user: models
     if current_user.role not in ["admin", "supervisor"]:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
         
-    products = db.query(models.Product).all()
-    sales = db.query(models.SaleHistory).filter(models.SaleHistory.is_cancelled == False).all()
+    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
+    sales = db.query(models.SaleHistory).filter(
+        models.SaleHistory.tenant_id == current_user.tenant_id,
+        models.SaleHistory.is_cancelled == False
+    ).all()
     
     report = []
     total_revenue = 0.0
@@ -969,7 +1241,7 @@ def get_profit_margin_report(db: Session = Depends(get_db), current_user: models
 
 @router.get("/billing/profiles", response_model=List[schemas.BillingProfileResponse])
 def get_billing_profiles(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    query = db.query(models.BillingProfile)
+    query = db.query(models.BillingProfile).filter(models.BillingProfile.tenant_id == current_user.tenant_id)
     if q:
         query = query.filter(
             (models.BillingProfile.rfc.ilike(f"%{q}%")) |
@@ -979,11 +1251,15 @@ def get_billing_profiles(q: Optional[str] = None, db: Session = Depends(get_db),
 
 @router.post("/billing/profiles", response_model=schemas.BillingProfileResponse)
 def create_billing_profile(profile: schemas.BillingProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    existing = db.query(models.BillingProfile).filter(models.BillingProfile.rfc == profile.rfc.upper().strip()).first()
+    existing = db.query(models.BillingProfile).filter(
+        models.BillingProfile.rfc == profile.rfc.upper().strip(),
+        models.BillingProfile.tenant_id == current_user.tenant_id
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un perfil de facturación con este RFC")
         
     db_profile = models.BillingProfile(
+        tenant_id=current_user.tenant_id,
         rfc=profile.rfc.upper().strip(),
         razon_social=profile.razon_social.upper().strip(),
         regimen_fiscal=profile.regimen_fiscal,
@@ -997,7 +1273,10 @@ def create_billing_profile(profile: schemas.BillingProfileCreate, db: Session = 
 
 @router.put("/billing/profiles/{profile_id}", response_model=schemas.BillingProfileResponse)
 def update_billing_profile(profile_id: int, profile: schemas.BillingProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_profile = db.query(models.BillingProfile).filter(models.BillingProfile.id == profile_id).first()
+    db_profile = db.query(models.BillingProfile).filter(
+        models.BillingProfile.id == profile_id,
+        models.BillingProfile.tenant_id == current_user.tenant_id
+    ).first()
     if not db_profile:
         raise HTTPException(status_code=404, detail="Perfil de facturación no encontrado")
         
@@ -1014,7 +1293,10 @@ def update_billing_profile(profile_id: int, profile: schemas.BillingProfileCreat
 @router.get("/billing/tickets/{ticket_id}")
 def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # Buscamos la línea de venta de referencia
-    ref_sale = db.query(models.SaleHistory).filter(models.SaleHistory.id == ticket_id).first()
+    ref_sale = db.query(models.SaleHistory).filter(
+        models.SaleHistory.id == ticket_id,
+        models.SaleHistory.tenant_id == current_user.tenant_id
+    ).first()
     if not ref_sale:
         raise HTTPException(status_code=404, detail="Ticket de venta no encontrado")
         
@@ -1036,7 +1318,8 @@ def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_us
     ).join(
         models.Product, models.Product.id == models.SaleHistory.product_id
     ).filter(
-        models.SaleHistory.created_at == ref_sale.created_at
+        models.SaleHistory.created_at == ref_sale.created_at,
+        models.SaleHistory.tenant_id == current_user.tenant_id
     ).all()
     
     if not sales:
@@ -1263,6 +1546,7 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
         
     # 5. Guardar en Base de Datos
     db_invoice = models.Invoice(
+        tenant_id=current_user.tenant_id,
         uuid=invoice_uuid,
         monto_total=total,
         xml_url=f"/api/billing/invoices/{invoice_uuid}/xml",
@@ -1283,7 +1567,7 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
 
 @router.get("/billing/invoices", response_model=List[schemas.InvoiceResponse])
 def get_invoices(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    return db.query(models.Invoice).order_by(models.Invoice.id.desc()).all()
+    return db.query(models.Invoice).filter(models.Invoice.tenant_id == current_user.tenant_id).order_by(models.Invoice.id.desc()).all()
 
 @router.get("/billing/invoices/{invoice_uuid}/xml")
 def download_invoice_xml(invoice_uuid: str, db: Session = Depends(get_db)):
@@ -1316,7 +1600,10 @@ def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user:
     if current_user.role not in ["admin", "supervisor"]:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para cancelar facturas")
         
-    invoice = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    invoice = db.query(models.Invoice).filter(
+        models.Invoice.id == invoice_id,
+        models.Invoice.tenant_id == current_user.tenant_id
+    ).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
         
@@ -1327,7 +1614,10 @@ def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user:
     invoice.status = "cancelled"
     
     # Desvincular ventas asociadas (o dejarlas marcadas, pero para permitir volver a facturarlas, ponemos su invoice_id en NULL!)
-    db.query(models.SaleHistory).filter(models.SaleHistory.invoice_id == invoice.id).update({models.SaleHistory.invoice_id: None})
+    db.query(models.SaleHistory).filter(
+        models.SaleHistory.invoice_id == invoice.id,
+        models.SaleHistory.tenant_id == current_user.tenant_id
+    ).update({models.SaleHistory.invoice_id: None})
     
     db.commit()
     db.refresh(invoice)
@@ -1340,7 +1630,7 @@ def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user:
 def get_suppliers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    return db.query(models.Supplier).order_by(models.Supplier.name).all()
+    return db.query(models.Supplier).filter(models.Supplier.tenant_id == current_user.tenant_id).order_by(models.Supplier.name).all()
 
 @router.post("/suppliers/", response_model=schemas.SupplierResponse)
 def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -1348,11 +1638,15 @@ def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
     if supplier.rfc and supplier.rfc.strip():
-        existing = db.query(models.Supplier).filter(models.Supplier.rfc == supplier.rfc.upper().strip()).first()
+        existing = db.query(models.Supplier).filter(
+            models.Supplier.rfc == supplier.rfc.upper().strip(),
+            models.Supplier.tenant_id == current_user.tenant_id
+        ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Ya existe un proveedor con ese RFC")
 
     db_supplier = models.Supplier(
+        tenant_id=current_user.tenant_id,
         name=supplier.name.strip(),
         rfc=supplier.rfc.upper().strip() if supplier.rfc else None,
         phone=supplier.phone.strip() if supplier.phone else None,
@@ -1370,14 +1664,18 @@ def update_supplier(supplier_id: int, supplier: schemas.SupplierCreate, db: Sess
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
-    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    db_supplier = db.query(models.Supplier).filter(
+        models.Supplier.id == supplier_id,
+        models.Supplier.tenant_id == current_user.tenant_id
+    ).first()
     if not db_supplier:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
 
     if supplier.rfc and supplier.rfc.strip():
         existing = db.query(models.Supplier).filter(
             models.Supplier.rfc == supplier.rfc.upper().strip(), 
-            models.Supplier.id != supplier_id
+            models.Supplier.id != supplier_id,
+            models.Supplier.tenant_id == current_user.tenant_id
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Ya existe otro proveedor con ese RFC")
@@ -1398,11 +1696,17 @@ def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_use
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
-    db_supplier = db.query(models.Supplier).filter(models.Supplier.id == supplier_id).first()
+    db_supplier = db.query(models.Supplier).filter(
+        models.Supplier.id == supplier_id,
+        models.Supplier.tenant_id == current_user.tenant_id
+    ).first()
     if not db_supplier:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
     
-    associated_purchases = db.query(models.Purchase).filter(models.Purchase.supplier_id == supplier_id).first()
+    associated_purchases = db.query(models.Purchase).filter(
+        models.Purchase.supplier_id == supplier_id,
+        models.Purchase.tenant_id == current_user.tenant_id
+    ).first()
     if associated_purchases:
         raise HTTPException(
             status_code=400, 
@@ -1421,28 +1725,40 @@ def get_purchases(db: Session = Depends(get_db), current_user: models.User = Dep
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    purchases = db.query(models.Purchase).order_by(models.Purchase.id.desc()).all()
+    purchases = db.query(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).order_by(models.Purchase.id.desc()).all()
     
     result = []
     for p in purchases:
         supplier_name = "Compra Directa / Sin Proveedor"
         if p.supplier_id:
-            supplier = db.query(models.Supplier).filter(models.Supplier.id == p.supplier_id).first()
+            supplier = db.query(models.Supplier).filter(
+                models.Supplier.id == p.supplier_id,
+                models.Supplier.tenant_id == current_user.tenant_id
+            ).first()
             if supplier:
                 supplier_name = supplier.name
                 
         user_name = "Desconocido"
         if p.user_id:
-            user = db.query(models.User).filter(models.User.id == p.user_id).first()
+            user = db.query(models.User).filter(
+                models.User.id == p.user_id,
+                models.User.tenant_id == current_user.tenant_id
+            ).first()
             if user:
                 user_name = user.full_name
                 
         items_res = []
         for item in p.items:
-            prod = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+            prod = db.query(models.Product).filter(
+                models.Product.id == item.product_id,
+                models.Product.tenant_id == current_user.tenant_id
+            ).first()
             prod_name = prod.name if prod else f"Producto ID {item.product_id}"
             if item.variant_id:
-                var = db.query(models.ProductVariant).filter(models.ProductVariant.id == item.variant_id).first()
+                var = db.query(models.ProductVariant).filter(
+                    models.ProductVariant.id == item.variant_id,
+                    models.ProductVariant.tenant_id == current_user.tenant_id
+                ).first()
                 if var:
                     prod_name += f" ({var.name})"
             
@@ -1480,28 +1796,43 @@ def get_purchase_details(purchase_id: int, db: Session = Depends(get_db), curren
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    p = db.query(models.Purchase).filter(models.Purchase.id == purchase_id).first()
+    p = db.query(models.Purchase).filter(
+        models.Purchase.id == purchase_id,
+        models.Purchase.tenant_id == current_user.tenant_id
+    ).first()
     if not p:
         raise HTTPException(status_code=404, detail="Compra no encontrada")
         
     supplier_name = "Compra Directa / Sin Proveedor"
     if p.supplier_id:
-        supplier = db.query(models.Supplier).filter(models.Supplier.id == p.supplier_id).first()
+        supplier = db.query(models.Supplier).filter(
+            models.Supplier.id == p.supplier_id,
+            models.Supplier.tenant_id == current_user.tenant_id
+        ).first()
         if supplier:
             supplier_name = supplier.name
             
     user_name = "Desconocido"
     if p.user_id:
-        user = db.query(models.User).filter(models.User.id == p.user_id).first()
+        user = db.query(models.User).filter(
+            models.User.id == p.user_id,
+            models.User.tenant_id == current_user.tenant_id
+        ).first()
         if user:
             user_name = user.full_name
             
     items_res = []
     for item in p.items:
-        prod = db.query(models.Product).filter(models.Product.id == item.product_id).first()
+        prod = db.query(models.Product).filter(
+            models.Product.id == item.product_id,
+            models.Product.tenant_id == current_user.tenant_id
+        ).first()
         prod_name = prod.name if prod else f"Producto ID {item.product_id}"
         if item.variant_id:
-            var = db.query(models.ProductVariant).filter(models.ProductVariant.id == item.variant_id).first()
+            var = db.query(models.ProductVariant).filter(
+                models.ProductVariant.id == item.variant_id,
+                models.ProductVariant.tenant_id == current_user.tenant_id
+            ).first()
             if var:
                 prod_name += f" ({var.name})"
         
@@ -1543,6 +1874,7 @@ def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends
         now_str = datetime.utcnow().isoformat()
         
         db_purchase = models.Purchase(
+            tenant_id=current_user.tenant_id,
             supplier_id=purchase_data.supplier_id,
             invoice_number=purchase_data.invoice_number.strip() if purchase_data.invoice_number else None,
             total_cost=0.0,
@@ -1557,14 +1889,18 @@ def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends
         total_cost = 0.0
         
         for item in purchase_data.items:
-            product = db.query(models.Product).filter(models.Product.id == item.product_id).with_for_update().first()
+            product = db.query(models.Product).filter(
+                models.Product.id == item.product_id,
+                models.Product.tenant_id == current_user.tenant_id
+            ).with_for_update().first()
             if not product:
                 raise HTTPException(status_code=404, detail=f"El producto con ID {item.product_id} no existe.")
             
             if item.variant_id:
                 variant = db.query(models.ProductVariant).filter(
                     models.ProductVariant.id == item.variant_id,
-                    models.ProductVariant.product_id == item.product_id
+                    models.ProductVariant.product_id == item.product_id,
+                    models.ProductVariant.tenant_id == current_user.tenant_id
                 ).with_for_update().first()
                 if not variant:
                     raise HTTPException(
@@ -1614,10 +1950,10 @@ def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends
 
 @router.get("/settings", response_model=schemas.StoreSettingsResponse)
 def get_store_settings(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.tenant_id == current_user.tenant_id).first()
     if not settings:
         settings = models.StoreSettings(
-            id=1,
+            tenant_id=current_user.tenant_id,
             store_name="ABARROTES ED & E",
             rfc="AED180425EE3",
             phone="8112345678",
@@ -1636,9 +1972,9 @@ def update_store_settings(settings_data: schemas.StoreSettingsCreate, db: Sessio
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para cambiar la configuración.")
     
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    settings = db.query(models.StoreSettings).filter(models.StoreSettings.tenant_id == current_user.tenant_id).first()
     if not settings:
-        settings = models.StoreSettings(id=1)
+        settings = models.StoreSettings(tenant_id=current_user.tenant_id)
         db.add(settings)
         
     for key, value in settings_data.dict().items():
@@ -1653,7 +1989,7 @@ def update_store_settings(settings_data: schemas.StoreSettingsCreate, db: Sessio
 
 @router.get("/customers", response_model=List[schemas.CustomerResponse])
 def get_customers(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    query = db.query(models.Customer)
+    query = db.query(models.Customer).filter(models.Customer.tenant_id == current_user.tenant_id)
     if q:
         query = query.filter(
             (models.Customer.name.ilike(f"%{q}%")) |
@@ -1663,11 +1999,15 @@ def get_customers(q: Optional[str] = None, db: Session = Depends(get_db), curren
 
 @router.post("/customers", response_model=schemas.CustomerResponse)
 def create_customer(customer_data: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    existing = db.query(models.Customer).filter(models.Customer.name.ilike(customer_data.name.strip())).first()
+    existing = db.query(models.Customer).filter(
+        models.Customer.name.ilike(customer_data.name.strip()),
+        models.Customer.tenant_id == current_user.tenant_id
+    ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese nombre.")
         
     db_customer = models.Customer(
+        tenant_id=current_user.tenant_id,
         name=customer_data.name.strip(),
         phone=customer_data.phone.strip() if customer_data.phone else None,
         email=customer_data.email.lower().strip() if customer_data.email else None,
@@ -1681,13 +2021,17 @@ def create_customer(customer_data: schemas.CustomerCreate, db: Session = Depends
 
 @router.put("/customers/{customer_id}", response_model=schemas.CustomerResponse)
 def update_customer(customer_id: int, customer_data: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    db_customer = db.query(models.Customer).filter(
+        models.Customer.id == customer_id,
+        models.Customer.tenant_id == current_user.tenant_id
+    ).first()
     if not db_customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
     existing = db.query(models.Customer).filter(
         models.Customer.name.ilike(customer_data.name.strip()), 
-        models.Customer.id != customer_id
+        models.Customer.id != customer_id,
+        models.Customer.tenant_id == current_user.tenant_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe otro cliente con ese nombre.")
@@ -1706,7 +2050,10 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db), current_use
     if current_user.role not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para eliminar clientes.")
         
-    db_customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    db_customer = db.query(models.Customer).filter(
+        models.Customer.id == customer_id,
+        models.Customer.tenant_id == current_user.tenant_id
+    ).first()
     if not db_customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
@@ -1721,12 +2068,16 @@ def delete_customer(customer_id: int, db: Session = Depends(get_db), current_use
 def register_customer_payment(customer_id: int, payment_data: schemas.CustomerPaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     shift = db.query(models.Shift).filter(
         models.Shift.user_id == current_user.id,
+        models.Shift.tenant_id == current_user.tenant_id,
         models.Shift.status == "open"
     ).first()
     if not shift and current_user.role != 'admin':
         raise HTTPException(status_code=400, detail="Debe tener un turno de caja abierto para registrar un abono.")
         
-    customer = db.query(models.Customer).filter(models.Customer.id == customer_id).with_for_update().first()
+    customer = db.query(models.Customer).filter(
+        models.Customer.id == customer_id,
+        models.Customer.tenant_id == current_user.tenant_id
+    ).with_for_update().first()
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
@@ -1734,6 +2085,7 @@ def register_customer_payment(customer_id: int, payment_data: schemas.CustomerPa
         raise HTTPException(status_code=400, detail="El monto del abono debe ser mayor a 0.")
         
     db_payment = models.CustomerPayment(
+        tenant_id=current_user.tenant_id,
         customer_id=customer_id,
         shift_id=shift.id if shift else None,
         user_id=current_user.id,
@@ -1762,7 +2114,10 @@ def register_customer_payment(customer_id: int, payment_data: schemas.CustomerPa
 
 @router.get("/customers/{customer_id}/history")
 def get_customer_history(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    customer = db.query(models.Customer).filter(models.Customer.id == customer_id).first()
+    customer = db.query(models.Customer).filter(
+        models.Customer.id == customer_id,
+        models.Customer.tenant_id == current_user.tenant_id
+    ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
@@ -1777,10 +2132,14 @@ def get_customer_history(customer_id: int, db: Session = Depends(get_db), curren
     ).join(
         models.Product, models.Product.id == models.SaleHistory.product_id
     ).filter(
-        models.SaleHistory.customer_id == customer_id
+        models.SaleHistory.customer_id == customer_id,
+        models.SaleHistory.tenant_id == current_user.tenant_id
     ).all()
     
-    payments = db.query(models.CustomerPayment).filter(models.CustomerPayment.customer_id == customer_id).all()
+    payments = db.query(models.CustomerPayment).filter(
+        models.CustomerPayment.customer_id == customer_id,
+        models.CustomerPayment.tenant_id == current_user.tenant_id
+    ).all()
     
     history = []
     sales_by_ticket = {}
@@ -1842,7 +2201,13 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         raise HTTPException(status_code=403, detail="No tienes permisos para exportar respaldos.")
         
     def serialize_table(model):
-        rows = db.query(model).all()
+        if hasattr(model, "tenant_id"):
+            rows = db.query(model).filter(model.tenant_id == current_user.tenant_id).all()
+        elif model.__tablename__ == "purchase_items":
+            rows = db.query(models.PurchaseItem).join(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).all()
+        else:
+            rows = db.query(model).all()
+            
         result = []
         for row in rows:
             row_dict = {}
@@ -1885,8 +2250,8 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         sql_lines = []
         sql_lines.append("-- TIENDA DATABASE BACKUP SQL DUMP")
         sql_lines.append(f"-- Generated: {datetime.now().isoformat()}")
+        sql_lines.append(f"-- Tenant: {current_user.tenant_id}")
         sql_lines.append("")
-        sql_lines.append("BEGIN;")
         
         tables = [
             ("store_settings", models.StoreSettings),
@@ -1908,11 +2273,16 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         ]
         
         for table_name, model in tables:
-            rows = db.query(model).all()
+            if hasattr(model, "tenant_id"):
+                rows = db.query(model).filter(model.tenant_id == current_user.tenant_id).all()
+            elif model.__tablename__ == "purchase_items":
+                rows = db.query(models.PurchaseItem).join(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).all()
+            else:
+                rows = db.query(model).all()
+                
             if not rows:
                 continue
             sql_lines.append(f"\n-- Data for table {table_name}")
-            sql_lines.append(f"TRUNCATE TABLE {table_name} CASCADE;")
             
             columns = model.__mapper__.columns.keys()
             cols_str = ", ".join(columns)
@@ -1932,14 +2302,7 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
                         vals.append(f"'{escaped_str}'")
                 vals_str = ", ".join(vals)
                 sql_lines.append(f"INSERT INTO {table_name} ({cols_str}) VALUES ({vals_str});")
-                
-            try:
-                sql_lines.append(f"SELECT setval(pg_get_serial_sequence('{table_name}', 'id'), COALESCE((SELECT MAX(id)+1 FROM {table_name}), 1), false);")
-            except Exception:
-                pass
             
-        sql_lines.append("\nCOMMIT;")
-        
         sql_str = "\n".join(sql_lines)
         stream = io.BytesIO(sql_str.encode('utf-8'))
         headers = {
@@ -1984,7 +2347,13 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         
         for sheet_name, model in tables:
             ws = wb.create_sheet(title=sheet_name)
-            rows = db.query(model).all()
+            if hasattr(model, "tenant_id"):
+                rows = db.query(model).filter(model.tenant_id == current_user.tenant_id).all()
+            elif model.__tablename__ == "purchase_items":
+                rows = db.query(models.PurchaseItem).join(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).all()
+            else:
+                rows = db.query(model).all()
+                
             columns = model.__mapper__.columns.keys()
             
             for col_idx, col_name in enumerate(columns, 1):
@@ -2056,17 +2425,24 @@ def import_backup_database(file: UploadFile = File(...), db: Session = Depends(g
     ]
     
     try:
-        # Delete rows
+        # Delete rows scoped to current tenant
         for name, model in tables:
-            db.query(model).delete()
+            if hasattr(model, "tenant_id"):
+                db.query(model).filter(model.tenant_id == current_user.tenant_id).delete()
+            elif model.__tablename__ == "purchase_items":
+                # Eliminar items de compras asociadas al tenant
+                purchases_subquery = db.query(models.Purchase.id).filter(models.Purchase.tenant_id == current_user.tenant_id).subquery()
+                db.query(models.PurchaseItem).filter(models.PurchaseItem.purchase_id.in_(purchases_subquery)).delete(synchronize_session=False)
         db.commit()
         
-        # Insert rows
+        # Insert rows, overriding tenant_id to prevent hijacking
         for name, model in reversed(tables):
             rows = data.get(name, [])
             valid_keys = model.__mapper__.columns.keys()
             for row_dict in rows:
                 filtered_dict = {k: v for k, v in row_dict.items() if k in valid_keys}
+                if "tenant_id" in valid_keys:
+                    filtered_dict["tenant_id"] = current_user.tenant_id
                 instance = model(**filtered_dict)
                 db.add(instance)
             db.commit()
@@ -2093,7 +2469,7 @@ def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Us
     from sqlalchemy import func
     
     # 1. Active credit balance (total owed by customers)
-    total_owed = db.query(func.coalesce(func.sum(models.Customer.current_balance), 0.0)).scalar()
+    total_owed = db.query(func.coalesce(func.sum(models.Customer.current_balance), 0.0)).filter(models.Customer.tenant_id == current_user.tenant_id).scalar()
     
     # 2. Setup dates
     local_now = dt.now()
@@ -2107,7 +2483,10 @@ def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Us
     last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     # Query non-cancelled sales
-    sales_query = db.query(models.SaleHistory).filter(models.SaleHistory.is_cancelled == False)
+    sales_query = db.query(models.SaleHistory).filter(
+        models.SaleHistory.is_cancelled == False,
+        models.SaleHistory.tenant_id == current_user.tenant_id
+    )
     
     def calculate_sales_metrics(query_obj, start_dt, end_dt):
         sales_in_range = query_obj.filter(
@@ -2473,6 +2852,262 @@ def send_invoice_whatsapp(
         raise HTTPException(status_code=500, detail="No se pudo enviar la factura por WhatsApp.")
         
     return {"status": "success", "message": "Factura enviada exitosamente por WhatsApp."}
+
+# --- SUPERADMIN SAAS CONTROL PANEL ENDPOINTS ---
+
+def check_superadmin_privilege(current_user: models.User):
+    # Verify current_user belongs to tenant_id 1 (creator store) and has admin role
+    if current_user.tenant_id != 1 or current_user.role != 'admin':
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso denegado. Se requieren privilegios de Superadministrador del SaaS."
+        )
+
+@router.get("/superadmin/tenants", response_model=List[schemas.SuperAdminTenantResponse])
+def superadmin_get_tenants(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_superadmin_privilege(current_user)
+    
+    tenants = db.query(models.Tenant).all()
+    results = []
+    
+    for t in tenants:
+        # Get admin user info for this tenant
+        admin_user = db.query(models.User).filter(
+            models.User.tenant_id == t.id,
+            models.User.role == 'admin'
+        ).first()
+        
+        # Calculate counts
+        product_count = db.query(models.Product).filter(models.Product.tenant_id == t.id).count()
+        sale_count = db.query(models.SaleHistory).filter(models.SaleHistory.tenant_id == t.id).count()
+        
+        results.append({
+            "id": t.id,
+            "name": t.name,
+            "subdomain": t.subdomain,
+            "subscription_status": t.subscription_status,
+            "plan_tier": t.plan_tier,
+            "created_at": t.created_at or datetime.utcnow().isoformat(),
+            "admin_username": admin_user.username if admin_user else "N/A",
+            "admin_name": admin_user.full_name if admin_user else "N/A",
+            "product_count": product_count,
+            "sale_count": sale_count,
+            "last_payment_date": t.last_payment_date,
+            "subscription_end": t.subscription_end
+        })
+        
+    return results
+
+@router.put("/superadmin/tenants/{tenant_id}/plan", response_model=schemas.TenantResponse)
+def superadmin_update_tenant_plan(tenant_id: int, req: schemas.SuperAdminTenantUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_superadmin_privilege(current_user)
+    
+    if tenant_id == 1:
+        raise HTTPException(status_code=400, detail="No se puede modificar la suscripción del tenant principal.")
+        
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada.")
+        
+    tenant.plan_tier = req.plan_tier
+    tenant.subscription_status = req.subscription_status
+    db.commit()
+    db.refresh(tenant)
+    return tenant
+
+@router.delete("/superadmin/tenants/{tenant_id}")
+def superadmin_delete_tenant(tenant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    check_superadmin_privilege(current_user)
+    
+    if tenant_id == 1:
+        raise HTTPException(status_code=400, detail="No se puede eliminar el tenant principal.")
+        
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada.")
+        
+    # We clean up child tables first
+    tables_to_clean = [
+        ("purchase_items", "purchase_id IN (SELECT id FROM purchases WHERE tenant_id = :tid)"),
+        ("purchases", "tenant_id = :tid"),
+        ("cash_movements", "tenant_id = :tid"),
+        ("customer_payments", "tenant_id = :tid"),
+        ("sales_history", "tenant_id = :tid"),
+        ("product_returns", "tenant_id = :tid"),
+        ("product_variants", "tenant_id = :tid"),
+        ("products", "tenant_id = :tid"),
+        ("billing_profiles", "tenant_id = :tid"),
+        ("invoices", "tenant_id = :tid"),
+        ("suppliers", "tenant_id = :tid"),
+        ("customers", "tenant_id = :tid"),
+        ("notifications", "tenant_id = :tid"),
+        ("shifts", "tenant_id = :tid"),
+        ("store_settings", "tenant_id = :tid"),
+        ("users", "tenant_id = :tid"),
+    ]
+    
+    try:
+        from sqlalchemy import text
+        for table, condition in tables_to_clean:
+            db.execute(text(f"DELETE FROM {table} WHERE {condition}"), {"tid": tenant_id})
+            
+        db.delete(tenant)
+        db.commit()
+        return {"status": "success", "message": f"Inquilino {tenant_id} y todos sus datos relacionados fueron eliminados."}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al eliminar inquilino: {str(e)}")
+
+# --- STRIPE BILLING & AUTO SUBSCRIPTION AUTOMATION ---
+
+import stripe
+
+@router.post("/billing/create-checkout-session")
+def create_checkout_session(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="El usuario no pertenece a ninguna tienda.")
+        
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada.")
+
+    stripe_key = os.getenv("STRIPE_SECRET_KEY")
+    if not stripe_key:
+        # Fallback to simulation mode for testing out of the box!
+        simulation_url = f"/payment-simulation?tenant_id={tenant.id}&store_name={tenant.name}"
+        return {"url": simulation_url, "simulated": True}
+
+    # Real Stripe session setup
+    stripe.api_key = stripe_key
+    try:
+        # Create or retrieve customer
+        customer_id = tenant.stripe_customer_id
+        if not customer_id:
+            customer = stripe.Customer.create(
+                name=tenant.name,
+                metadata={"tenant_id": tenant.id}
+            )
+            customer_id = customer.id
+            tenant.stripe_customer_id = customer_id
+            db.commit()
+
+        # Build callback URLs
+        origin = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        
+        # Stripe Checkout Session
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=['card'],
+            line_items=[{
+                'price_data': {
+                    'currency': 'mxn',
+                    'product_data': {
+                        'name': f"Suscripción Mensual - {tenant.name}",
+                        'description': 'Acceso completo e ilimitado al sistema de Punto de Venta.',
+                    },
+                    'unit_amount': 49900, # $499.00 MXN in cents
+                    'recurring': {
+                        'interval': 'month',
+                    },
+                },
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=f"{origin}/dashboard?payment=success",
+            cancel_url=f"{origin}/dashboard?payment=cancel",
+            metadata={"tenant_id": tenant.id}
+        )
+        return {"url": session.url, "simulated": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al crear sesión de Stripe: {str(e)}")
+
+
+@router.post("/billing/webhook")
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    stripe_key = os.getenv("STRIPE_SECRET_KEY")
+
+    if not sig_header or not endpoint_secret or not stripe_key:
+        raise HTTPException(status_code=400, detail="Configuración de webhook inválida o incompleta.")
+
+    stripe.api_key = stripe_key
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Payload inválido")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Firma de webhook inválida")
+
+    event_type = event['type']
+    
+    if event_type in ["checkout.session.completed", "invoice.payment_succeeded"]:
+        session = event['data']['object']
+        
+        # Extract tenant_id
+        tenant_id = None
+        if 'metadata' in session and 'tenant_id' in session['metadata']:
+            tenant_id = int(session['metadata']['tenant_id'])
+        elif 'customer' in session:
+            # Look up customer in tenants
+            cust = db.query(models.Tenant).filter(models.Tenant.stripe_customer_id == session['customer']).first()
+            if cust:
+                tenant_id = cust.id
+
+        if tenant_id:
+            tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
+            if tenant:
+                tenant.subscription_status = "active"
+                tenant.plan_tier = "premium"
+                tenant.last_payment_date = datetime.utcnow().isoformat()
+                # Set subscription end to 30 days from now
+                tenant.subscription_end = (datetime.utcnow() + timedelta(days=30)).isoformat()
+                
+                # Update stripe subscription id if present
+                if 'subscription' in session:
+                    tenant.stripe_subscription_id = session['subscription']
+                    
+                db.commit()
+                print(f"Suscripción automatizada con éxito para Tenant {tenant_id} a través de Stripe.")
+                
+    elif event_type in ["invoice.payment_failed", "customer.subscription.deleted"]:
+        obj = event['data']['object']
+        customer_id = obj.get("customer")
+        if customer_id:
+            tenant = db.query(models.Tenant).filter(models.Tenant.stripe_customer_id == customer_id).first()
+            if tenant:
+                tenant.subscription_status = "suspended"
+                db.commit()
+                print(f"Suscripción del Tenant {tenant.id} suspendida por fallo en pago de Stripe.")
+
+    return {"status": "success"}
+
+
+@router.post("/billing/simulate-success")
+def simulate_payment_success(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    # Anyone can simulate for their own tenant
+    if not current_user.tenant_id:
+        raise HTTPException(status_code=400, detail="El usuario no tiene tienda vinculada.")
+
+    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tienda no encontrada.")
+
+    tenant.subscription_status = "active"
+    tenant.plan_tier = "premium"
+    tenant.last_payment_date = datetime.utcnow().isoformat()
+    # Expire in 30 days
+    tenant.subscription_end = (datetime.utcnow() + timedelta(days=30)).isoformat()
+    db.commit()
+    db.refresh(tenant)
+    return {
+        "status": "success",
+        "message": "Pago simulado con éxito. Tu cuenta ahora es Premium y está activa.",
+        "subscription_end": tenant.subscription_end
+    }
 
 
 

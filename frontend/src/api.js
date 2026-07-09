@@ -35,6 +35,16 @@ axios.interceptors.response.use((response) => {
     return Promise.reject(error);
 });
 
+export const fetchTenantBranding = async (subdomain) => {
+    try {
+        const response = await axios.get(`${API_URL}/auth/tenant-branding/${subdomain}`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching tenant branding:", error);
+        throw error;
+    }
+};
+
 export const fetchInventory = async () => {
     try {
         const response = await axios.get(`${API_URL}/inventory/`);
@@ -545,6 +555,76 @@ export const sendInvoiceWhatsApp = async (invoiceId, phoneNumber) => {
         return response.data;
     } catch (error) {
         console.error(`Error sending invoice ${invoiceId} via WhatsApp:`, error);
+        throw error;
+    }
+};
+
+export const fetchTenant = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/auth/tenant`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching tenant info:", error);
+        throw error;
+    }
+};
+
+export const changeTenantPlan = async (planTier) => {
+    try {
+        const response = await axios.post(`${API_URL}/auth/tenant/change-plan`, { plan_tier: planTier });
+        return response.data;
+    } catch (error) {
+        console.error("Error changing tenant plan:", error);
+        throw error;
+    }
+};
+
+export const fetchSuperAdminTenants = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/superadmin/tenants`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching superadmin tenants:", error);
+        throw error;
+    }
+};
+
+export const updateSuperAdminTenantPlan = async (tenantId, updateData) => {
+    try {
+        const response = await axios.put(`${API_URL}/superadmin/tenants/${tenantId}/plan`, updateData);
+        return response.data;
+    } catch (error) {
+        console.error(`Error updating superadmin tenant plan for ${tenantId}:`, error);
+        throw error;
+    }
+};
+
+export const deleteSuperAdminTenant = async (tenantId) => {
+    try {
+        const response = await axios.delete(`${API_URL}/superadmin/tenants/${tenantId}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error deleting tenant ${tenantId}:`, error);
+        throw error;
+    }
+};
+
+export const createCheckoutSession = async () => {
+    try {
+        const response = await axios.post(`${API_URL}/billing/create-checkout-session`);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating checkout session:", error);
+        throw error;
+    }
+};
+
+export const simulatePaymentSuccess = async () => {
+    try {
+        const response = await axios.post(`${API_URL}/billing/simulate-success`);
+        return response.data;
+    } catch (error) {
+        console.error("Error simulating payment success:", error);
         throw error;
     }
 };

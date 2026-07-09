@@ -10,6 +10,73 @@ def run_migration():
         print("Advertencia o error al crear tablas base (puede que ya existan):", e)
 
     with engine.connect() as conn:
+        # Multi-tenancy Migrations
+        # 1. Asegurar tabla tenants (aunque Base.metadata.create_all lo hace, por seguridad lo corremos)
+        try:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS tenants (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR NOT NULL,
+                    subdomain VARCHAR UNIQUE,
+                    subscription_status VARCHAR DEFAULT 'active',
+                    plan_tier VARCHAR DEFAULT 'free',
+                    created_at VARCHAR
+                );
+                CREATE INDEX IF NOT EXISTS ix_tenants_id ON tenants (id);
+                CREATE INDEX IF NOT EXISTS ix_tenants_subdomain ON tenants (subdomain);
+            """))
+            conn.commit()
+            print("Tabla 'tenants' creada/verificada.")
+        except Exception as e:
+            conn.rollback()
+            print("Error creando tabla tenants:", e)
+
+        # 2. Agregar columna tenant_id a todas las tablas existentes
+        tenant_tables = [
+            "users", "products", "product_variants", "notifications", "shifts", 
+            "cash_movements", "sales_history", "product_returns", "billing_profiles", 
+            "invoices", "suppliers", "purchases", "store_settings", "customers", 
+            "customer_payments"
+        ]
+        for tbl in tenant_tables:
+            try:
+                conn.execute(text(f"ALTER TABLE {tbl} ADD COLUMN tenant_id INTEGER REFERENCES tenants(id)"))
+                conn.commit()
+                print(f"Columna 'tenant_id' agregada a {tbl}.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Columna 'tenant_id' en {tbl} ya existe o falló:", e)
+
+        # 3. Crear tenant por defecto si no existe
+        default_tenant_id = None
+        try:
+            res = conn.execute(text("SELECT id FROM tenants WHERE subdomain = 'principal' LIMIT 1")).fetchone()
+            if not res:
+                from datetime import datetime
+                now_iso = datetime.utcnow().isoformat()
+                conn.execute(text("""
+                    INSERT INTO tenants (name, subdomain, subscription_status, plan_tier, created_at)
+                    VALUES ('Principal', 'principal', 'active', 'premium', :created_at)
+                """), {"created_at": now_iso})
+                conn.commit()
+                res = conn.execute(text("SELECT id FROM tenants WHERE subdomain = 'principal' LIMIT 1")).fetchone()
+                print("Tenant por defecto 'Principal' creado.")
+            default_tenant_id = res[0]
+        except Exception as e:
+            conn.rollback()
+            print("Error obteniendo/creando tenant por defecto:", e)
+
+        # 4. Asignar todos los registros existentes al tenant por defecto si es NULL
+        if default_tenant_id:
+            for tbl in tenant_tables:
+                try:
+                    conn.execute(text(f"UPDATE {tbl} SET tenant_id = :tenant_id WHERE tenant_id IS NULL"), {"tenant_id": default_tenant_id})
+                    conn.commit()
+                    print(f"Registros de {tbl} migrados al tenant por defecto.")
+                except Exception as e:
+                    conn.rollback()
+                    print(f"Error migrando registros de {tbl}:", e)
+
         try:
             conn.execute(text("ALTER TABLE users ADD COLUMN role VARCHAR DEFAULT 'user'"))
             conn.commit()
@@ -241,7 +308,52 @@ def run_migration():
             conn.rollback()
             print("Error creando la función 'cancelar_venta':", e)
 
+        # Columnas adicionales para store_settings
+        settings_cols = [
+            ("logo_url", "VARCHAR"),
+            ("primary_color", "VARCHAR DEFAULT '#064E3B'"),
+            ("accent_color", "VARCHAR DEFAULT '#DC2626'")
+        ]
+        for col, col_type in settings_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE store_settings ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"Columna '{col}' agregada a store_settings.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Columna '{col}' en store_settings ya existe o falló:", e)
 
+        # Columnas adicionales para tenants
+        tenant_cols = [
+            ("stripe_customer_id", "VARCHAR"),
+            ("stripe_subscription_id", "VARCHAR"),
+            ("subscription_end", "VARCHAR"),
+            ("last_payment_date", "VARCHAR")
+        ]
+        for col, col_type in tenant_cols:
+            try:
+                conn.execute(text(f"ALTER TABLE tenants ADD COLUMN {col} {col_type}"))
+                conn.commit()
+                print(f"Columna '{col}' agregada a tenants.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Columna '{col}' en tenants ya existe o falló:", e)
+
+
+
+        # 5. Sincronizar secuencias seriales de clave primaria (evita UniqueViolation al registrar datos nuevos)
+        print("Sincronizando secuencias de clave primaria...")
+        for tbl in tenant_tables + ["tenants"]:
+            try:
+                seq_res = conn.execute(text(f"SELECT pg_get_serial_sequence('{tbl}', 'id')")).fetchone()
+                if seq_res and seq_res[0]:
+                    seq_name = seq_res[0]
+                    conn.execute(text(f"SELECT setval('{seq_name}', COALESCE((SELECT MAX(id) FROM {tbl}), 1))"))
+                    conn.commit()
+            except Exception as e:
+                conn.rollback()
+                print(f"Error al sincronizar secuencia para {tbl}:", e)
+        print("Secuencias de clave primaria sincronizadas correctamente.")
 
 if __name__ == "__main__":
     run_migration()

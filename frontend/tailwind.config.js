@@ -8,14 +8,14 @@ export default {
     extend: {
       colors: {
         chiluda: {
-          red: '#059669',     // A fresh Emerald Green
-          darkred: '#047857', // Deeper Emerald Green for hover
-          lightred: '#ECFDF5' // Soft mint white selection background
+          red: 'var(--accent-color, #059669)',     // A fresh Emerald Green
+          darkred: 'var(--accent-color-hover, #047857)', // Deeper Emerald Green for hover
+          lightred: 'var(--accent-color-light, #ECFDF5)' // Soft mint white selection background
         },
         brand: {
           50: '#FFFFFF',      // Pure White background
           100: '#F5F5F4',     // Light Stone/warm grey
-          900: '#064E3B'      // Forest Green 900 for premium contrast text
+          900: 'var(--primary-color, #064E3B)'      // Forest Green 900 for premium contrast text
         }
       },
       fontFamily: {

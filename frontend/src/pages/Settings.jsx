@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Settings as SettingsIcon, Save, Store, Receipt, AlertCircle, CheckCircle, Database, Download, UploadCloud, HelpCircle, FileText } from 'lucide-react';
-import { fetchStoreSettings, updateStoreSettings, exportBackupDatabase, importBackupDatabase } from '../api';
+import { Settings as SettingsIcon, Save, Store, Receipt, AlertCircle, CheckCircle, Database, Download, UploadCloud, HelpCircle, FileText, CreditCard } from 'lucide-react';
+import { fetchStoreSettings, updateStoreSettings, exportBackupDatabase, importBackupDatabase, fetchTenant, changeTenantPlan } from '../api';
 
 const Settings = () => {
+  const userStr = sessionStorage.getItem('user');
+  const user = userStr ? JSON.parse(userStr) : { tenant_id: 1, role: '' };
+  const isBranded = user.tenant_id && user.tenant_id !== 1;
+
   const [formData, setFormData] = useState({
     store_name: '',
     rfc: '',
@@ -11,13 +15,20 @@ const Settings = () => {
     email: '',
     address: '',
     tax_rate: '16.0',
-    ticket_footer: ''
+    ticket_footer: '',
+    logo_url: '',
+    primary_color: '#064E3B',
+    accent_color: '#DC2626'
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  
+  // Tenant subscription state
+  const [tenant, setTenant] = useState(null);
+  const [changingPlan, setChangingPlan] = useState(false);
 
   // Backup states
   const [backupFormat, setBackupFormat] = useState('json');
@@ -92,13 +103,40 @@ const Settings = () => {
         email: data.email || '',
         address: data.address || '',
         tax_rate: data.tax_rate !== undefined ? data.tax_rate.toString() : '16.0',
-        ticket_footer: data.ticket_footer || ''
+        ticket_footer: data.ticket_footer || '',
+        logo_url: data.logo_url || '',
+        primary_color: data.primary_color || '#064E3B',
+        accent_color: data.accent_color || '#DC2626'
       });
+
+      // Load tenant subscription info
+      try {
+        const tenantData = await fetchTenant();
+        setTenant(tenantData);
+      } catch (tErr) {
+        console.error('Error loading tenant details', tErr);
+      }
     } catch (err) {
       console.error('Error loading settings', err);
       setError('Error al cargar la configuración. Asegúrese de tener permisos.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlanChange = async (newPlan) => {
+    setError('');
+    setSuccess('');
+    setChangingPlan(true);
+    try {
+      const updatedTenant = await changeTenantPlan(newPlan);
+      setTenant(updatedTenant);
+      setSuccess(`Plan cambiado exitosamente al Plan ${newPlan === 'premium' ? 'Premium' : 'Gratis'}.`);
+    } catch (err) {
+      console.error('Error changing plan', err);
+      setError(err.response?.data?.detail || 'Error al cambiar de plan.');
+    } finally {
+      setChangingPlan(false);
     }
   };
 
@@ -119,6 +157,25 @@ const Settings = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setError("El tamaño del logo debe ser menor a 2 MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setFormData(prev => ({
+        ...prev,
+        logo_url: reader.result
+      }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e) => {
@@ -269,6 +326,65 @@ const Settings = () => {
                 className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
               />
             </div>
+
+            {!isBranded && (
+              <div className="flex flex-col space-y-2 md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Personalización y Colores (Branding)</span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 items-center">
+                  {/* Logo upload */}
+                  <div className="flex flex-col space-y-1.5">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Logo Comercial</label>
+                    <div className="flex items-center space-x-3">
+                      {formData.logo_url && (
+                        <img src={formData.logo_url} alt="Logo" className="w-12 h-12 object-contain rounded-xl border border-slate-200" />
+                      )}
+                      <label className="flex-1 flex items-center justify-center border border-dashed border-slate-200 hover:border-emerald-500 bg-slate-50/50 hover:bg-emerald-50/10 rounded-xl cursor-pointer py-2 px-3 transition-all text-xs text-emerald-800 font-bold">
+                        <span>Cargar Logo</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleLogoChange}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Primary Color */}
+                  <div className="flex flex-col space-y-1.5">
+                    <label htmlFor="primary_color" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Color del Menú (Fondo Principal)</label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        id="primary_color"
+                        name="primary_color"
+                        value={formData.primary_color}
+                        onChange={handleChange}
+                        className="w-10 h-10 rounded-xl border border-slate-200 bg-transparent cursor-pointer"
+                      />
+                      <span className="text-xs font-mono text-slate-500 uppercase">{formData.primary_color}</span>
+                    </div>
+                  </div>
+
+                  {/* Accent Color */}
+                  <div className="flex flex-col space-y-1.5">
+                    <label htmlFor="accent_color" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Color de Iconos y Destacados</label>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="color"
+                        id="accent_color"
+                        name="accent_color"
+                        value={formData.accent_color}
+                        onChange={handleChange}
+                        className="w-10 h-10 rounded-xl border border-slate-200 bg-transparent cursor-pointer"
+                      />
+                      <span className="text-xs font-mono text-slate-500 uppercase">{formData.accent_color}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -334,6 +450,68 @@ const Settings = () => {
           </button>
         </div>
       </form>
+
+      {/* Sección: Plan y Suscripción */}
+      {tenant && (
+        <div className="bg-white/10 backdrop-blur-[3px] rounded-[2.2rem] border border-white/40 shadow-lg p-6 md:p-8 space-y-6 mt-6">
+          <div className="flex items-center space-x-2 pb-2 border-b border-slate-100">
+            <CreditCard className="w-5 h-5 text-emerald-600 animate-pulse" />
+            <h2 className="text-lg font-semibold text-slate-700">PLAN Y SUSCRIPCIÓN (MICRO-SaaS)</h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div className="space-y-2">
+              <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide">Tu Plan Actual</h3>
+              <p className="text-xs text-slate-400">
+                Administra tu plan de suscripción para habilitar más límites y características.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <span className={`px-4 py-2 inline-flex text-sm font-black rounded-full border ${
+                  tenant.plan_tier === 'premium' 
+                    ? 'bg-purple-500/10 text-purple-800 border-purple-500/20 shadow-inner animate-pulse' 
+                    : 'bg-stone-500/10 text-stone-800 border-stone-500/20'
+                }`}>
+                  {tenant.plan_tier === 'premium' ? 'PLAN PREMIUM (ILIMITADO)' : 'PLAN GRATIS (LÍMITE 50 PROD.)'}
+                </span>
+                <span className="text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-200/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                  {tenant.subscription_status === 'active' ? 'Activa' : tenant.subscription_status}
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-400 mt-2 font-medium">
+                Registrado desde: {new Date(tenant.created_at).toLocaleDateString()}
+              </p>
+            </div>
+
+            <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col space-y-4 justify-between h-full">
+              <div>
+                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-2">Cambiar de Plan</h4>
+                <p className="text-[11px] text-slate-500 leading-normal font-semibold">
+                  El <strong>Plan Gratis</strong> está limitado a 50 productos en inventario. El <strong>Plan Premium</strong> elimina todos los límites de productos para tu tienda.
+                </p>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => handlePlanChange('free')}
+                  disabled={tenant.plan_tier === 'free' || changingPlan}
+                  className="flex-1 bg-white border border-stone-250 text-stone-700 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-stone-50 transition-colors disabled:opacity-50"
+                >
+                  Plan Gratis
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePlanChange('premium')}
+                  disabled={tenant.plan_tier === 'premium' || changingPlan}
+                  className="flex-1 bg-purple-600 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-purple-750 transition-colors shadow-md disabled:opacity-50 hover:shadow-float active:scale-[0.98]"
+                >
+                  Plan Premium
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Sección de Respaldo de Base de Datos */}
       <div className="bg-white/10 backdrop-blur-[3px] rounded-[2.2rem] border border-white/40 shadow-lg p-6 md:p-8 space-y-6 mt-6">

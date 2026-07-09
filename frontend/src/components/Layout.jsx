@@ -15,9 +15,11 @@ import {
   Truck, 
   ClipboardList, 
   Settings as SettingsIcon, 
-  UserCheck 
+  UserCheck,
+  Shield,
+  ShieldAlert
 } from 'lucide-react';
-import { fetchInventory, fetchActiveShift, fetchStoreSettings } from '../api';
+import { fetchInventory, fetchActiveShift, fetchStoreSettings, createCheckoutSession } from '../api';
 import FloatingStoreIconsBg from './FloatingStoreIconsBg';
 
 
@@ -58,10 +60,33 @@ const Layout = () => {
   });
   
   const userStr = sessionStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { role: 'cajero', username: '', full_name: '' };
+  const user = userStr ? JSON.parse(userStr) : { role: 'cajero', username: '', full_name: '', tenant_id: 1, subscription_status: 'active' };
   
   const isAdmin = user.role === 'admin';
   const isStaff = user.role === 'admin' || user.role === 'supervisor';
+
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState('');
+
+  const handleSubscriptionPayment = async () => {
+    setPaying(true);
+    setPayError('');
+    try {
+      const response = await createCheckoutSession();
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        setPayError('Ocurrió un problema al obtener la pasarela de pagos.');
+      }
+    } catch (err) {
+      console.error(err);
+      setPayError('Error de red. No se pudo iniciar el proceso de pago.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const isSuspended = (user.subscription_status === 'suspended' || user.subscription_status === 'canceled') && user.tenant_id !== 1;
 
   const checkStock = async () => {
     try {
@@ -112,6 +137,56 @@ const Layout = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const isBranded = user.tenant_id && user.tenant_id !== 1;
+
+    // Hex to RGB Helper
+    const hexToRgb = (hex) => {
+      const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+      const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : null;
+    };
+
+    if (isBranded) {
+      document.body.classList.add('branded-dark-theme');
+      
+      const pColor = storeSettings.primary_color || '#064E3B';
+      const aColor = storeSettings.accent_color || '#064E3B';
+      const pRgb = hexToRgb(pColor);
+      const aRgb = hexToRgb(aColor);
+
+      document.documentElement.style.setProperty('--primary-color', pColor);
+      if (pRgb) {
+        document.documentElement.style.setProperty('--primary-color-light', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+      } else {
+        document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+      }
+
+      document.documentElement.style.setProperty('--accent-color', aColor);
+      document.documentElement.style.setProperty('--accent-color-hover', aColor);
+      if (aRgb) {
+        document.documentElement.style.setProperty('--accent-color-light', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.08)`);
+      } else {
+        document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+      }
+    } else {
+      document.body.classList.remove('branded-dark-theme');
+      
+      // Reset variables to the creator's default green/light palette
+      document.documentElement.style.setProperty('--primary-color', '#064E3B');
+      document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+      document.documentElement.style.setProperty('--body-bg-color', '#f3f6f4');
+      document.documentElement.style.setProperty('--accent-color', '#064E3B');
+      document.documentElement.style.setProperty('--accent-color-hover', '#059669');
+      document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+    }
+  }, [storeSettings, user.tenant_id]);
+
   const navItems = [
     { name: 'Panel', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin', 'supervisor'] },
     { name: 'Punto de Venta', path: '/sales', icon: ShoppingCart, allowedRoles: ['admin', 'supervisor', 'cajero'] },
@@ -123,6 +198,10 @@ const Layout = () => {
     { name: 'Usuarios', path: '/users', icon: Users, allowedRoles: ['admin'] },
     { name: 'Ajustes', path: '/settings', icon: SettingsIcon, allowedRoles: ['admin', 'supervisor'] },
   ];
+
+  if (user.tenant_id === 1) {
+    navItems.push({ name: 'Consola SaaS', path: '/superadmin', icon: Shield, allowedRoles: ['admin'] });
+  }
 
   const renderHotkeys = () => {
     if (location.pathname !== '/sales') return null;
@@ -177,16 +256,78 @@ const Layout = () => {
     }
   };
 
+  if (isSuspended) {
+    return (
+      <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4 font-sans select-none relative overflow-hidden">
+        {/* Background animation or leaf decoration */}
+        <FloatingStoreIconsBg color={storeSettings.accent_color ? storeSettings.accent_color + '15' : undefined} />
+        
+        <div className="w-full max-w-lg bg-white/90 backdrop-blur-2xl rounded-[2.5rem] border border-stone-200/60 shadow-xl p-10 text-center space-y-6 relative z-10 animate-scale-up">
+          <div className="flex justify-center">
+            <div className="p-5 bg-amber-50 rounded-full text-amber-500 animate-pulse border border-amber-200/60">
+              <ShieldAlert size={42} />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl sm:text-3xl font-black text-brand-900 tracking-tight">Suscripción Pendiente de Renovación</h2>
+            <p className="text-[10px] text-amber-600 font-extrabold uppercase tracking-widest leading-none">Cuenta Temporalmente en Espera (Standby)</p>
+          </div>
+
+          <div className="text-xs font-semibold text-stone-500 leading-relaxed max-w-md mx-auto space-y-3">
+            <p>
+              Estimado administrador de <span className="font-extrabold text-brand-900 uppercase">{storeSettings.store_name}</span>:
+            </p>
+            <p>
+              Queremos informarte cordialmente que el periodo de facturación de tu Punto de Venta mensual ha finalizado. 
+              Para continuar disfrutando de la carga ilimitada de productos, reportes fiscales, facturación CFDI 4.0 y control de turnos de caja, te invitamos a renovar tu suscripción.
+            </p>
+          </div>
+
+          {payError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs font-bold text-left">
+              {payError}
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+            <button
+              onClick={() => {
+                sessionStorage.removeItem('user');
+                sessionStorage.removeItem('token');
+                window.location.href = '/login';
+              }}
+              className="px-6 py-3 border border-stone-200 text-stone-600 font-bold rounded-xl text-xs hover:bg-stone-50 transition-all active:scale-95 cursor-pointer"
+            >
+              Cerrar Sesión
+            </button>
+            <button
+              onClick={handleSubscriptionPayment}
+              disabled={paying}
+              className="flex-1 px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl text-xs hover:shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {paying ? 'Preparando pasarela...' : 'Pagar Suscripción Mensual ($499 MXN)'}
+            </button>
+          </div>
+
+          <p className="text-[9px] text-stone-400 font-bold uppercase tracking-wider">
+            Soporte Técnico: soporte@abarrotes-saas.com
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!isStaff) {
     // Layout for normal Cajero (no sidebar, full screen POS)
     return (
       <div className="flex flex-col h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
         {/* Background floating store icons animation */}
-        <FloatingStoreIconsBg />
+        <FloatingStoreIconsBg color={storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined} />
 
         <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100 relative">
           <div className="flex items-center space-x-3 shrink-0 select-none">
-            <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm" />
+            <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.store_name} Logo`} className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm rounded-lg" />
             <div className="hidden sm:flex flex-col items-start max-w-[180px]">
               <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
             </div>
@@ -227,7 +368,7 @@ const Layout = () => {
   return (
     <div className="flex h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
       {/* Background floating store icons animation */}
-      <FloatingStoreIconsBg />
+      <FloatingStoreIconsBg color={location.pathname === '/superadmin' ? '#10B98125' : (storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined)} />
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
@@ -238,7 +379,13 @@ const Layout = () => {
       )}
       
       {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 w-72 bg-[#064e3b] shadow-2xl flex flex-col z-50 lg:z-10 transition-transform duration-300`}>
+      <aside 
+        className="fixed inset-y-0 left-0 transform lg:relative lg:translate-x-0 w-72 shadow-2xl flex flex-col z-50 lg:z-10 transition-all duration-300"
+        style={{
+          backgroundColor: storeSettings.primary_color || '#064e3b',
+          transform: isSidebarOpen ? 'translateX(0)' : undefined
+        }}
+      >
         {/* Mobile Sidebar Close Button */}
         <button 
           onClick={() => setIsSidebarOpen(false)}
@@ -249,7 +396,7 @@ const Layout = () => {
         </button>
 
         <div className="h-20 flex items-center space-x-3 px-6 border-b border-stone-200 select-none bg-white flex-shrink-0">
-          <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-16 w-auto object-contain animate-fade-in" />
+          <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.store_name} Logo`} className="h-16 w-auto object-contain animate-fade-in rounded-lg" />
           <div className="flex flex-col items-start max-w-[180px]">
             <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
           </div>
@@ -312,7 +459,7 @@ const Layout = () => {
               <Menu size={24} />
             </button>
             <div className="flex items-center space-x-2 lg:hidden select-none">
-              <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-12 w-auto object-contain animate-fade-in" />
+              <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.store_name} Logo`} className="h-12 w-auto object-contain animate-fade-in rounded-lg" />
               <div className="hidden sm:flex flex-col items-start max-w-[140px]">
                 <span className="text-xs font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
               </div>

@@ -125,7 +125,7 @@ const STORE_ICONS = [
 
 const ICONS_COUNT = 70;
 
-export default function FloatingStoreIconsBg({ className = "fixed inset-0" }) {
+export default function FloatingStoreIconsBg({ className = "fixed inset-0", color }) {
   const [particles, setParticles] = useState([]);
 
   useEffect(() => {
@@ -160,8 +160,9 @@ export default function FloatingStoreIconsBg({ className = "fixed inset-0" }) {
           <svg
             key={p.id}
             viewBox="0 0 24 24"
-            className="absolute bottom-[-80px] text-emerald-800/[0.68] dark:text-emerald-500/[0.30] animate-float-icon"
+            className={`absolute bottom-[-80px] animate-float-icon ${color ? '' : 'text-emerald-800/[0.68] dark:text-emerald-500/[0.30]'}`}
             style={{
+              color: color || undefined,
               width: `${p.size}px`,
               height: `${p.size}px`,
               left: `${p.left}%`,

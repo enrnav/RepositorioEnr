@@ -15,6 +15,12 @@ CREATE TABLE IF NOT EXISTS tenants (
     subscription_end VARCHAR NULL,
     last_payment_date VARCHAR NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR NULL;
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR NULL;
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS subscription_end VARCHAR NULL;
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS last_payment_date VARCHAR NULL;
+
 CREATE INDEX IF NOT EXISTS ix_tenants_id ON tenants (id);
 CREATE INDEX IF NOT EXISTS ix_tenants_subdomain ON tenants (subdomain);
 
@@ -22,6 +28,7 @@ CREATE INDEX IF NOT EXISTS ix_tenants_subdomain ON tenants (subdomain);
 INSERT INTO tenants (name, subdomain, subscription_status, plan_tier, created_at)
 VALUES ('Principal', 'principal', 'active', 'premium', TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS'))
 ON CONFLICT (subdomain) DO NOTHING;
+
 
 -- 2. Tabla: users (Usuarios de la plataforma)
 CREATE TABLE IF NOT EXISTS users (
@@ -32,9 +39,14 @@ CREATE TABLE IF NOT EXISTS users (
     hashed_password VARCHAR NOT NULL,
     role VARCHAR DEFAULT 'user' -- admin, supervisor, cajero, user
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR DEFAULT 'user';
+
 CREATE INDEX IF NOT EXISTS ix_users_id ON users (id);
 CREATE INDEX IF NOT EXISTS ix_users_tenant_id ON users (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_users_username ON users (username);
+
 
 -- 3. Tabla: products (Productos en inventario)
 CREATE TABLE IF NOT EXISTS products (
@@ -52,10 +64,22 @@ CREATE TABLE IF NOT EXISTS products (
     sat_key VARCHAR DEFAULT '01010101',
     sat_unit_key VARCHAR DEFAULT 'H87'
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE products ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode VARCHAR NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_price DOUBLE PRECISION DEFAULT 0.0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS min_stock INTEGER DEFAULT 3;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sold INTEGER DEFAULT 0;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS entry_date VARCHAR NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image VARCHAR NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sat_key VARCHAR DEFAULT '01010101';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sat_unit_key VARCHAR DEFAULT 'H87';
+
 CREATE INDEX IF NOT EXISTS ix_products_id ON products (id);
 CREATE INDEX IF NOT EXISTS ix_products_tenant_id ON products (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_products_name ON products (name);
 CREATE INDEX IF NOT EXISTS ix_products_barcode ON products (barcode);
+
 
 -- 4. Tabla: product_variants (Variantes de productos)
 CREATE TABLE IF NOT EXISTS product_variants (
@@ -71,10 +95,16 @@ CREATE TABLE IF NOT EXISTS product_variants (
     sat_key VARCHAR DEFAULT '01010101',
     sat_unit_key VARCHAR DEFAULT 'H87'
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS sat_key VARCHAR DEFAULT '01010101';
+ALTER TABLE product_variants ADD COLUMN IF NOT EXISTS sat_unit_key VARCHAR DEFAULT 'H87';
+
 CREATE INDEX IF NOT EXISTS ix_product_variants_id ON product_variants (id);
 CREATE INDEX IF NOT EXISTS ix_product_variants_tenant_id ON product_variants (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_product_variants_product_id ON product_variants (product_id);
 CREATE INDEX IF NOT EXISTS ix_product_variants_barcode ON product_variants (barcode);
+
 
 -- 5. Tabla: notifications (Alertas del sistema)
 CREATE TABLE IF NOT EXISTS notifications (
@@ -83,8 +113,12 @@ CREATE TABLE IF NOT EXISTS notifications (
     message VARCHAR NOT NULL,
     is_read BOOLEAN DEFAULT FALSE
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_notifications_id ON notifications (id);
 CREATE INDEX IF NOT EXISTS ix_notifications_tenant_id ON notifications (tenant_id);
+
 
 -- 6. Tabla: shifts (Turnos/Cortes de caja)
 CREATE TABLE IF NOT EXISTS shifts (
@@ -99,9 +133,13 @@ CREATE TABLE IF NOT EXISTS shifts (
     difference DOUBLE PRECISION NULL,
     status VARCHAR DEFAULT 'open' -- open, closed
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_shifts_id ON shifts (id);
 CREATE INDEX IF NOT EXISTS ix_shifts_tenant_id ON shifts (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_shifts_user_id ON shifts (user_id);
+
 
 -- 7. Tabla: cash_movements (Entradas/Salidas de caja en el turno)
 CREATE TABLE IF NOT EXISTS cash_movements (
@@ -113,9 +151,13 @@ CREATE TABLE IF NOT EXISTS cash_movements (
     reason VARCHAR NOT NULL,
     created_at VARCHAR NOT NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE cash_movements ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_cash_movements_id ON cash_movements (id);
 CREATE INDEX IF NOT EXISTS ix_cash_movements_tenant_id ON cash_movements (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_cash_movements_shift_id ON cash_movements (shift_id);
+
 
 -- 8. Tabla: invoices (Facturas CFDI)
 CREATE TABLE IF NOT EXISTS invoices (
@@ -128,9 +170,13 @@ CREATE TABLE IF NOT EXISTS invoices (
     created_at VARCHAR NOT NULL,
     status VARCHAR DEFAULT 'active' -- active, cancelled
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_invoices_id ON invoices (id);
 CREATE INDEX IF NOT EXISTS ix_invoices_tenant_id ON invoices (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_invoices_uuid ON invoices (uuid);
+
 
 -- 9. Tabla: customers (Clientes - Cuentas/Crédito)
 CREATE TABLE IF NOT EXISTS customers (
@@ -142,9 +188,13 @@ CREATE TABLE IF NOT EXISTS customers (
     credit_limit DOUBLE PRECISION DEFAULT 0.0,
     current_balance DOUBLE PRECISION DEFAULT 0.0
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_customers_id ON customers (id);
 CREATE INDEX IF NOT EXISTS ix_customers_tenant_id ON customers (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_customers_name ON customers (name);
+
 
 -- 10. Tabla: sales_history (Historial de transacciones de ventas)
 CREATE TABLE IF NOT EXISTS sales_history (
@@ -168,6 +218,23 @@ CREATE TABLE IF NOT EXISTS sales_history (
     invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL,
     customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS is_cancelled BOOLEAN DEFAULT FALSE;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS cancel_reason VARCHAR NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS variant_id INTEGER NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS shift_id INTEGER NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS user_id INTEGER NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS price_sold DOUBLE PRECISION NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS cost_price_sold DOUBLE PRECISION DEFAULT 0.0;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS discount DOUBLE PRECISION DEFAULT 0.0;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50) DEFAULT 'efectivo';
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS cash_amount DOUBLE PRECISION DEFAULT 0.0;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS card_amount DOUBLE PRECISION DEFAULT 0.0;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS authorized_by VARCHAR NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS invoice_id INTEGER REFERENCES invoices(id) ON DELETE SET NULL;
+ALTER TABLE sales_history ADD COLUMN IF NOT EXISTS customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_sales_history_id ON sales_history (id);
 CREATE INDEX IF NOT EXISTS ix_sales_history_tenant_id ON sales_history (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_sales_history_product_id ON sales_history (product_id);
@@ -176,6 +243,7 @@ CREATE INDEX IF NOT EXISTS ix_sales_history_shift_id ON sales_history (shift_id)
 CREATE INDEX IF NOT EXISTS ix_sales_history_user_id ON sales_history (user_id);
 CREATE INDEX IF NOT EXISTS ix_sales_history_invoice_id ON sales_history (invoice_id);
 CREATE INDEX IF NOT EXISTS ix_sales_history_customer_id ON sales_history (customer_id);
+
 
 -- 11. Tabla: product_returns (Devoluciones de mercancía)
 CREATE TABLE IF NOT EXISTS product_returns (
@@ -189,10 +257,14 @@ CREATE TABLE IF NOT EXISTS product_returns (
     authorized_by VARCHAR NULL,
     created_at VARCHAR NOT NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE product_returns ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_product_returns_id ON product_returns (id);
 CREATE INDEX IF NOT EXISTS ix_product_returns_tenant_id ON product_returns (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_product_returns_sale_id ON product_returns (sale_id);
 CREATE INDEX IF NOT EXISTS ix_product_returns_product_id ON product_returns (product_id);
+
 
 -- 12. Tabla: billing_profiles (Perfiles de Facturación de Clientes)
 CREATE TABLE IF NOT EXISTS billing_profiles (
@@ -204,10 +276,14 @@ CREATE TABLE IF NOT EXISTS billing_profiles (
     codigo_postal VARCHAR NOT NULL,
     correo VARCHAR NOT NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE billing_profiles ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_billing_profiles_id ON billing_profiles (id);
 CREATE INDEX IF NOT EXISTS ix_billing_profiles_tenant_id ON billing_profiles (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_billing_profiles_rfc ON billing_profiles (rfc);
 CREATE INDEX IF NOT EXISTS ix_billing_profiles_razon_social ON billing_profiles (razon_social);
+
 
 -- 13. Tabla: suppliers (Proveedores)
 CREATE TABLE IF NOT EXISTS suppliers (
@@ -220,9 +296,13 @@ CREATE TABLE IF NOT EXISTS suppliers (
     address VARCHAR NULL,
     notes VARCHAR NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE suppliers ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_suppliers_id ON suppliers (id);
 CREATE INDEX IF NOT EXISTS ix_suppliers_tenant_id ON suppliers (tenant_id);
 CREATE INDEX IF NOT EXISTS ix_suppliers_name ON suppliers (name);
+
 
 -- 14. Tabla: purchases (Notas de compra a proveedores)
 CREATE TABLE IF NOT EXISTS purchases (
@@ -235,8 +315,12 @@ CREATE TABLE IF NOT EXISTS purchases (
     notes VARCHAR NULL,
     user_id INTEGER REFERENCES users(id) ON DELETE SET NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE purchases ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_purchases_id ON purchases (id);
 CREATE INDEX IF NOT EXISTS ix_purchases_tenant_id ON purchases (tenant_id);
+
 
 -- 15. Tabla: purchase_items (Detalle de artículos en compras)
 CREATE TABLE IF NOT EXISTS purchase_items (
@@ -249,6 +333,7 @@ CREATE TABLE IF NOT EXISTS purchase_items (
     price DOUBLE PRECISION NULL
 );
 CREATE INDEX IF NOT EXISTS ix_purchase_items_id ON purchase_items (id);
+
 
 -- 16. Tabla: store_settings (Configuración de marca e identidad visual por inquilino)
 CREATE TABLE IF NOT EXISTS store_settings (
@@ -265,8 +350,15 @@ CREATE TABLE IF NOT EXISTS store_settings (
     primary_color VARCHAR DEFAULT '#064E3B',
     accent_color VARCHAR DEFAULT '#DC2626'
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS logo_url VARCHAR NULL;
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS primary_color VARCHAR DEFAULT '#064E3B';
+ALTER TABLE store_settings ADD COLUMN IF NOT EXISTS accent_color VARCHAR DEFAULT '#DC2626';
+
 CREATE INDEX IF NOT EXISTS ix_store_settings_id ON store_settings (id);
 CREATE INDEX IF NOT EXISTS ix_store_settings_tenant_id ON store_settings (tenant_id);
+
 
 -- 17. Tabla: customer_payments (Abonos a crédito de clientes)
 CREATE TABLE IF NOT EXISTS customer_payments (
@@ -279,8 +371,12 @@ CREATE TABLE IF NOT EXISTS customer_payments (
     created_at VARCHAR NOT NULL,
     notes VARCHAR NULL
 );
+-- Migración segura para columnas nuevas si la tabla ya existía
+ALTER TABLE customer_payments ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) ON DELETE SET NULL;
+
 CREATE INDEX IF NOT EXISTS ix_customer_payments_id ON customer_payments (id);
 CREATE INDEX IF NOT EXISTS ix_customer_payments_tenant_id ON customer_payments (tenant_id);
+
 
 -- ==============================================================================
 -- FUNCIONES ALMACENADAS PL/pgSQL (TRANSACCIONALIDAD EN CAJA)

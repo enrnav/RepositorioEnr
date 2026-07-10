@@ -43,8 +43,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("backend_logger")
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+# Run database migrations and create tables
+from migrate import run_migration
+run_migration()
 
 app = FastAPI(title="Tienda La Chiluda API")
 

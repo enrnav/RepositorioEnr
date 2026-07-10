@@ -56,12 +56,15 @@ const Login = () => {
 
     // 2. Detect subdomain from window.location.hostname
     const hostname = window.location.hostname;
-    const parts = hostname.split('.');
-    if (parts.length > 1) {
-      const sub = parts[0];
-      if (sub !== 'www' && sub !== 'localhost') {
-        loadBranding(sub);
-        return;
+    const isDeploymentDomain = hostname.endsWith('vercel.app') || hostname.endsWith('onrender.com');
+    if (!isDeploymentDomain) {
+      const parts = hostname.split('.');
+      if (parts.length > 2) {
+        const sub = parts[0];
+        if (sub !== 'www' && sub !== 'localhost') {
+          loadBranding(sub);
+          return;
+        }
       }
     }
 

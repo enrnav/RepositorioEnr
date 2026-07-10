@@ -87,6 +87,7 @@ const Layout = () => {
   };
 
   const isSuspended = (user.subscription_status === 'suspended' || user.subscription_status === 'canceled') && user.tenant_id !== 1;
+  const isBranded = user.tenant_id && user.tenant_id !== 1;
 
   const checkStock = async () => {
     try {
@@ -138,8 +139,6 @@ const Layout = () => {
   }, []);
 
   useEffect(() => {
-    const isBranded = user.tenant_id && user.tenant_id !== 1;
-
     // Hex to RGB Helper
     const hexToRgb = (hex) => {
       const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
@@ -260,7 +259,7 @@ const Layout = () => {
     return (
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4 font-sans select-none relative overflow-hidden">
         {/* Background animation or leaf decoration */}
-        <FloatingStoreIconsBg color={storeSettings.accent_color ? storeSettings.accent_color + '15' : undefined} />
+        <FloatingStoreIconsBg color={isBranded && storeSettings.accent_color ? storeSettings.accent_color + '15' : undefined} />
         
         <div className="w-full max-w-lg bg-white/90 backdrop-blur-2xl rounded-[2.5rem] border border-stone-200/60 shadow-xl p-10 text-center space-y-6 relative z-10 animate-scale-up">
           <div className="flex justify-center">
@@ -323,7 +322,7 @@ const Layout = () => {
     return (
       <div className="flex flex-col h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
         {/* Background floating store icons animation */}
-        <FloatingStoreIconsBg color={storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined} />
+        <FloatingStoreIconsBg color={isBranded && storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined} />
 
         <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100 relative">
           <div className="flex items-center space-x-3 shrink-0 select-none">
@@ -368,7 +367,7 @@ const Layout = () => {
   return (
     <div className="flex h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
       {/* Background floating store icons animation */}
-      <FloatingStoreIconsBg color={location.pathname === '/superadmin' ? '#10B98125' : (storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined)} />
+      <FloatingStoreIconsBg color={isBranded && storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined} />
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (

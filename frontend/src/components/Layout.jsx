@@ -380,10 +380,9 @@ const Layout = () => {
       
       {/* Sidebar */}
       <aside 
-        className="fixed inset-y-0 left-0 transform lg:relative lg:translate-x-0 w-72 shadow-2xl flex flex-col z-50 lg:z-10 transition-all duration-300"
+        className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 w-72 shadow-2xl flex flex-col z-50 lg:z-10 transition-all duration-300`}
         style={{
-          backgroundColor: storeSettings.primary_color || '#064e3b',
-          transform: isSidebarOpen ? 'translateX(0)' : undefined
+          backgroundColor: storeSettings.primary_color || '#064e3b'
         }}
       >
         {/* Mobile Sidebar Close Button */}

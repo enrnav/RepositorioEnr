@@ -105,10 +105,10 @@ const SuperAdmin = () => {
   };
 
   const confirmDeleteTenant = async () => {
-    if (!deleteConfirm || deleteConfirmInput !== deleteConfirm.name) return;
+    if (!deleteConfirm || deleteConfirmInput !== deleteConfirm.nombre) return;
     
     const tenantId = deleteConfirm.id;
-    const tenantName = deleteConfirm.name;
+    const tenantName = deleteConfirm.nombre;
     setDeleteConfirm(null);
     setDeleteConfirmInput('');
 
@@ -174,9 +174,9 @@ const SuperAdmin = () => {
     try {
       await resetSuperAdminTenantPassword(resetPasswordTenant.id, newPassword);
       setResetSuccessData({
-        storeName: resetPasswordTenant.name,
-        adminName: resetPasswordTenant.admin_name,
-        adminUsername: resetPasswordTenant.admin_username,
+        storeName: resetPasswordTenant.nombre,
+        adminName: resetPasswordTenant.nombre_admin,
+        adminUsername: resetPasswordTenant.usuario_admin,
         newPassword: newPassword,
         subdominio: resetPasswordTenant.subdominio
       });
@@ -198,9 +198,9 @@ const SuperAdmin = () => {
   };
 
   const filteredTenants = tenants.filter(t => 
-    t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    t.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (t.subdominio && t.subdominio.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    (t.admin_username && t.admin_username.toLowerCase().includes(searchTerm.toLowerCase()))
+    (t.usuario_admin && t.usuario_admin.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   return (
@@ -313,14 +313,14 @@ const SuperAdmin = () => {
                 <tr key={t.id} className="hover:bg-emerald-500/5 transition-colors">
                   {/* Tienda */}
                   <td className="px-6 py-4 text-center">
-                    <span className="font-extrabold text-brand-900 block uppercase tracking-wide">{t.name}</span>
+                    <span className="font-extrabold text-brand-900 block uppercase tracking-wide">{t.nombre}</span>
                     <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">{t.subdominio}</span>
                   </td>
 
                   {/* Administrador */}
                   <td className="px-6 py-4 text-center">
-                    <span className="block text-stone-850 font-bold">{t.admin_name}</span>
-                    <span className="text-[10px] text-stone-500 block mt-0.5 font-mono">{t.admin_username}</span>
+                    <span className="block text-stone-850 font-bold">{t.nombre_admin}</span>
+                    <span className="text-[10px] text-stone-500 block mt-0.5 font-mono">{t.usuario_admin}</span>
                   </td>
 
                   {/* Registro */}
@@ -331,18 +331,18 @@ const SuperAdmin = () => {
                   {/* Inventario */}
                   <td className="px-6 py-4 text-center">
                     <span className={`px-2.5 py-1 rounded-full font-mono text-xs border ${
-                      t.product_count >= 50 && t.nivel_plan === 'free'
+                      t.cantidad_productos >= 50 && t.nivel_plan === 'free'
                         ? 'text-red-700 bg-red-500/10 border-red-500/20 font-black animate-pulse'
                         : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20'
                     }`}>
-                      {t.product_count}
+                      {t.cantidad_productos}
                     </span>
                   </td>
 
                   {/* Ventas */}
                   <td className="px-6 py-4 text-center">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full font-mono text-xs bg-stone-500/10 text-stone-700 border border-stone-500/20">
-                      {t.sale_count} v.
+                      {t.cantidad_ventas} v.
                     </span>
                   </td>
 
@@ -404,7 +404,7 @@ const SuperAdmin = () => {
                     </button>
                     <button
                       onClick={() => {
-                        setDeleteConfirm({ id: t.id, name: t.name });
+                        setDeleteConfirm({ id: t.id, nombre: t.nombre });
                         setDeleteConfirmInput('');
                       }}
                       className="p-2 text-stone-450 hover:text-red-650 hover:bg-red-500/10 rounded-xl transition-all active:scale-90 cursor-pointer border border-transparent hover:border-red-200"
@@ -434,7 +434,7 @@ const SuperAdmin = () => {
             <div>
               <h3 className="text-sm font-black text-red-600 uppercase tracking-widest mb-2">¡ATENCIÓN CRÍTICA!</h3>
               <p className="text-xs font-bold text-stone-600 leading-relaxed">
-                ¿Estás completamente seguro de que deseas eliminar permanentemente la tienda <strong className="text-stone-900">"{deleteConfirm.name}"</strong> (ID: {deleteConfirm.id})?
+                ¿Estás completamente seguro de que deseas eliminar permanentemente la tienda <strong className="text-stone-900">"{deleteConfirm.nombre}"</strong> (ID: {deleteConfirm.id})?
               </p>
               <p className="text-xs font-semibold text-red-500 mt-2 leading-relaxed">
                 Esta acción eliminará de forma irreversible toda su información, incluyendo usuarios, inventarios, transacciones de caja e historial de ventas.
@@ -447,7 +447,7 @@ const SuperAdmin = () => {
               </label>
               <input
                 type="text"
-                placeholder={deleteConfirm.name}
+                placeholder={deleteConfirm.nombre}
                 value={deleteConfirmInput}
                 onChange={(e) => setDeleteConfirmInput(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all font-semibold text-stone-700 text-xs shadow-inner"
@@ -468,7 +468,7 @@ const SuperAdmin = () => {
               <button
                 type="button"
                 onClick={confirmDeleteTenant}
-                disabled={deleteConfirmInput !== deleteConfirm.name}
+                disabled={deleteConfirmInput !== deleteConfirm.nombre}
                 className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all disabled:shadow-none disabled:cursor-not-allowed"
               >
                 Eliminar Tienda
@@ -489,11 +489,11 @@ const SuperAdmin = () => {
                 <span>Restablecer Contraseña Admin</span>
               </h3>
               <p className="text-xs font-bold text-stone-600 leading-relaxed">
-                Estás a punto de cambiar la contraseña de administrador para la tienda <strong className="text-stone-900">"{resetPasswordTenant.name}"</strong>.
+                Estás a punto de cambiar la contraseña de administrador para la tienda <strong className="text-stone-900">"{resetPasswordTenant.nombre}"</strong>.
               </p>
               <div className="mt-2 p-3 bg-stone-50 border border-stone-150 rounded-xl space-y-1 text-[11px] font-semibold text-stone-500">
-                <p>Usuario: <strong className="text-stone-700 font-mono">@{resetPasswordTenant.admin_username}</strong></p>
-                <p>Nombre: <strong className="text-stone-700">{resetPasswordTenant.admin_name}</strong></p>
+                <p>Usuario: <strong className="text-stone-700 font-mono">@{resetPasswordTenant.usuario_admin}</strong></p>
+                <p>Nombre: <strong className="text-stone-700">{resetPasswordTenant.nombre_admin}</strong></p>
               </div>
             </div>
 

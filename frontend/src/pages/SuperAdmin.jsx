@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { ShieldAlert, Users, CreditCard, Award, Activity, Search, RefreshCw, Trash2, Edit2, Check, X, Shield } from 'lucide-react';
-import { fetchSuperAdminTenants, updateSuperAdminTenantPlan, deleteSuperAdminTenant } from '../api';
+import AlertModal from '../components/AlertModal';
+import { createPortal } from 'react-dom';
+import { ShieldAlert, Users, CreditCard, Award, Activity, Search, RefreshCw, Trash2, Edit2, Check, X, Shield, Key } from 'lucide-react';
+import { fetchSuperAdminTenants, updateSuperAdminTenantPlan, deleteSuperAdminTenant, resetSuperAdminTenantPassword } from '../api';
 
 const SuperAdmin = () => {
   const [tenants, setTenants] = useState([]);
@@ -9,6 +11,16 @@ const SuperAdmin = () => {
   const [success, setSuccess] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
+  
+  // Custom modal confirm states
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+
+  // Reset password states
+  const [resetPasswordTenant, setResetPasswordTenant] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetSuccessData, setResetSuccessData] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   // Stats
   const [stats, setStats] = useState({
@@ -21,15 +33,16 @@ const SuperAdmin = () => {
   const loadTenants = async () => {
     setLoading(true);
     setError('');
+    setSuccess('');
     try {
       const data = await fetchSuperAdminTenants();
-      // Filter out the primary creator tenant from the list to avoid editing it
+      // Filter out the primary creator inquilino from the list to avoid editing it
       const customTenants = data.filter(t => t.id !== 1);
       setTenants(customTenants);
       
       // Calculate statistics
       const total = customTenants.length;
-      const premium = customTenants.filter(t => t.plan_tier === 'premium').length;
+      const premium = customTenants.filter(t => t.nivel_plan === 'premium').length;
       const free = total - premium;
       const projectedRevenue = premium * 499; // Assume $499 MXN per premium store/month
 
@@ -56,8 +69,8 @@ const SuperAdmin = () => {
 
     try {
       await updateSuperAdminTenantPlan(tenantId, {
-        plan_tier: newPlan,
-        subscription_status: newStatus
+        nivel_plan: newPlan,
+        estado_suscripcion: newStatus
       });
       setSuccess(`Plan de la tienda actualizado a ${newPlan.toUpperCase()} con éxito.`);
       loadTenants();
@@ -78,32 +91,26 @@ const SuperAdmin = () => {
 
     try {
       await updateSuperAdminTenantPlan(tenantId, {
-        plan_tier: planTier,
-        subscription_status: newStatus
+        nivel_plan: planTier,
+        estado_suscripcion: newStatus
       });
       setSuccess(`Estado de suscripción actualizado a ${newStatus.toUpperCase()} con éxito.`);
       loadTenants();
     } catch (err) {
-      console.error("Error updating status:", err);
+      console.error("Error updating estado:", err);
       setError("No se pudo actualizar el estado de la suscripción.");
     } finally {
       setUpdatingId(null);
     }
   };
 
-  const handleDeleteTenant = async (tenantId, tenantName) => {
-    const confirmDelete = window.confirm(
-      `¡ATENCIÓN CRÍTICA! ¿Estás completamente seguro de que deseas eliminar permanentemente la tienda "${tenantName}" (ID: ${tenantId})?\n\nEsta acción eliminará de forma irreversible toda su información, incluyendo usuarios, inventarios, transacciones de caja e historial de ventas.`
-    );
-    if (!confirmDelete) return;
-
-    const finalConfirm = window.prompt(
-      `Para proceder, escribe el nombre de la tienda exactamente igual a: "${tenantName}"`
-    );
-    if (finalConfirm !== tenantName) {
-      alert("Confirmación incorrecta. Eliminación cancelada.");
-      return;
-    }
+  const confirmDeleteTenant = async () => {
+    if (!deleteConfirm || deleteConfirmInput !== deleteConfirm.name) return;
+    
+    const tenantId = deleteConfirm.id;
+    const tenantName = deleteConfirm.name;
+    setDeleteConfirm(null);
+    setDeleteConfirmInput('');
 
     setLoading(true);
     setError('');
@@ -113,15 +120,86 @@ const SuperAdmin = () => {
       setSuccess(`La tienda "${tenantName}" fue eliminada de la plataforma.`);
       loadTenants();
     } catch (err) {
-      console.error("Error deleting tenant:", err);
+      console.error("Error deleting inquilino:", err);
       setError("Error al eliminar la tienda de la base de datos.");
       setLoading(false);
     }
   };
 
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return 0;
+    let score = 0;
+    if (pwd.length >= 12) score += 1;
+    if (/[A-Z]/.test(pwd)) score += 1;
+    if (/[0-9]/.test(pwd)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pwd)) score += 1;
+    return score;
+  };
+
+  const generateSecurePassword = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+    let password = "";
+    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lower = "abcdefghijklmnopqrstuvwxyz";
+    const num = "0123456789";
+    const spec = "!@#$%^&*";
+    
+    password += upper[Math.floor(Math.random() * upper.length)];
+    password += lower[Math.floor(Math.random() * lower.length)];
+    password += num[Math.floor(Math.random() * num.length)];
+    password += spec[Math.floor(Math.random() * spec.length)];
+    
+    for (let i = 0; i < 10; i++) {
+      password += chars[Math.floor(Math.random() * chars.length)];
+    }
+    
+    password = password.split('').sort(() => 0.5 - Math.random()).join('');
+    setNewPassword(password);
+  };
+
+  const handleResetPasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (!resetPasswordTenant) return;
+    
+    const strength = getPasswordStrength(newPassword);
+    if (strength < 4) {
+      setError("La contraseña no cumple con los requisitos mínimos de seguridad.");
+      return;
+    }
+    
+    setLoading(true);
+    setError('');
+    setSuccess('');
+    
+    try {
+      await resetSuperAdminTenantPassword(resetPasswordTenant.id, newPassword);
+      setResetSuccessData({
+        storeName: resetPasswordTenant.name,
+        adminName: resetPasswordTenant.admin_name,
+        adminUsername: resetPasswordTenant.admin_username,
+        newPassword: newPassword,
+        subdominio: resetPasswordTenant.subdominio
+      });
+      setResetPasswordTenant(null);
+    } catch (err) {
+      console.error("Error resetting password:", err);
+      setError("No se pudo restablecer la contraseña del inquilino.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyCredentials = () => {
+    if (!resetSuccessData) return;
+    const text = `Comercio: ${resetSuccessData.storeName}\nURL de Acceso: https://${resetSuccessData.subdominio}.tu-dominio.com\nUsuario Administrador: ${resetSuccessData.adminUsername}\nNueva Contraseña: ${resetSuccessData.newPassword}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const filteredTenants = tenants.filter(t => 
     t.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (t.subdomain && t.subdomain.toLowerCase().includes(searchTerm.toLowerCase())) ||
+    (t.subdominio && t.subdominio.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (t.admin_username && t.admin_username.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
@@ -140,66 +218,59 @@ const SuperAdmin = () => {
         </div>
         <button
           onClick={loadTenants}
-          className="flex items-center gap-2 bg-white/10 backdrop-blur-[3px] border border-white/40 text-stone-700 px-4 py-2.5 rounded-xl text-xs font-bold hover:bg-white/30 hover:shadow-md active:scale-95 transition-all shadow-sm"
+          className="flex items-center gap-2 bg-stone-100 hover:bg-stone-200 border border-stone-200 text-stone-700 px-4 py-2.5 rounded-xl text-xs font-bold active:scale-95 transition-all shadow-sm"
         >
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
           <span>Actualizar Lista</span>
         </button>
       </div>
 
-      {error && (
-        <div className="flex items-center space-x-2 bg-red-500/10 border border-red-500/20 text-red-700 px-4 py-3 rounded-xl backdrop-blur-[3px]">
-          <ShieldAlert className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-semibold">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="flex items-center space-x-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 px-4 py-3 rounded-xl backdrop-blur-[3px]">
-          <Check className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-semibold">{success}</span>
-        </div>
-      )}
+      <AlertModal 
+        isOpen={!!success || !!error}
+        tipo={success ? 'success' : 'error'}
+        mensaje={success || error}
+        onClose={() => { setSuccess(''); setError(''); }}
+      />
 
       {/* Tarjetas de Métricas de SaaS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 transition-all duration-300">
+        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 hover:-translate-y-1.5 hover:shadow-xl hover:border-emerald-500/20 transition-all duration-300 group">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">Tiendas Registradas</span>
             <p className="text-3xl font-black text-brand-900">{stats.total}</p>
           </div>
-          <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-700">
-            <Users size={24} />
+          <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-700 group-hover:scale-110 transition-transform">
+            <Users size={24} className="animate-bounce" />
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 transition-all duration-300">
+        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 hover:-translate-y-1.5 hover:shadow-xl hover:border-purple-500/20 transition-all duration-300 group">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">Planes Premium Activos</span>
             <p className="text-3xl font-black text-purple-700">{stats.premium}</p>
           </div>
-          <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-600">
-            <Award size={24} />
+          <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-600 group-hover:scale-110 transition-transform">
+            <Award size={24} className="animate-bounce" />
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 transition-all duration-300">
+        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 hover:-translate-y-1.5 hover:shadow-xl hover:border-blue-500/20 transition-all duration-300 group">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">Planes Gratis / Demo</span>
             <p className="text-3xl font-black text-blue-705 text-blue-700">{stats.free}</p>
           </div>
-          <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600">
-            <Activity size={24} />
+          <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-600 group-hover:scale-110 transition-transform">
+            <Activity size={24} className="animate-bounce" />
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 transition-all duration-300">
+        <div className="bg-white/10 backdrop-blur-[3px] p-6 rounded-[2rem] border border-white/40 shadow-soft flex items-center justify-between hover:scale-[1.02] hover:bg-white/20 hover:-translate-y-1.5 hover:shadow-xl hover:border-emerald-500/20 transition-all duration-300 group">
           <div className="space-y-1">
             <span className="text-[10px] font-black text-stone-500 uppercase tracking-wider">Ingreso Proyectado</span>
             <p className="text-3xl font-black text-emerald-700">${stats.projectedRevenue.toLocaleString()} <span className="text-[10px] text-stone-500">MXN/mes</span></p>
           </div>
-          <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-600">
-            <CreditCard size={24} />
+          <div className="p-3 bg-emerald-500/10 rounded-2xl text-emerald-600 group-hover:scale-110 transition-transform">
+            <CreditCard size={24} className="animate-bounce" />
           </div>
         </div>
       </div>
@@ -243,7 +314,7 @@ const SuperAdmin = () => {
                   {/* Tienda */}
                   <td className="px-6 py-4 text-center">
                     <span className="font-extrabold text-brand-900 block uppercase tracking-wide">{t.name}</span>
-                    <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">{t.subdomain}</span>
+                    <span className="text-[10px] text-stone-500 font-mono mt-0.5 block">{t.subdominio}</span>
                   </td>
 
                   {/* Administrador */}
@@ -254,13 +325,13 @@ const SuperAdmin = () => {
 
                   {/* Registro */}
                   <td className="px-6 py-4 text-center text-stone-600 font-semibold">
-                    {t.created_at ? new Date(t.created_at).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'}
+                    {t.creado_en ? new Date(t.creado_en).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'}
                   </td>
 
                   {/* Inventario */}
                   <td className="px-6 py-4 text-center">
                     <span className={`px-2.5 py-1 rounded-full font-mono text-xs border ${
-                      t.product_count >= 50 && t.plan_tier === 'free'
+                      t.product_count >= 50 && t.nivel_plan === 'free'
                         ? 'text-red-700 bg-red-500/10 border-red-500/20 font-black animate-pulse'
                         : 'text-emerald-700 bg-emerald-500/10 border-emerald-500/20'
                     }`}>
@@ -278,51 +349,64 @@ const SuperAdmin = () => {
                   {/* Pagos */}
                   <td className="px-6 py-4 text-center">
                     <span className="block font-black text-stone-800">
-                      {t.last_payment_date ? new Date(t.last_payment_date).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'Sin pagos'}
+                      {t.fecha_ultimo_pago ? new Date(t.fecha_ultimo_pago).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'Sin pagos'}
                     </span>
                     <span className="block text-[9px] text-stone-500 font-extrabold uppercase mt-1 tracking-wider">
-                      {t.subscription_end ? `Vence: ${new Date(t.subscription_end).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' })}` : 'N/A'}
+                      {t.fin_suscripcion ? `Vence: ${new Date(t.fin_suscripcion).toLocaleDateString('es-MX', { year: 'numeric', month: '2-digit', day: '2-digit' })}` : 'N/A'}
                     </span>
                   </td>
 
                   {/* Plan */}
                   <td className="px-6 py-4 text-center">
                     <button
-                      onClick={() => handleUpdatePlan(t.id, t.plan_tier, t.subscription_status)}
+                      onClick={() => handleUpdatePlan(t.id, t.nivel_plan, t.estado_suscripcion)}
                       disabled={updatingId !== null}
                       className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer active:scale-95 transition-all shadow-sm ${
-                        t.plan_tier === 'premium'
+                        t.nivel_plan === 'premium'
                           ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-transparent hover:shadow-purple-500/20 hover:scale-105'
                           : 'bg-white/10 text-stone-700 border-white/30 hover:bg-white/30 hover:scale-105'
                       }`}
                     >
-                      {t.plan_tier === 'premium' ? '🏆 PREMIUM (ILIMITADO)' : '🆓 GRATIS (MAX 50)'}
+                      {t.nivel_plan === 'premium' ? '🏆 PREMIUM (ILIMITADO)' : '🆓 GRATIS (MAX 50)'}
                     </button>
                   </td>
 
                   {/* Estado */}
                   <td className="px-6 py-4 text-center">
                     <button
-                      onClick={() => handleUpdateStatus(t.id, t.plan_tier, t.subscription_status)}
+                      onClick={() => handleUpdateStatus(t.id, t.nivel_plan, t.estado_suscripcion)}
                       disabled={updatingId !== null}
                       className={`px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-wider border cursor-pointer active:scale-95 transition-all shadow-sm ${
-                        t.subscription_status === 'active'
+                        t.estado_suscripcion === 'active'
                           ? 'bg-emerald-500/20 text-emerald-800 border-emerald-500/30 hover:bg-emerald-500/30 hover:scale-105'
-                          : t.subscription_status === 'trialing'
+                          : t.estado_suscripcion === 'trialing'
                           ? 'bg-blue-500/20 text-blue-800 border-blue-500/30 hover:bg-blue-500/30 hover:scale-105'
                           : 'bg-red-500/20 text-red-800 border-red-500/30 hover:bg-red-500/30 hover:scale-105'
                       }`}
                     >
-                      {t.subscription_status === 'active' && '● ACTIVA'}
-                      {t.subscription_status === 'trialing' && '● EN PRUEBA'}
-                      {t.subscription_status === 'canceled' && '● SUSPENDIDA'}
+                      {t.estado_suscripcion === 'active' && '● ACTIVA'}
+                      {t.estado_suscripcion === 'trialing' && '● EN PRUEBA'}
+                      {t.estado_suscripcion === 'canceled' && '● SUSPENDIDA'}
                     </button>
                   </td>
 
                   {/* Acciones */}
                   <td className="px-6 py-4 text-center">
                     <button
-                      onClick={() => handleDeleteTenant(t.id, t.name)}
+                      onClick={() => {
+                        setResetPasswordTenant(t);
+                        setNewPassword('');
+                      }}
+                      className="p-2 text-stone-450 hover:text-emerald-700 hover:bg-emerald-500/10 rounded-xl transition-all active:scale-90 cursor-pointer border border-transparent hover:border-emerald-200 mr-1"
+                      title="Restablecer Contraseña Admin"
+                    >
+                      <Key size={16} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setDeleteConfirm({ id: t.id, name: t.name });
+                        setDeleteConfirmInput('');
+                      }}
                       className="p-2 text-stone-450 hover:text-red-650 hover:bg-red-500/10 rounded-xl transition-all active:scale-90 cursor-pointer border border-transparent hover:border-red-200"
                       title="Eliminar Tienda Completa"
                     >
@@ -342,6 +426,217 @@ const SuperAdmin = () => {
           </table>
         </div>
       </div>
+
+      {/* Venta Emergente de Eliminación Crítica */}
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full border border-stone-200 shadow-2xl animate-scale-up space-y-6">
+            <div>
+              <h3 className="text-sm font-black text-red-600 uppercase tracking-widest mb-2">¡ATENCIÓN CRÍTICA!</h3>
+              <p className="text-xs font-bold text-stone-600 leading-relaxed">
+                ¿Estás completamente seguro de que deseas eliminar permanentemente la tienda <strong className="text-stone-900">"{deleteConfirm.name}"</strong> (ID: {deleteConfirm.id})?
+              </p>
+              <p className="text-xs font-semibold text-red-500 mt-2 leading-relaxed">
+                Esta acción eliminará de forma irreversible toda su información, incluyendo usuarios, inventarios, transacciones de caja e historial de ventas.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-stone-500 uppercase tracking-wider block">
+                Para confirmar la eliminación, escribe el nombre de la tienda exactamente:
+              </label>
+              <input
+                type="text"
+                placeholder={deleteConfirm.name}
+                value={deleteConfirmInput}
+                onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all font-semibold text-stone-700 text-xs shadow-inner"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteConfirm(null);
+                  setDeleteConfirmInput('');
+                }}
+                className="flex-1 py-3 px-4 border border-stone-200 hover:bg-stone-50 text-stone-600 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteTenant}
+                disabled={deleteConfirmInput !== deleteConfirm.name}
+                className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all disabled:shadow-none disabled:cursor-not-allowed"
+              >
+                Eliminar Tienda
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Venta Emergente de Restablecimiento de Contraseña */}
+      {resetPasswordTenant && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full border border-stone-200 shadow-2xl animate-scale-up space-y-6">
+            <div>
+              <h3 className="text-sm font-black text-emerald-700 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                <Key size={16} />
+                <span>Restablecer Contraseña Admin</span>
+              </h3>
+              <p className="text-xs font-bold text-stone-600 leading-relaxed">
+                Estás a punto de cambiar la contraseña de administrador para la tienda <strong className="text-stone-900">"{resetPasswordTenant.name}"</strong>.
+              </p>
+              <div className="mt-2 p-3 bg-stone-50 border border-stone-150 rounded-xl space-y-1 text-[11px] font-semibold text-stone-500">
+                <p>Usuario: <strong className="text-stone-700 font-mono">@{resetPasswordTenant.admin_username}</strong></p>
+                <p>Nombre: <strong className="text-stone-700">{resetPasswordTenant.admin_name}</strong></p>
+              </div>
+            </div>
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-stone-500 uppercase tracking-wider block">
+                  Nueva Contraseña:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contraseña de al menos 12 caracteres..."
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-stone-200 bg-stone-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-semibold text-stone-700 text-xs shadow-inner"
+                  />
+                  <button
+                    type="button"
+                    onClick={generateSecurePassword}
+                    className="px-4 bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+                  >
+                    Generar
+                  </button>
+                </div>
+
+                {newPassword && (
+                  <div className="mt-2 space-y-1 animate-fade-in">
+                    <div className="flex justify-between items-center text-[10px]">
+                      <span className="text-stone-500 font-bold">Fortaleza:</span>
+                      <span className={`font-black uppercase ${
+                        getPasswordStrength(newPassword) === 1 ? 'text-red-500' :
+                        getPasswordStrength(newPassword) === 2 ? 'text-orange-500' :
+                        getPasswordStrength(newPassword) === 3 ? 'text-amber-500' :
+                        getPasswordStrength(newPassword) === 4 ? 'text-emerald-700' :
+                        'text-stone-400'
+                      }`}>
+                        {getPasswordStrength(newPassword) === 0 && 'Ninguna'}
+                        {getPasswordStrength(newPassword) === 1 && 'Muy débil'}
+                        {getPasswordStrength(newPassword) === 2 && 'Regular'}
+                        {getPasswordStrength(newPassword) === 3 && 'Buena'}
+                        {getPasswordStrength(newPassword) === 4 && 'Fuerte (Segura)'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-300 ${
+                          getPasswordStrength(newPassword) === 1 ? 'bg-red-500 w-1/4' :
+                          getPasswordStrength(newPassword) === 2 ? 'bg-orange-500 w-2/4' :
+                          getPasswordStrength(newPassword) === 3 ? 'bg-amber-400 w-3/4' :
+                          getPasswordStrength(newPassword) === 4 ? 'bg-emerald-500 w-full' :
+                          'w-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex space-x-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setResetPasswordTenant(null)}
+                  className="flex-1 py-3 px-4 border border-stone-200 hover:bg-stone-50 text-stone-600 rounded-xl text-xs font-bold transition-all"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={getPasswordStrength(newPassword) < 4}
+                  className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 disabled:bg-stone-200 disabled:text-stone-400 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all disabled:shadow-none disabled:cursor-not-allowed"
+                >
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Venta Emergente de Credenciales Copiables */}
+      {resetSuccessData && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full border border-stone-200 shadow-2xl animate-scale-up space-y-6 text-center">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="p-4 bg-emerald-500/15 text-emerald-700 rounded-full animate-bounce">
+                <Check size={28} />
+              </div>
+              <h3 className="text-base font-black text-emerald-800 uppercase tracking-widest">¡Contraseña Restablecida!</h3>
+              <p className="text-xs font-semibold text-stone-500 leading-relaxed">
+                La contraseña ha sido actualizada. Comparte estas credenciales con el administrador de la tienda.
+              </p>
+            </div>
+
+            <div className="bg-stone-50 border border-stone-150 rounded-[1.5rem] p-5 space-y-3 text-left font-semibold text-xs text-stone-600">
+              <div>
+                <span className="text-[10px] font-black text-stone-400 uppercase tracking-wider block">Comercio:</span>
+                <span className="text-stone-850 font-extrabold">{resetSuccessData.storeName}</span>
+              </div>
+              <div>
+                <span className="text-[10px] font-black text-stone-400 uppercase tracking-wider block">URL de Acceso:</span>
+                <a 
+                  href={`https://${resetSuccessData.subdominio}.tu-dominio.com`} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="text-emerald-700 hover:underline font-mono"
+                >
+                  https://{resetSuccessData.subdominio}.tu-dominio.com
+                </a>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-[10px] font-black text-stone-400 uppercase tracking-wider block">Usuario Admin:</span>
+                  <span className="text-stone-850 font-mono">@{resetSuccessData.adminUsername}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-black text-stone-400 uppercase tracking-wider block">Nueva Contraseña:</span>
+                  <span className="text-stone-850 font-mono select-all bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">{resetSuccessData.newPassword}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={copyCredentials}
+                className="flex-1 py-3 px-4 border border-stone-200 hover:bg-stone-50 text-stone-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>{copied ? '¡Copiado!' : 'Copiar Credenciales'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setResetSuccessData(null)}
+                className="flex-1 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

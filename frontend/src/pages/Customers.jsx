@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AlertModal from '../components/AlertModal';
 import { createPortal } from 'react-dom';
 import { 
   Users as CustomersIcon, 
@@ -43,14 +44,14 @@ const Customers = () => {
   
   const [formData, setFormData] = useState({
     name: '',
-    phone: '',
-    email: '',
-    credit_limit: 0.0
+    telefono: '',
+    correo: '',
+    limite_credito: 0.0
   });
 
   const [paymentData, setPaymentData] = useState({
-    amount: '',
-    notes: ''
+    monto: '',
+    notas: ''
   });
 
   const [error, setError] = useState('');
@@ -98,9 +99,9 @@ const Customers = () => {
     setSelectedCustomer(null);
     setFormData({
       name: '',
-      phone: '',
-      email: '',
-      credit_limit: '0'
+      telefono: '',
+      correo: '',
+      limite_credito: '0'
     });
     setError('');
     setShowFormModal(true);
@@ -110,16 +111,16 @@ const Customers = () => {
     setSelectedCustomer(customer);
     setFormData({
       name: customer.name,
-      phone: customer.phone || '',
-      email: customer.email || '',
-      credit_limit: customer.credit_limit.toString()
+      telefono: customer.telefono || '',
+      correo: customer.correo || '',
+      limite_credito: customer.limite_credito.toString()
     });
     setError('');
     setShowFormModal(true);
   };
 
   const handleDeleteClick = (customer) => {
-    if (customer.current_balance > 0) {
+    if (customer.saldo_actual > 0) {
       setError('No se puede eliminar un cliente con saldo deudor pendiente.');
       return;
     }
@@ -153,7 +154,7 @@ const Customers = () => {
     try {
       const payload = {
         ...formData,
-        credit_limit: parseFloat(formData.credit_limit) || 0
+        limite_credito: parseFloat(formData.limite_credito) || 0
       };
       if (selectedCustomer) {
         await updateCustomer(selectedCustomer.id, payload);
@@ -173,8 +174,8 @@ const Customers = () => {
   const handlePaymentClick = (customer) => {
     setSelectedCustomer(customer);
     setPaymentData({
-      amount: '',
-      notes: ''
+      monto: '',
+      notas: ''
     });
     setError('');
     setShowPaymentModal(true);
@@ -184,7 +185,7 @@ const Customers = () => {
     e.preventDefault();
     setError('');
 
-    const amt = parseFloat(paymentData.amount);
+    const amt = parseFloat(paymentData.monto);
     if (isNaN(amt) || amt <= 0) {
       setError('El monto del abono debe ser un número mayor a 0.');
       return;
@@ -192,8 +193,8 @@ const Customers = () => {
 
     try {
       await registerCustomerPayment(selectedCustomer.id, {
-        amount: amt,
-        notes: paymentData.notes
+        monto: amt,
+        notas: paymentData.notas
       });
       setSuccess(`Abono de $${amt.toFixed(2)} registrado para ${selectedCustomer.name}.`);
       setShowPaymentModal(false);
@@ -242,19 +243,12 @@ const Customers = () => {
         </button>
       </div>
 
-      {error && (
-        <div className="flex items-center space-x-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl">
-          <CheckCircle className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm">{success}</span>
-        </div>
-      )}
+      <AlertModal 
+        isOpen={!!success || !!error}
+        tipo={success ? 'success' : 'error'}
+        mensaje={success || error}
+        onClose={() => { setSuccess(''); setError(''); }}
+      />
 
       {/* Buscador */}
       <div className="bg-white/10 backdrop-blur-[3px] rounded-[2.2rem] border border-white/40 shadow-sm p-4">
@@ -308,30 +302,30 @@ const Customers = () => {
                       <div className="text-xs text-slate-400">ID: {c.id}</div>
                     </td>
                     <td className="p-4 space-y-1 text-center">
-                      {c.phone && (
+                      {c.telefono && (
                         <div className="flex items-center justify-center text-xs text-slate-600">
                           <Phone className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                          {c.phone}
+                          {c.telefono}
                         </div>
                       )}
-                      {c.email && (
+                      {c.correo && (
                         <div className="flex items-center justify-center text-xs text-slate-600">
                           <Mail className="w-3.5 h-3.5 mr-1 text-slate-400" />
-                          {c.email}
+                          {c.correo}
                         </div>
                       )}
-                      {!c.phone && !c.email && <span className="text-xs text-slate-400 italic">Sin datos</span>}
+                      {!c.telefono && !c.correo && <span className="text-xs text-slate-400 italic">Sin datos</span>}
                     </td>
                     <td className="p-4 text-center">
-                      <span className="font-medium text-slate-700">${c.credit_limit.toFixed(2)}</span>
+                      <span className="font-medium text-slate-700">${c.limite_credito.toFixed(2)}</span>
                     </td>
                     <td className="p-4 text-center">
                       <span className={`font-bold text-sm px-2.5 py-1 rounded-full ${
-                        c.current_balance > 0 
+                        c.saldo_actual > 0 
                           ? 'bg-amber-50 text-amber-700 border border-amber-100' 
                           : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                       }`}>
-                        ${c.current_balance.toFixed(2)}
+                        ${c.saldo_actual.toFixed(2)}
                       </span>
                     </td>
                     <td className="p-4 text-center">
@@ -359,16 +353,16 @@ const Customers = () => {
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
-                        {(currentUser?.role === 'admin' || currentUser?.role === 'supervisor') && (
+                        {(currentUser?.rol === 'admin' || currentUser?.rol === 'supervisor') && (
                           <button
                             onClick={() => handleDeleteClick(c)}
-                            disabled={c.current_balance > 0}
+                            disabled={c.saldo_actual > 0}
                             className={`p-1.5 rounded-lg transition-all ${
-                              c.current_balance > 0 
+                              c.saldo_actual > 0 
                                 ? 'text-slate-300 cursor-not-allowed' 
                                 : 'text-red-600 hover:bg-red-50'
                             }`}
-                            title={c.current_balance > 0 ? "No se puede eliminar con saldo pendiente" : "Eliminar"}
+                            title={c.saldo_actual > 0 ? "No se puede eliminar con saldo pendiente" : "Eliminar"}
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -415,8 +409,8 @@ const Customers = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Teléfono</label>
                 <input
                   type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                  value={formData.telefono}
+                  onChange={(e) => setFormData(prev => ({ ...prev, telefono: e.target.value }))}
                   placeholder="Ej. 8112345678"
                   className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
@@ -426,8 +420,8 @@ const Customers = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Correo Electrónico</label>
                 <input
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  value={formData.correo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, correo: e.target.value }))}
                   placeholder="ejemplo@correo.com"
                   className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
@@ -441,8 +435,8 @@ const Customers = () => {
                     type="number"
                     step="0.01"
                     min="0"
-                    value={formData.credit_limit}
-                    onChange={(e) => setFormData(prev => ({ ...prev, credit_limit: e.target.value }))}
+                    value={formData.limite_credito}
+                    onChange={(e) => setFormData(prev => ({ ...prev, limite_credito: e.target.value }))}
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
                 </div>
@@ -486,7 +480,7 @@ const Customers = () => {
                 <div className="font-bold text-lg">{selectedCustomer?.name}</div>
                 <div className="flex justify-between text-sm pt-2 border-t border-emerald-100/50">
                   <span>Saldo actual deudor:</span>
-                  <span className="font-bold">${selectedCustomer?.current_balance.toFixed(2)}</span>
+                  <span className="font-bold">${selectedCustomer?.saldo_actual.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -499,8 +493,8 @@ const Customers = () => {
                     step="0.01"
                     min="0.01"
                     required
-                    value={paymentData.amount}
-                    onChange={(e) => setPaymentData(prev => ({ ...prev, amount: e.target.value }))}
+                    value={paymentData.monto}
+                    onChange={(e) => setPaymentData(prev => ({ ...prev, monto: e.target.value }))}
                     placeholder="0.00"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                   />
@@ -511,8 +505,8 @@ const Customers = () => {
                 <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notas / Observaciones</label>
                 <input
                   type="text"
-                  value={paymentData.notes}
-                  onChange={(e) => setPaymentData(prev => ({ ...prev, notes: e.target.value }))}
+                  value={paymentData.notas}
+                  onChange={(e) => setPaymentData(prev => ({ ...prev, notas: e.target.value }))}
                   placeholder="Ej. Abono parcial en efectivo"
                   className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
@@ -553,11 +547,11 @@ const Customers = () => {
             <div className="p-4 border-b border-slate-100 flex flex-wrap gap-4 items-center justify-between bg-slate-50/50">
               <div>
                 <div className="text-sm font-bold text-slate-800">{selectedCustomer?.name}</div>
-                <div className="text-xs text-slate-500">Límite de crédito: ${selectedCustomer?.credit_limit.toFixed(2)}</div>
+                <div className="text-xs text-slate-500">Límite de crédito: ${selectedCustomer?.limite_credito.toFixed(2)}</div>
               </div>
               <div className="text-right">
                 <div className="text-xs font-semibold uppercase text-slate-400">Saldo actual deudor</div>
-                <div className="text-xl font-bold text-emerald-700">${selectedCustomer?.current_balance.toFixed(2)}</div>
+                <div className="text-xl font-bold text-emerald-700">${selectedCustomer?.saldo_actual.toFixed(2)}</div>
               </div>
             </div>
 
@@ -574,7 +568,7 @@ const Customers = () => {
               ) : (
                 <div className="relative border-l border-slate-200 ml-4 space-y-6 pb-4">
                   {customerHistory.map((h, index) => {
-                    const isAbono = h.type === 'abono';
+                    const isAbono = h.tipo === 'abono';
                     return (
                       <div key={index} className="relative pl-6">
                         <div className={`absolute -left-[9px] top-1.5 w-4 h-4 rounded-full border-2 bg-white ${
@@ -585,19 +579,19 @@ const Customers = () => {
                             <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                               isAbono 
                                 ? 'bg-emerald-50 text-emerald-700' 
-                                : h.type === 'compra_credito'
+                                : h.tipo === 'compra_credito'
                                   ? 'bg-amber-50 text-amber-700'
                                   : 'bg-blue-50 text-blue-700'
                             }`}>
-                              {isAbono ? 'ABONO EN EFECTIVO' : h.type === 'compra_credito' ? 'COMPRA A CRÉDITO' : 'COMPRA ASOCIADA'}
+                              {isAbono ? 'ABONO EN EFECTIVO' : h.tipo === 'compra_credito' ? 'COMPRA A CRÉDITO' : 'COMPRA ASOCIADA'}
                             </span>
                             <p className="text-sm font-semibold text-slate-800 mt-1">{h.description}</p>
-                            <p className="text-xs text-slate-400">{new Date(h.created_at).toLocaleString()}</p>
+                            <p className="text-xs text-slate-400">{new Date(h.creado_en).toLocaleString()}</p>
                           </div>
                           <div className={`font-bold text-right text-sm ${
                             isAbono ? 'text-emerald-600' : 'text-amber-600'
                           }`}>
-                            {isAbono ? '-' : '+'}${h.amount.toFixed(2)}
+                            {isAbono ? '-' : '+'}${h.monto.toFixed(2)}
                           </div>
                         </div>
                       </div>

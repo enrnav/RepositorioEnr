@@ -55,7 +55,7 @@ DECLARE
     v_stock_actual INT;
 BEGIN
     -- 1. Bloqueamos la fila del producto
-    SELECT quantity INTO v_stock_actual
+    SELECT cantidad INTO v_stock_actual
     FROM products
     WHERE id = p_producto_id
     FOR UPDATE;
@@ -73,12 +73,12 @@ BEGIN
 
     -- 4. Actualizamos inventario
     UPDATE products
-    SET quantity = quantity - p_cantidad,
-        sold = sold + p_cantidad
+    SET cantidad = cantidad - p_cantidad,
+        vendido = vendido + p_cantidad
     WHERE id = p_producto_id;
 
     -- 5. Insertamos en historial
-    INSERT INTO sales_history (product_id, quantity, created_at)
+    INSERT INTO sales_history (producto_id, cantidad, creado_en)
     VALUES (p_producto_id, p_cantidad, p_fecha_venta);
 END;
 $$ LANGUAGE plpgsql;""")
@@ -93,7 +93,7 @@ DECLARE
     v_is_cancelled BOOLEAN;
 BEGIN
     -- 1. Obtener detalles de la venta y bloquear
-    SELECT product_id, quantity, is_cancelled INTO v_product_id, v_quantity, v_is_cancelled
+    SELECT producto_id, cantidad, cancelado INTO v_product_id, v_quantity, v_is_cancelled
     FROM sales_history
     WHERE id = p_sale_id
     FOR UPDATE;
@@ -110,19 +110,19 @@ BEGIN
 
     -- 4. Marcar como cancelada y registrar motivo
     UPDATE sales_history
-    SET is_cancelled = TRUE,
-        cancel_reason = p_cancel_reason
+    SET cancelado = TRUE,
+        motivo_cancelacion = p_cancel_reason
     WHERE id = p_sale_id;
 
     -- 5. Devolver stock al producto
     UPDATE products
-    SET quantity = quantity + v_quantity,
-        sold = sold - v_quantity
+    SET cantidad = cantidad + v_quantity,
+        vendido = vendido - v_quantity
     WHERE id = v_product_id;
 
     -- 6. Insertar registro en product_returns
-    INSERT INTO product_returns (sale_id, product_id, quantity, price, reason, created_at)
-    SELECT p_sale_id, v_product_id, v_quantity, price, p_cancel_reason, TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS')
+    INSERT INTO product_returns (venta_id, producto_id, cantidad, precio, motivo, creado_en)
+    SELECT p_sale_id, v_product_id, v_quantity, precio, p_cancel_reason, TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS')
     FROM products
     WHERE id = v_product_id;
 END;
@@ -135,22 +135,22 @@ $$ LANGUAGE plpgsql;""")
         sql_lines.append("-- ========================================================")
         
         tables = [
-            ("store_settings", models.StoreSettings),
-            ("users", models.User),
-            ("suppliers", models.Supplier),
-            ("billing_profiles", models.BillingProfile),
-            ("customers", models.Customer),
-            ("products", models.Product),
-            ("product_variants", models.ProductVariant),
-            ("invoices", models.Invoice),
-            ("shifts", models.Shift),
-            ("customer_payments", models.CustomerPayment),
-            ("purchases", models.Purchase),
-            ("purchase_items", models.PurchaseItem),
-            ("cash_movements", models.CashMovement),
-            ("sales_history", models.SaleHistory),
-            ("product_returns", models.ProductReturn),
-            ("notifications", models.Notification)
+            ("store_settings", models.ConfiguracionesTienda),
+            ("users", models.Usuario),
+            ("suppliers", models.Proveedor),
+            ("billing_profiles", models.PerfilFacturacion),
+            ("customers", models.Cliente),
+            ("products", models.Producto),
+            ("product_variants", models.VarianteProducto),
+            ("invoices", models.Factura),
+            ("shifts", models.Turno),
+            ("customer_payments", models.PagoCliente),
+            ("purchases", models.Compra),
+            ("purchase_items", models.ElementoCompra),
+            ("cash_movements", models.MovimientoCaja),
+            ("sales_history", models.HistorialVenta),
+            ("product_returns", models.DevolucionProducto),
+            ("notifications", models.Notificacion)
         ]
         
         for table_name, model in tables:

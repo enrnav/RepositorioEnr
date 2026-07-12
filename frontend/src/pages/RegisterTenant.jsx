@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import AlertModal from '../components/AlertModal';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle } from 'lucide-react';
 import { API_URL } from '../api';
@@ -7,7 +8,7 @@ import FloatingStoreIconsBg from '../components/FloatingStoreIconsBg';
 const RegisterTenant = () => {
   const navigate = useNavigate();
   const [storeName, setStoreName] = useState('');
-  const [subdomain, setSubdomain] = useState('');
+  const [subdominio, setSubdomain] = useState('');
   const [adminName, setAdminName] = useState('');
   const [adminUsername, setAdminUsername] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
@@ -20,6 +21,49 @@ const RegisterTenant = () => {
   const [primaryColor, setPrimaryColor] = useState('#064E3B');
   const [accentColor, setAccentColor] = useState('#064E3B');
   const [isColorModified, setIsColorModified] = useState(false);
+
+  useEffect(() => {
+    if (!isColorModified) {
+      document.body.classList.remove('branded-dark-theme');
+      document.documentElement.style.setProperty('--primary-color', '#064E3B');
+      document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+      document.documentElement.style.setProperty('--body-bg-color', '#f3f6f4');
+      document.documentElement.style.setProperty('--accent-color', '#064E3B');
+      document.documentElement.style.setProperty('--accent-color-hover', '#059669');
+      document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+    } else {
+      document.body.classList.add('branded-dark-theme');
+      
+      const hexToRgb = (hex) => {
+        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+
+      const pRgb = hexToRgb(primaryColor);
+      const aRgb = hexToRgb(accentColor);
+
+      document.documentElement.style.setProperty('--primary-color', primaryColor);
+      if (pRgb) {
+        document.documentElement.style.setProperty('--primary-color-light', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+      } else {
+        document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+      }
+
+      document.documentElement.style.setProperty('--accent-color', accentColor);
+      document.documentElement.style.setProperty('--accent-color-hover', accentColor);
+      if (aRgb) {
+        document.documentElement.style.setProperty('--accent-color-light', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.08)`);
+      } else {
+        document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+      }
+    }
+  }, [isColorModified, primaryColor, accentColor]);
 
   // Predefined palettes
   const palettes = [
@@ -100,24 +144,24 @@ const RegisterTenant = () => {
     }
 
     try {
-      const response = await fetch(`${API_URL}/auth/register-tenant`, {
+      const response = await fetch(`${API_URL}/auth/register-inquilino`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          store_name: storeName,
-          subdomain: subdomain || undefined,
-          admin_name: adminName,
-          admin_username: adminUsername,
-          admin_password: adminPassword,
+          nombre_tienda: storeName,
+          subdominio: subdominio || undefined,
+          nombre_admin: adminName,
+          usuario_admin: adminUsername,
+          contrasena_admin: adminPassword,
           logo_url: logoUrl || undefined,
-          primary_color: primaryColor,
-          accent_color: accentColor,
+          color_primario: primaryColor,
+          color_secundario: accentColor,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        const registeredSubdomain = data.subdomain;
+        const registeredSubdomain = data.subdominio;
         if (registeredSubdomain) {
           localStorage.setItem('last_tenant_subdomain', registeredSubdomain);
         }
@@ -133,7 +177,7 @@ const RegisterTenant = () => {
 
   return (
     <div 
-      className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans transition-all duration-700 ${isColorModified ? '' : 'bg-brand-50'}`}
+      className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans transition-all duration-700 ${isColorModified ? '' : 'bg-transparent'}`}
       style={isColorModified ? {
         background: `linear-gradient(135deg, ${primaryColor} 0%, #111827 100%)`
       } : undefined}
@@ -158,21 +202,13 @@ const RegisterTenant = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg relative z-10 animate-slide-up">
-        <div className={`py-10 px-6 sm:px-12 sm:rounded-[2rem] border transition-all duration-700 ${isColorModified ? 'bg-white/10 backdrop-blur-md border-white/10 shadow-2xl' : 'bg-white/5 backdrop-blur-[2px] border-white/40 shadow-glass'}`}>
-          {error && (
-            <div className={`mb-6 p-3.5 text-xs font-bold text-center rounded-xl border animate-shake transition-colors duration-700 ${
-              isColorModified ? 'bg-red-950/80 border-red-500/30 text-red-300' : 'bg-rose-50 border-rose-100 text-red-650'
-            }`}>
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className={`mb-6 p-3.5 text-xs font-bold text-center rounded-xl border transition-colors duration-700 ${
-              isColorModified ? 'bg-emerald-950/80 border-emerald-500/30 text-emerald-300' : 'bg-emerald-50 border-emerald-100 text-emerald-700'
-            }`}>
-              {success}
-            </div>
-          )}
+        <div className={`py-10 px-6 sm:px-12 sm:rounded-[2rem] transition-all duration-700 ${isColorModified ? 'bg-white/10 backdrop-blur-md border border-white/10 shadow-2xl' : 'glass'}`}>
+          <AlertModal 
+            isOpen={!!success || !!error}
+            tipo={success ? 'success' : 'error'}
+            mensaje={success || error}
+            onClose={() => { setSuccess(''); setError(''); }}
+          />
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             {/* --- SECCIÓN 1: IDENTIDAD Y DISEÑO --- */}
@@ -207,7 +243,7 @@ const RegisterTenant = () => {
                     </label>
                     <input
                       type="text"
-                      value={subdomain}
+                      value={subdominio}
                       onChange={handleSubdomainChange}
                       className={`mt-1 appearance-none block w-full px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 text-sm font-semibold transition-all duration-700 ${
                         isColorModified 
@@ -230,7 +266,7 @@ const RegisterTenant = () => {
                       <span>Seleccionar archivo</span>
                       <input
                         type="file"
-                        accept="image/*"
+                        accept="imagen/*"
                         onChange={handleLogoUpload}
                         className="hidden"
                       />
@@ -435,35 +471,47 @@ const RegisterTenant = () => {
       </div>
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 border border-white/50 animate-scale-in text-center relative overflow-hidden">
+          <div className={`backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 animate-scale-in text-center relative overflow-hidden transition-all duration-700 ${
+            isColorModified 
+              ? 'bg-neutral-900/90 border border-white/10 text-white shadow-emerald-950/20' 
+              : 'bg-white/95 border border-white/50 text-stone-800'
+          }`}>
             {/* Background design elements */}
             <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10" style={{ backgroundColor: accentColor }}></div>
             
-            <div className="w-20 h-20 mx-auto mb-6 bg-emerald-50 border border-emerald-200 text-emerald-650 rounded-full flex items-center justify-center shadow-inner">
+            <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-inner transition-colors duration-700 ${
+              isColorModified 
+                ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400' 
+                : 'bg-emerald-50 border border-emerald-200 text-emerald-650'
+            }`}>
               <CheckCircle size={40} className="animate-bounce" />
             </div>
             
-            <h3 className="text-2xl font-black text-brand-900 mb-2 uppercase tracking-tight">
+            <h3 className={`text-2xl font-black mb-2 uppercase tracking-tight transition-colors duration-700 ${isColorModified ? 'text-white' : 'text-brand-900'}`}>
               ¡Tienda Registrada!
             </h3>
-            <p className="text-sm font-semibold text-stone-500 mb-6">
+            <p className={`text-sm font-semibold mb-6 transition-colors duration-700 ${isColorModified ? 'text-gray-400' : 'text-stone-500'}`}>
               Tu tienda ha sido creada correctamente en Abarrotes SaaS.
             </p>
             
-            <div className="bg-stone-50/80 border border-stone-200/50 rounded-2xl p-4 text-left space-y-2.5 mb-8 text-xs font-bold text-stone-600">
+            <div className={`rounded-2xl p-4 text-left space-y-2.5 mb-8 text-xs font-bold transition-all duration-700 ${
+              isColorModified 
+                ? 'bg-white/5 border border-white/10 text-gray-200' 
+                : 'bg-stone-50/80 border border-stone-200/50 text-stone-600'
+            }`}>
               <div className="flex justify-between">
-                <span className="text-stone-400 uppercase">Tienda:</span>
-                <span className="font-extrabold text-brand-900 uppercase">{storeName}</span>
+                <span className={isColorModified ? 'text-gray-400 uppercase' : 'text-stone-400 uppercase'}>Tienda:</span>
+                <span className={`font-extrabold uppercase ${isColorModified ? 'text-white' : 'text-brand-900'}`}>{storeName}</span>
               </div>
-              {subdomain && (
+              {subdominio && (
                 <div className="flex justify-between">
-                  <span className="text-stone-400 uppercase">Identificador (Slug):</span>
-                  <span className="font-extrabold text-stone-700 font-mono">{subdomain}</span>
+                  <span className={isColorModified ? 'text-gray-400 uppercase' : 'text-stone-400 uppercase'}>Identificador (Slug):</span>
+                  <span className={`font-extrabold font-mono ${isColorModified ? 'text-white' : 'text-stone-700'}`}>{subdominio}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-stone-400 uppercase">Administrador:</span>
-                <span className="font-extrabold text-stone-700">{adminUsername}</span>
+                <span className={isColorModified ? 'text-gray-400 uppercase' : 'text-stone-400 uppercase'}>Administrador:</span>
+                <span className={`font-extrabold ${isColorModified ? 'text-white' : 'text-stone-700'}`}>{adminUsername}</span>
               </div>
             </div>
 

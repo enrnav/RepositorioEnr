@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AlertModal from '../components/AlertModal';
 import { createPortal } from 'react-dom';
 import { Truck, Plus, Search, Edit2, Trash2, X, Mail, Phone, MapPin, FileText } from 'lucide-react';
 import { fetchSuppliers, createSupplier, updateSupplier, deleteSupplier } from '../api';
@@ -12,10 +13,10 @@ const Suppliers = () => {
   const [formData, setFormData] = useState({
     name: '',
     rfc: '',
-    phone: '',
-    email: '',
-    address: '',
-    notes: ''
+    telefono: '',
+    correo: '',
+    direccion: '',
+    notas: ''
   });
 
   const [error, setError] = useState('');
@@ -43,15 +44,15 @@ const Suppliers = () => {
     }
   }, [success]);
 
-  const handleEditClick = (supplier) => {
-    setEditSupplierId(supplier.id);
+  const handleEditClick = (proveedor) => {
+    setEditSupplierId(proveedor.id);
     setFormData({
-      name: supplier.name || '',
-      rfc: supplier.rfc || '',
-      phone: supplier.phone || '',
-      email: supplier.email || '',
-      address: supplier.address || '',
-      notes: supplier.notes || ''
+      name: proveedor.name || '',
+      rfc: proveedor.rfc || '',
+      telefono: proveedor.telefono || '',
+      correo: proveedor.correo || '',
+      direccion: proveedor.direccion || '',
+      notas: proveedor.notas || ''
     });
     setShowForm(true);
     setError('');
@@ -104,7 +105,7 @@ const Suppliers = () => {
       }
       setShowForm(false);
       setEditSupplierId(null);
-      setFormData({ name: '', rfc: '', phone: '', email: '', address: '', notes: '' });
+      setFormData({ name: '', rfc: '', telefono: '', correo: '', direccion: '', notas: '' });
       loadSuppliers();
     } catch (err) {
       const detailMsg = err.response?.data?.detail || 'Error al guardar proveedor.';
@@ -118,7 +119,7 @@ const Suppliers = () => {
     return (
       (s.name && s.name.toLowerCase().includes(q)) ||
       (s.rfc && s.rfc.toLowerCase().includes(q)) ||
-      (s.phone && s.phone.includes(q))
+      (s.telefono && s.telefono.includes(q))
     );
   });
 
@@ -148,7 +149,7 @@ const Suppliers = () => {
           <button
             onClick={() => {
               setEditSupplierId(null);
-              setFormData({ name: '', rfc: '', phone: '', email: '', address: '', notes: '' });
+              setFormData({ name: '', rfc: '', telefono: '', correo: '', direccion: '', notas: '' });
               setShowForm(true);
             }}
             className="flex items-center justify-center space-x-2 bg-chiluda-red text-white px-5 py-2.5 rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float w-full md:w-auto font-black text-xs uppercase tracking-wider shrink-0"
@@ -159,51 +160,12 @@ const Suppliers = () => {
         </div>
       </div>
 
-      {/* Error Alert Modal */}
-      {error && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up border border-red-100">
-            <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <X size={32} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Error</h3>
-              <p className="text-gray-600 mb-6 text-sm leading-relaxed">{error}</p>
-              <button
-                onClick={() => setError('')}
-                className="px-6 py-2.5 bg-chiluda-red text-white font-bold rounded-md w-full hover:bg-chiluda-darkred transition-colors shadow-sm"
-              >
-                Aceptar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Success Alert Modal */}
-      {success && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-lg w-full max-w-sm overflow-hidden animate-slide-up border border-green-100">
-            <div className="p-6 text-center">
-              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">¡Éxito!</h3>
-              <p className="text-gray-600 mb-6 text-sm leading-relaxed">{success}</p>
-              <button
-                onClick={() => setSuccess('')}
-                className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-md w-full hover:bg-green-700 transition-colors shadow-sm"
-              >
-                Aceptar
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      <AlertModal 
+        isOpen={!!success || !!error}
+        tipo={success ? 'success' : 'error'}
+        mensaje={success || error}
+        onClose={() => { setSuccess(''); setError(''); }}
+      />
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && createPortal(
@@ -284,8 +246,8 @@ const Suppliers = () => {
                     <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Teléfono</label>
                     <input
                       type="text"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                      value={formData.telefono}
+                      onChange={(e) => setFormData({...formData, telefono: e.target.value})}
                       className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                       placeholder="Ej. 8112345678"
                     />
@@ -294,8 +256,8 @@ const Suppliers = () => {
                     <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Correo</label>
                     <input
                       type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      value={formData.correo}
+                      onChange={(e) => setFormData({...formData, correo: e.target.value})}
                       className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                       placeholder="Ej. ventas@distribuidora.com"
                     />
@@ -307,8 +269,8 @@ const Suppliers = () => {
                   <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Dirección Física</label>
                   <input
                     type="text"
-                    value={formData.address}
-                    onChange={(e) => setFormData({...formData, address: e.target.value})}
+                    value={formData.direccion}
+                    onChange={(e) => setFormData({...formData, direccion: e.target.value})}
                     className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
                     placeholder="Ej. Av. Constitución #450, Monterrey, N.L."
                   />
@@ -319,8 +281,8 @@ const Suppliers = () => {
                   <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Notas o Comentarios</label>
                   <textarea
                     rows="3"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    value={formData.notas}
+                    onChange={(e) => setFormData({...formData, notas: e.target.value})}
                     className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner resize-none"
                     placeholder="Ej. Entrega los martes por la mañana..."
                   />
@@ -385,19 +347,19 @@ const Suppliers = () => {
                   {/* Contact info */}
                   <td className="px-4 md:px-6 py-3 md:py-4 text-xs font-semibold text-stone-600 text-center">
                     <div className="flex flex-col gap-1.5 items-center justify-center">
-                      {s.phone && (
+                      {s.telefono && (
                         <span className="flex items-center gap-1.5">
                           <Phone size={12} className="text-stone-400" />
-                          {s.phone}
+                          {s.telefono}
                         </span>
                       )}
-                      {s.email && (
+                      {s.correo && (
                         <span className="flex items-center gap-1.5 break-all">
                           <Mail size={12} className="text-stone-400" />
-                          {s.email}
+                          {s.correo}
                         </span>
                       )}
-                      {!s.phone && !s.email && (
+                      {!s.telefono && !s.correo && (
                         <span className="text-stone-450 italic">Sin datos</span>
                       )}
                     </div>
@@ -406,19 +368,19 @@ const Suppliers = () => {
                   {/* Address and Notes */}
                   <td className="hidden sm:table-cell px-4 md:px-6 py-3 md:py-4 text-xs font-semibold text-stone-500 max-w-xs text-center">
                     <div className="flex flex-col gap-1 items-center justify-center">
-                      {s.address && (
+                      {s.direccion && (
                         <div className="flex items-start gap-1.5">
                           <MapPin size={12} className="text-stone-400 shrink-0 mt-0.5" />
-                          <span className="truncate" title={s.address}>{s.address}</span>
+                          <span className="truncate" title={s.direccion}>{s.direccion}</span>
                         </div>
                       )}
-                      {s.notes && (
+                      {s.notas && (
                         <div className="flex items-start gap-1.5 text-stone-400">
                           <FileText size={12} className="text-stone-400 shrink-0 mt-0.5" />
-                          <span className="italic truncate" title={s.notes}>{s.notes}</span>
+                          <span className="italic truncate" title={s.notas}>{s.notas}</span>
                         </div>
                       )}
-                      {!s.address && !s.notes && (
+                      {!s.direccion && !s.notas && (
                         <span className="text-stone-400 italic">Sin datos adicionales</span>
                       )}
                     </div>

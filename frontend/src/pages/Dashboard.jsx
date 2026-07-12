@@ -8,7 +8,7 @@ const PIE_COLORS = ['#D2143A', '#10B981'];
 
 const Dashboard = () => {
   const [stats, setStats] = useState({ total_stock: 0, total_sold: 0, low_stock_alerts: 0 });
-  const [profitSummary, setProfitSummary] = useState({ total_revenue: 0, total_cost: 0, total_profit: 0, average_margin_percentage: 0 });
+  const [profitSummary, setProfitSummary] = useState({ total_revenue: 0, costo_total: 0, total_profit: 0, average_margin_percentage: 0 });
   const [dashboardDetails, setDashboardDetails] = useState({
     today: { revenue: 0, profit: 0, yesterday_revenue: 0, yesterday_profit: 0 },
     month: { revenue: 0, profit: 0, last_month_revenue: 0, last_month_profit: 0 },
@@ -161,9 +161,9 @@ const Dashboard = () => {
 
     let lastTime = performance.now();
 
-    const animate = (timestamp) => {
-      const dt = (timestamp - lastTime) / 1000;
-      lastTime = timestamp;
+    const animate = (fecha_hora) => {
+      const dt = (fecha_hora - lastTime) / 1000;
+      lastTime = fecha_hora;
 
       Object.keys(planetsRef.current).forEach(pId => {
         const planet = planetsRef.current[pId];
@@ -233,12 +233,12 @@ const Dashboard = () => {
         }
         
         setPieData([
-          { name: 'Costo Total ($)', value: marginData.summary.total_cost },
+          { name: 'Costo Total ($)', value: marginData.summary.costo_total },
           { name: 'Ganancia Neta ($)', value: marginData.summary.total_profit },
         ]);
 
         const top5 = marginData.products.slice(0, 5).map(item => ({
-          name: item.product_name,
+          name: item.nombre_producto,
           Ingresos: item.revenue,
           Costos: item.cost,
           Ganancia: item.profit
@@ -267,10 +267,11 @@ const Dashboard = () => {
   return (
     <div className={`space-y-8 ${layout === 'orion' ? 'layout-orion-active' : ''}`}>
       {layout === 'orion' && (
-        <style dangerouslySetInnerHTML={{ __html: `          /* 1. Canvas styling: Sci-Fi grid backdrop */
+        <style dangerouslySetInnerHTML={{ __html: `
+          /* 1. Canvas styling: Sci-Fi grid backdrop */
           .orion-canvas-container {
             background: transparent !important;
-            background-image: none !important;
+            background-imagen: none !important;
             border: 2px solid rgba(255, 255, 255, 0.3) !important;
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
@@ -282,7 +283,7 @@ const Dashboard = () => {
             content: "" !important;
             position: absolute !important;
             inset: 0 !important;
-            background-image: 
+            background-imagen: 
               radial-gradient(rgba(99, 102, 241, 0.07) 1.5px, transparent 1.5px) !important;
             background-size: 24px 24px !important;
             background-position: center !important;
@@ -292,7 +293,7 @@ const Dashboard = () => {
 
           .dark .orion-canvas-container {
             background: #04020c !important; /* Space-like background in dark mode */
-            background-image: radial-gradient(at 0% 0%, #0d0921 0px, transparent 50%),
+            background-imagen: radial-gradient(at 0% 0%, #0d0921 0px, transparent 50%),
                               radial-gradient(at 50% 0%, #051410 0px, transparent 50%),
                               radial-gradient(at 100% 100%, #17041b 0px, transparent 50%),
                               radial-gradient(1px 1px at 40px 80px, rgba(255,255,255,0.7), transparent),
@@ -306,7 +307,7 @@ const Dashboard = () => {
           }
 
           .dark .orion-canvas-container::before {
-            background-image: 
+            background-imagen: 
               radial-gradient(rgba(255, 255, 255, 0.02) 1.5px, transparent 1.5px) !important;
             background-size: 24px 24px !important;
           }
@@ -317,7 +318,7 @@ const Dashboard = () => {
             border-radius: 50%;
             display: flex;
             flex-direction: column;
-            align-items: center;
+            align-elementos: center;
             justify-content: center;
             text-align: center;
             cursor: pointer;
@@ -1893,8 +1894,8 @@ const Dashboard = () => {
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs font-bold text-stone-700">
               {topProducts.map((p) => (
-                <tr key={p.product_id} className="hover:bg-stone-50/50 transition-colors">
-                  <td className="px-6 py-4 text-brand-900 font-extrabold text-center">{p.product_name}</td>
+                <tr key={p.producto_id} className="hover:bg-stone-50/50 transition-colors">
+                  <td className="px-6 py-4 text-brand-900 font-extrabold text-center">{p.nombre_producto}</td>
                   <td className="px-6 py-4 text-center text-stone-500">{p.quantity_sold} u.</td>
                   <td className="px-6 py-4 text-center text-stone-600">${p.revenue.toFixed(2)}</td>
                   <td className="px-6 py-4 text-center text-stone-600">${p.cost.toFixed(2)}</td>

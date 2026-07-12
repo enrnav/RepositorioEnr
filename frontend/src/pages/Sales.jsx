@@ -23,12 +23,12 @@ const Sales = () => {
   
   // Store Settings & Customers
   const [storeSettings, setStoreSettings] = useState({
-    store_name: 'Abarrotes ED & E',
-    phone: '',
-    email: '',
-    address: '',
-    tax_rate: 16.0,
-    ticket_footer: '¡Gracias por preferirnos!'
+    nombre_tienda: 'Abarrotes ED & E',
+    telefono: '',
+    correo: '',
+    direccion: '',
+    tasa_impuesto: 16.0,
+    pie_ticket: '¡Gracias por preferirnos!'
   });
   const [customers, setCustomers] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -44,7 +44,7 @@ const Sales = () => {
   const [paymentMethod, setPaymentMethod] = useState(null); // 'efectivo' | 'tarjeta' | 'mixto' | 'credito'
   const [amountPaidCash, setAmountPaidCash] = useState('');
   const [amountPaidCard, setAmountPaidCard] = useState('');
-  const [cartDiscount, setCartDiscount] = useState('0'); // percentage or fixed amount
+  const [cartDiscount, setCartDiscount] = useState('0'); // percentage or fixed monto
   const [discountType, setDiscountType] = useState('fixed'); // 'percent' | 'fixed'
   
   // Modals & Printing
@@ -73,16 +73,16 @@ const Sales = () => {
   const [historyTab, setHistoryTab] = useState('sales'); // 'sales' | 'cancellations'
   
   // Custom Alert & Confirmations
-  const [customAlert, setCustomAlert] = useState({ show: false, title: '', message: '', type: 'success' });
+  const [customAlert, setCustomAlert] = useState({ show: false, title: '', message: '', tipo: 'success' });
   const [cancelConfirm, setCancelConfirm] = useState({ 
     show: false, 
     saleId: null, 
-    reason: '', 
+    motivo: '', 
     authUser: '', 
     authPass: '',
     productName: '',
     maxQuantity: 1,
-    quantity: 1
+    cantidad: 1
   });
   
   // Variants
@@ -100,13 +100,13 @@ const Sales = () => {
   const selectedProductIndex = useRef(-1);
 
   const userStr = sessionStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { role: 'cajero', username: '', full_name: '' };
+  const user = userStr ? JSON.parse(userStr) : { rol: 'cajero', nombre_usuario: '', nombre_completo: '' };
   
-  const isAdmin = user.role === 'admin';
-  const isStaff = user.role === 'admin' || user.role === 'supervisor';
+  const isAdmin = user.rol === 'admin';
+  const isStaff = user.rol === 'admin' || user.rol === 'supervisor';
 
-  const showAlert = (title, message, type = 'success') => {
-    setCustomAlert({ show: true, title, message, type });
+  const showAlert = (title, message, tipo = 'success') => {
+    setCustomAlert({ show: true, title, message, tipo });
   };
 
   // 1. Shift Verification
@@ -325,24 +325,24 @@ const Sales = () => {
   }, [cart, activeShift, isAdmin]);
 
   // Cart operations
-  const handleProductSelect = (product) => {
-    if (product.variants && product.variants.length > 0) {
-      setVariantProduct(product);
+  const handleProductSelect = (producto) => {
+    if (producto.variantes && producto.variantes.length > 0) {
+      setVariantProduct(producto);
       setShowVariantModal(true);
     } else {
-      addToCart(product);
+      addToCart(producto);
     }
   };
 
-  const addToCart = (product, variant = null) => {
+  const addToCart = (producto, variante = null) => {
     setCart((prevCart) => {
-      const cartItemId = variant ? `${product.id}_${variant.id}` : `${product.id}`;
+      const cartItemId = variante ? `${producto.id}_${variante.id}` : `${producto.id}`;
       const existingItem = prevCart.find((item) => item.cartItemId === cartItemId);
       
-      const maxQty = variant ? variant.quantity : product.quantity;
-      const price = variant && variant.price !== null ? variant.price : product.price;
-      const cost = variant && variant.cost_price !== null ? variant.cost_price : product.cost_price;
-      const name = variant ? `${product.name} (${variant.name})` : product.name;
+      const maxQty = variante ? variante.cantidad : producto.cantidad;
+      const precio = variante && variante.precio !== null ? variante.precio : producto.precio;
+      const cost = variante && variante.precio_costo !== null ? variante.precio_costo : producto.precio_costo;
+      const name = variante ? `${producto.name} (${variante.name})` : producto.name;
 
       if (existingItem) {
         if (existingItem.cartQuantity >= maxQty) {
@@ -359,13 +359,13 @@ const Sales = () => {
         }
         return [...prevCart, {
           cartItemId,
-          id: product.id,
-          variant_id: variant ? variant.id : null,
+          id: producto.id,
+          variante_id: variante ? variante.id : null,
           name,
-          price,
-          cost_price: cost,
+          precio,
+          precio_costo: cost,
           cartQuantity: 1,
-          image: product.image || null
+          imagen: producto.imagen || null
         }];
       }
     });
@@ -379,11 +379,11 @@ const Sales = () => {
           
           let maxQty = 0;
           const originalProd = inventory.find(p => p.id === item.id);
-          if (item.variant_id) {
-            const v = originalProd?.variants?.find(varnt => varnt.id === item.variant_id);
-            maxQty = v ? v.quantity : 0;
+          if (item.variante_id) {
+            const v = originalProd?.variantes?.find(varnt => varnt.id === item.variante_id);
+            maxQty = v ? v.cantidad : 0;
           } else {
-            maxQty = originalProd ? originalProd.quantity : 0;
+            maxQty = originalProd ? originalProd.cantidad : 0;
           }
 
           if (newQuantity > 0 && newQuantity <= maxQty) {
@@ -404,7 +404,7 @@ const Sales = () => {
   };
 
   // Computations
-  const subtotalTotal = cart.reduce((total, item) => total + (item.price * item.cartQuantity), 0);
+  const subtotalTotal = cart.reduce((total, item) => total + (item.precio * item.cartQuantity), 0);
   
   const discountVal = parseFloat(cartDiscount) || 0;
   const cartDiscountTotal = discountType === 'percent' 
@@ -417,10 +417,10 @@ const Sales = () => {
   // Search autocomplete & Barcode scanning
   const filteredInventory = inventory.filter(item => {
     const nameMatch = (item.name || '').toLowerCase().includes(searchTerm.toLowerCase());
-    const barcodeMatch = (item.barcode || '').toLowerCase() === searchTerm.toLowerCase();
+    const barcodeMatch = (item.codigo_barras || '').toLowerCase() === searchTerm.toLowerCase();
     
-    // Check if variant has barcode match
-    const variantBarcodeMatch = item.variants?.some(v => (v.barcode || '').toLowerCase() === searchTerm.toLowerCase());
+    // Check if variante has codigo_barras match
+    const variantBarcodeMatch = item.variantes?.some(v => (v.codigo_barras || '').toLowerCase() === searchTerm.toLowerCase());
     
     return nameMatch || barcodeMatch || variantBarcodeMatch;
   });
@@ -429,18 +429,18 @@ const Sales = () => {
     if (e.key === 'Enter') {
       e.preventDefault();
       
-      // Look for exact barcode match in main products
-      const mainBarcodeMatch = inventory.find(p => p.barcode && p.barcode.toLowerCase() === searchTerm.toLowerCase());
+      // Look for exact codigo_barras match in main products
+      const mainBarcodeMatch = inventory.find(p => p.codigo_barras && p.codigo_barras.toLowerCase() === searchTerm.toLowerCase());
       if (mainBarcodeMatch) {
         handleProductSelect(mainBarcodeMatch);
         setSearchTerm('');
         return;
       }
 
-      // Look for exact barcode match in variants
+      // Look for exact codigo_barras match in variantes
       for (const p of inventory) {
-        if (p.variants) {
-          const varMatch = p.variants.find(v => v.barcode && v.barcode.toLowerCase() === searchTerm.toLowerCase());
+        if (p.variantes) {
+          const varMatch = p.variantes.find(v => v.codigo_barras && v.codigo_barras.toLowerCase() === searchTerm.toLowerCase());
           if (varMatch) {
             addToCart(p, varMatch);
             setSearchTerm('');
@@ -505,28 +505,28 @@ const Sales = () => {
     }
 
     const checkoutData = {
-      items: cart.map(item => ({
-        product_id: item.id,
-        variant_id: item.variant_id,
-        quantity: item.cartQuantity
+      elementos: cart.map(item => ({
+        producto_id: item.id,
+        variante_id: item.variante_id,
+        cantidad: item.cartQuantity
       })),
       payment_method: paymentMethod,
       cash_amount: actualPaidCash,
       card_amount: actualPaidCard,
       discount: cartDiscountTotal,
-      shift_id: activeShift ? activeShift.id : null,
-      customer_id: selectedCustomer ? selectedCustomer.id : null
+      turno_id: activeShift ? activeShift.id : null,
+      cliente_id: selectedCustomer ? selectedCustomer.id : null
     };
 
     try {
       const response = await checkoutSales(checkoutData);
-      const serverSaleId = response?.sale_id || Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+      const serverSaleId = response?.venta_id || Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
       
       // Calculate change
       const change = (paymentMethod === 'tarjeta' || paymentMethod === 'credito') ? 0 : (actualPaidCash + actualPaidCard) - cartTotal;
       
       setLastSaleData({
-        items: [...cart],
+        elementos: [...cart],
         subtotal: subtotalTotal,
         discount: cartDiscountTotal,
         total: cartTotal,
@@ -536,13 +536,13 @@ const Sales = () => {
         change: change,
         date: new Date(),
         saleId: serverSaleId,
-        cashier: user.full_name,
+        cashier: user.nombre_completo,
         shiftId: activeShift ? activeShift.id : null,
         customerName: selectedCustomer ? selectedCustomer.name : null
       });
 
-      // Auto-prefill customer phone if available
-      const customerPhone = selectedCustomer?.phone || '';
+      // Auto-prefill customer telefono if available
+      const customerPhone = selectedCustomer?.telefono || '';
       setWhatsAppPhone(customerPhone);
       
       // Reset cart and states
@@ -611,22 +611,22 @@ const Sales = () => {
     setCancelConfirm({ 
       show: true, 
       saleId, 
-      reason: '', 
+      motivo: '', 
       authUser: '', 
       authPass: '',
-      productName: saleObj ? saleObj.product_name : '',
-      maxQuantity: saleObj ? saleObj.quantity : 1,
-      quantity: saleObj ? saleObj.quantity : 1
+      productName: saleObj ? saleObj.nombre_producto : '',
+      maxQuantity: saleObj ? saleObj.cantidad : 1,
+      cantidad: saleObj ? saleObj.cantidad : 1
     });
   };
 
   const processCancelSale = async () => {
-    if (!cancelConfirm.reason.trim()) {
+    if (!cancelConfirm.motivo.trim()) {
       showAlert("Motivo Requerido", "Por favor escribe el motivo de la cancelación.", "warning");
       return;
     }
     
-    const qtyToCancel = parseInt(cancelConfirm.quantity);
+    const qtyToCancel = parseInt(cancelConfirm.cantidad);
     if (isNaN(qtyToCancel) || qtyToCancel <= 0 || qtyToCancel > cancelConfirm.maxQuantity) {
       showAlert("Cantidad Inválida", `Ingresa una cantidad válida a cancelar (1 a ${cancelConfirm.maxQuantity}).`, "warning");
       return;
@@ -643,7 +643,7 @@ const Sales = () => {
     try {
       await cancelSale(
         cancelConfirm.saleId,
-        cancelConfirm.reason.trim(),
+        cancelConfirm.motivo.trim(),
         cancelConfirm.authUser.trim() || null,
         cancelConfirm.authPass.trim() || null,
         qtyToCancel
@@ -651,12 +651,12 @@ const Sales = () => {
       setCancelConfirm({ 
         show: false, 
         saleId: null, 
-        reason: '', 
+        motivo: '', 
         authUser: '', 
         authPass: '',
         productName: '',
         maxQuantity: 1,
-        quantity: 1
+        cantidad: 1
       });
       showAlert("Devolución Exitosa", `Se han cancelado/devuelto ${qtyToCancel} piezas del producto correctamente.`, "success");
       
@@ -670,8 +670,8 @@ const Sales = () => {
     }
   };
 
-  const activeSales = recentSales.filter(sale => !sale.is_cancelled);
-  const cancelledSales = recentSales.filter(sale => sale.is_cancelled);
+  const activeSales = recentSales.filter(sale => !sale.cancelado);
+  const cancelledSales = recentSales.filter(sale => sale.cancelado);
   const displayedSales = historyTab === 'sales' ? activeSales : cancelledSales;
 
   const getAuthorizedBy = (cancelReason) => {
@@ -831,27 +831,27 @@ const Sales = () => {
                 return (
                   <div 
                     key={item.id} 
-                    onClick={() => item.quantity > 0 && handleProductSelect(item)}
-                    className={`bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-sm border border-white/40 overflow-hidden transition-all duration-300 flex flex-col group animate-slide-up ${item.quantity > 0 ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1.5 hover:border-[#064e3b]/30 active:scale-95' : 'opacity-70'}`}
+                    onClick={() => item.cantidad > 0 && handleProductSelect(item)}
+                    className={`bg-white/10 backdrop-blur-[3px] rounded-3xl shadow-sm border border-white/40 overflow-hidden transition-all duration-300 flex flex-col group animate-slide-up ${item.cantidad > 0 ? 'cursor-pointer hover:shadow-xl hover:-translate-y-1.5 hover:border-[#064e3b]/30 active:scale-95' : 'opacity-70'}`}
                     style={{ animationDelay: `${i * 0.02}s` }}
                   >
                     <div className="p-3 sm:p-5 flex-1 relative flex flex-col justify-between">
                       <div>
                         <h3 className="text-sm sm:text-lg font-black text-brand-900 line-clamp-2 min-h-[2.5rem] pr-1 leading-tight group-hover:text-[#064e3b] transition-colors">{item.name}</h3>
-                        {item.variants && item.variants.length > 0 && (
-                          <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-extrabold mt-1 inline-block uppercase">Variantes ({item.variants.length})</span>
+                        {item.variantes && item.variantes.length > 0 && (
+                          <span className="text-[9px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded font-extrabold mt-1 inline-block uppercase">Variantes ({item.variantes.length})</span>
                         )}
                       </div>
                       <div className="mt-3">
-                        <p className="text-base sm:text-2xl font-extrabold text-chiluda-red tracking-tight">${item.price.toFixed(2)}</p>
+                        <p className="text-base sm:text-2xl font-extrabold text-chiluda-red tracking-tight">${item.precio.toFixed(2)}</p>
                         
                         <div className="mt-2 flex items-center justify-between text-sm">
                           <span className={`px-2 py-0.5 rounded-full font-extrabold text-[9px] ${
-                            item.quantity > (item.min_stock ?? 3) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                            item.quantity > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100 animate-pulse' :
+                            item.cantidad > (item.inventario_minimo ?? 3) ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
+                            item.cantidad > 0 ? 'bg-orange-50 text-orange-700 border border-orange-100 animate-pulse' :
                             'bg-red-50 text-red-700 border border-red-100'
                           }`}>
-                            {item.quantity > 0 ? `Stock: ${item.quantity}` : 'Agotado'}
+                            {item.cantidad > 0 ? `Stock: ${item.cantidad}` : 'Agotado'}
                           </span>
                         </div>
                       </div>
@@ -859,13 +859,13 @@ const Sales = () => {
                     <div className="p-2 sm:p-3 bg-brand-50/30 border-t border-gray-100">
                       <button 
                         onClick={(e) => { e.stopPropagation(); handleProductSelect(item); }}
-                        disabled={item.quantity <= 0}
+                        disabled={item.cantidad <= 0}
                         className={`w-full py-2 rounded-xl font-bold text-white transition-colors flex items-center justify-center space-x-1 sm:space-x-2 text-xs ${
-                          item.quantity > 0 ? 'bg-[#064e3b] hover:bg-[#059669]' : 'bg-gray-300 cursor-not-allowed'
+                          item.cantidad > 0 ? 'bg-[#064e3b] hover:bg-[#059669]' : 'bg-gray-300 cursor-not-allowed'
                         }`}
                       >
                         <Plus size={14} />
-                        <span>{item.quantity > 0 ? 'Agregar' : 'Agotado'}</span>
+                        <span>{item.cantidad > 0 ? 'Agregar' : 'Agotado'}</span>
                       </button>
                     </div>
                   </div>
@@ -937,7 +937,7 @@ const Sales = () => {
                       </div>
                       
                       <div className="flex justify-between items-center">
-                        <span className="text-chiluda-red font-bold text-sm">${item.price.toFixed(2)}</span>
+                        <span className="text-chiluda-red font-bold text-sm">${item.precio.toFixed(2)}</span>
                         
                         {/* Quantity Controls */}
                         <div className="flex items-center space-x-1 bg-white rounded-xl border border-gray-200 p-0.5">
@@ -1049,7 +1049,7 @@ const Sales = () => {
                         <div>
                           <div className="text-sm">{selectedCustomer.name}</div>
                           <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
-                            Deuda: ${selectedCustomer.current_balance.toFixed(2)} | Límite: ${selectedCustomer.credit_limit.toFixed(2)}
+                            Deuda: ${selectedCustomer.saldo_actual.toFixed(2)} | Límite: ${selectedCustomer.limite_credito.toFixed(2)}
                           </div>
                         </div>
                         <button 
@@ -1093,7 +1093,7 @@ const Sales = () => {
                                 >
                                   <span className="font-semibold text-slate-800">{c.name}</span>
                                   <span className="text-[10px] text-slate-500 mt-0.5">
-                                    Deuda: ${c.current_balance.toFixed(2)} | Límite: ${c.credit_limit.toFixed(2)}
+                                    Deuda: ${c.saldo_actual.toFixed(2)} | Límite: ${c.limite_credito.toFixed(2)}
                                   </span>
                                 </button>
                               ))}
@@ -1245,7 +1245,7 @@ const Sales = () => {
                       <UserCheck size={32} className="text-emerald-600 animate-bounce" />
                       <p className="font-bold text-sm">Cobro a Crédito / Fiado</p>
                       <p className="text-xs opacity-75">Se registrará el monto de <strong>${cartTotal.toFixed(2)}</strong> como saldo deudor en la cuenta de <strong>{selectedCustomer?.name}</strong>.</p>
-                      <p className="text-[10px] text-emerald-600 font-semibold mt-1">Saldo deudor previo: ${selectedCustomer?.current_balance.toFixed(2)} | Límite: ${selectedCustomer?.credit_limit.toFixed(2)}</p>
+                      <p className="text-[10px] text-emerald-600 font-semibold mt-1">Saldo deudor previo: ${selectedCustomer?.saldo_actual.toFixed(2)} | Límite: ${selectedCustomer?.limite_credito.toFixed(2)}</p>
                     </div>
                   )}
 
@@ -1385,8 +1385,8 @@ const Sales = () => {
                 <p className="text-base font-extrabold text-brand-900">{variantProduct.name}</p>
               </div>
               <div className="space-y-2">
-                {variantProduct.variants?.map(v => {
-                  const varPrice = v.price !== null ? v.price : variantProduct.price;
+                {variantProduct.variantes?.map(v => {
+                  const varPrice = v.precio !== null ? v.precio : variantProduct.precio;
                   return (
                     <button
                       key={v.id}
@@ -1394,14 +1394,14 @@ const Sales = () => {
                         addToCart(variantProduct, v);
                         setShowVariantModal(false);
                       }}
-                      disabled={v.quantity <= 0}
+                      disabled={v.cantidad <= 0}
                       className={`w-full p-3.5 border border-gray-100 hover:border-chiluda-red/40 hover:bg-red-50/10 rounded-2xl text-left flex justify-between items-center transition-all ${
-                        v.quantity <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer active:scale-98'
+                        v.cantidad <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer active:scale-98'
                       }`}
                     >
                       <div className="flex flex-col">
                         <span className="font-extrabold text-xs text-brand-900 sm:text-sm">{v.name}</span>
-                        <span className="text-[10px] text-gray-400 font-bold mt-1">Stock: {v.quantity}</span>
+                        <span className="text-[10px] text-gray-400 font-bold mt-1">Stock: {v.cantidad}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="font-extrabold text-sm text-chiluda-red">${varPrice.toFixed(2)}</span>
@@ -1430,12 +1430,12 @@ const Sales = () => {
             
             <div className="p-6 overflow-y-auto flex-1 min-h-0 font-mono text-[11px] text-gray-800 print:overflow-visible">
               <div className="text-center mb-4 flex flex-col items-center">
-                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">{storeSettings.store_name}</h2>
-                {storeSettings.address && (
-                  <p className="text-[9px] text-gray-500 font-semibold tracking-wide uppercase max-w-[250px]">{storeSettings.address}</p>
+                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">{storeSettings.nombre_tienda}</h2>
+                {storeSettings.direccion && (
+                  <p className="text-[9px] text-gray-500 font-semibold tracking-wide uppercase max-w-[250px]">{storeSettings.direccion}</p>
                 )}
-                {storeSettings.phone && (
-                  <p className="text-[9px] text-gray-500">Tel: {storeSettings.phone}</p>
+                {storeSettings.telefono && (
+                  <p className="text-[9px] text-gray-500">Tel: {storeSettings.telefono}</p>
                 )}
                 <p className="text-[9px] text-gray-500 mt-2">{lastSaleData.date.toLocaleString()}</p>
                 <p className="text-[10px] text-brand-900 font-bold mt-1">Ticket #{lastSaleData.saleId}</p>
@@ -1446,13 +1446,13 @@ const Sales = () => {
               </div>
               
               <div className="border-t border-b border-dashed border-gray-300 py-2.5 mb-3 space-y-1.5">
-                {lastSaleData.items.map((item, idx) => (
+                {lastSaleData.elementos.map((item, idx) => (
                   <div key={idx} className="flex justify-between">
                     <div className="flex-1 pr-2">
                       <span>{item.cartQuantity}x {item.name}</span>
                     </div>
                     <div className="text-right whitespace-nowrap">
-                      ${(item.price * item.cartQuantity).toFixed(2)}
+                      ${(item.precio * item.cartQuantity).toFixed(2)}
                     </div>
                   </div>
                 ))}
@@ -1503,7 +1503,7 @@ const Sales = () => {
               <div className="flex flex-col items-center mt-5">
                 <QRCodeSVG value={`https://abarrotesedye.com/ticket/${lastSaleData.saleId}`} size={100} level="L" />
                 <p className="text-center text-[9px] text-gray-400 mt-2 max-w-[200px]">Escanea para ticket digital</p>
-                <p className="text-center font-bold text-[10px] text-gray-800 mt-3">{storeSettings.ticket_footer || "¡Gracias por preferirnos!"}</p>
+                <p className="text-center font-bold text-[10px] text-gray-800 mt-3">{storeSettings.pie_ticket || "¡Gracias por preferirnos!"}</p>
               </div>
 
               {/* Panel de WhatsApp (escondido al imprimir) */}
@@ -1566,7 +1566,7 @@ const Sales = () => {
             
             <div className="p-6 overflow-y-auto flex-1 min-h-0 font-mono text-[11px] text-gray-800 print:overflow-visible">
               <div className="text-center mb-4 flex flex-col items-center">
-                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">{storeSettings.store_name}</h2>
+                <h2 className="text-sm font-black uppercase tracking-wider text-brand-900">{storeSettings.nombre_tienda}</h2>
                 <p className="text-[10px] font-black text-gray-500 mt-1 uppercase">REPORTE DE CIERRE DE CAJA</p>
                 <p className="text-[9px] text-gray-400 mt-2">Impreso: {new Date().toLocaleString()}</p>
               </div>
@@ -1582,17 +1582,17 @@ const Sales = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Apertura:</span>
-                  <span>{new Date(lastShiftReport.shift.start_time).toLocaleString()}</span>
+                  <span>{new Date(lastShiftReport.shift.hora_inicio).toLocaleString()}</span>
                 </div>
-                {lastShiftReport.shift.end_time && (
+                {lastShiftReport.shift.hora_fin && (
                   <div className="flex justify-between">
                     <span>Cierre:</span>
-                    <span>{new Date(lastShiftReport.shift.end_time).toLocaleString()}</span>
+                    <span>{new Date(lastShiftReport.shift.hora_fin).toLocaleString()}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span>Estado:</span>
-                  <span className="font-black uppercase text-red-600">{lastShiftReport.shift.status}</span>
+                  <span className="font-black uppercase text-red-600">{lastShiftReport.shift.estado}</span>
                 </div>
               </div>
               
@@ -1600,7 +1600,7 @@ const Sales = () => {
                 <div className="font-bold border-b border-gray-150 pb-1 mb-1 text-[10px] text-gray-500 uppercase">Resumen de Caja</div>
                 <div className="flex justify-between">
                   <span>Fondo Inicial:</span>
-                  <span>${lastShiftReport.shift.initial_cash.toFixed(2)}</span>
+                  <span>${lastShiftReport.shift.efectivo_inicial.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Ventas en Efectivo:</span>
@@ -1616,17 +1616,17 @@ const Sales = () => {
                 </div>
                 <div className="flex justify-between font-black text-brand-900 border-t border-gray-100 pt-1.5">
                   <span>Efectivo Esperado:</span>
-                  <span>${lastShiftReport.shift.final_cash_expected.toFixed(2)}</span>
+                  <span>${lastShiftReport.shift.efectivo_final_esperado.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between font-black text-brand-900">
                   <span>Efectivo Real Contado:</span>
-                  <span>${lastShiftReport.shift.final_cash_real?.toFixed(2) || "0.00"}</span>
+                  <span>${lastShiftReport.shift.efectivo_final_real?.toFixed(2) || "0.00"}</span>
                 </div>
                 
-                {lastShiftReport.shift.difference !== 0 && (
-                  <div className={`flex justify-between font-black border-t border-gray-100 pt-1.5 ${lastShiftReport.shift.difference < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    <span>{lastShiftReport.shift.difference < 0 ? 'FALTANTE (DIFERENCIA):' : 'SOBRANTE (DIFERENCIA):'}</span>
-                    <span>${lastShiftReport.shift.difference.toFixed(2)}</span>
+                {lastShiftReport.shift.diferencia !== 0 && (
+                  <div className={`flex justify-between font-black border-t border-gray-100 pt-1.5 ${lastShiftReport.shift.diferencia < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    <span>{lastShiftReport.shift.diferencia < 0 ? 'FALTANTE (DIFERENCIA):' : 'SOBRANTE (DIFERENCIA):'}</span>
+                    <span>${lastShiftReport.shift.diferencia.toFixed(2)}</span>
                   </div>
                 )}
               </div>
@@ -1780,11 +1780,11 @@ const Sales = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Fondo de Caja:</span>
-                      <span className="text-xl font-extrabold text-brand-900">${shiftReport.shift.initial_cash.toFixed(2)}</span>
+                      <span className="text-xl font-extrabold text-brand-900">${shiftReport.shift.efectivo_inicial.toFixed(2)}</span>
                     </div>
                     <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100">
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Efectivo Esperado:</span>
-                      <span className="text-xl font-extrabold text-emerald-600">${shiftReport.shift.final_cash_expected.toFixed(2)}</span>
+                      <span className="text-xl font-extrabold text-emerald-600">${shiftReport.shift.efectivo_final_esperado.toFixed(2)}</span>
                     </div>
                   </div>
 
@@ -1892,7 +1892,7 @@ const Sales = () => {
 
                   <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100 flex justify-between items-center">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Efectivo Esperado (Fórmula Sistema):</span>
-                    <span className="text-lg font-extrabold text-brand-900">${shiftReport.shift.final_cash_expected.toFixed(2)}</span>
+                    <span className="text-lg font-extrabold text-brand-900">${shiftReport.shift.efectivo_final_esperado.toFixed(2)}</span>
                   </div>
 
                   <div className="space-y-2">
@@ -1908,13 +1908,13 @@ const Sales = () => {
 
                   {closeCashReal !== '' && (
                     <div className={`p-4 rounded-2xl border text-center font-extrabold text-sm animate-fade-in ${
-                      parseFloat(closeCashReal) - shiftReport.shift.final_cash_expected === 0 
+                      parseFloat(closeCashReal) - shiftReport.shift.efectivo_final_esperado === 0 
                         ? 'bg-green-50 border-green-200 text-green-800' 
                         : 'bg-red-50 border-red-200 text-red-800'
                     }`}>
-                      {parseFloat(closeCashReal) - shiftReport.shift.final_cash_expected === 0 
+                      {parseFloat(closeCashReal) - shiftReport.shift.efectivo_final_esperado === 0 
                         ? 'Caja cuadrada con éxito ($0.00 descuadre)' 
-                        : `Diferencia (Descuadre): $${(parseFloat(closeCashReal) - shiftReport.shift.final_cash_expected).toFixed(2)}`
+                        : `Diferencia (Descuadre): $${(parseFloat(closeCashReal) - shiftReport.shift.efectivo_final_esperado).toFixed(2)}`
                       }
                     </div>
                   )}
@@ -1937,7 +1937,7 @@ const Sales = () => {
                         <div className="space-y-1">
                           <p className="font-extrabold">Corte Forzado por Administrador</p>
                           <p className="opacity-90 leading-relaxed">
-                            Estás realizando el cierre del turno del cajero <strong>{selectedShiftToClose.full_name || selectedShiftToClose.username}</strong>. El cajero será desconectado del control de caja.
+                            Estás realizando el cierre del turno del cajero <strong>{selectedShiftToClose.nombre_completo || selectedShiftToClose.nombre_usuario}</strong>. El cajero será desconectado del control de caja.
                           </p>
                         </div>
                       </div>
@@ -1945,15 +1945,15 @@ const Sales = () => {
                       <div className="border border-gray-100 rounded-2xl p-4 bg-white space-y-2.5">
                         <div className="flex justify-between text-xs font-bold">
                           <span className="text-gray-500">Fondo Inicial:</span>
-                          <span className="text-brand-900">${selectedShiftToClose.initial_cash.toFixed(2)}</span>
+                          <span className="text-brand-900">${selectedShiftToClose.efectivo_inicial.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="text-gray-500">Efectivo Esperado en Caja:</span>
-                          <span className="text-emerald-600 font-extrabold">${selectedShiftToClose.final_cash_expected.toFixed(2)}</span>
+                          <span className="text-emerald-600 font-extrabold">${selectedShiftToClose.efectivo_final_esperado.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
                           <span className="text-gray-500">Hora de Inicio:</span>
-                          <span className="text-brand-900">{new Date(selectedShiftToClose.start_time).toLocaleString()}</span>
+                          <span className="text-brand-900">{new Date(selectedShiftToClose.hora_inicio).toLocaleString()}</span>
                         </div>
                       </div>
 
@@ -1970,13 +1970,13 @@ const Sales = () => {
 
                       {adminCloseReal !== '' && (
                         <div className={`p-4 rounded-2xl border text-center font-extrabold text-sm animate-fade-in ${
-                          parseFloat(adminCloseReal) - selectedShiftToClose.final_cash_expected === 0 
+                          parseFloat(adminCloseReal) - selectedShiftToClose.efectivo_final_esperado === 0 
                             ? 'bg-green-50 border-green-200 text-green-800' 
                             : 'bg-red-50 border-red-200 text-red-800'
                         }`}>
-                          {parseFloat(adminCloseReal) - selectedShiftToClose.final_cash_expected === 0 
+                          {parseFloat(adminCloseReal) - selectedShiftToClose.efectivo_final_esperado === 0 
                             ? 'Caja cuadrada ($0.00 descuadre)' 
-                            : `Diferencia (Descuadre): $${(parseFloat(adminCloseReal) - selectedShiftToClose.final_cash_expected).toFixed(2)}`
+                            : `Diferencia (Descuadre): $${(parseFloat(adminCloseReal) - selectedShiftToClose.efectivo_final_esperado).toFixed(2)}`
                           }
                         </div>
                       )}
@@ -2024,14 +2024,14 @@ const Sales = () => {
                               {adminShifts.map((s) => (
                                 <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50 font-medium">
                                   <td className="p-3">
-                                    <div className="font-bold text-brand-900">{s.full_name}</div>
-                                    <div className="text-[10px] text-gray-400">@{s.username}</div>
+                                    <div className="font-bold text-brand-900">{s.nombre_completo}</div>
+                                    <div className="text-[10px] text-gray-400">@{s.nombre_usuario}</div>
                                   </td>
                                   <td className="p-3 text-gray-500">
-                                    {new Date(s.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    {new Date(s.hora_inicio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </td>
                                   <td className="p-3 text-right font-bold text-emerald-600">
-                                    ${s.final_cash_expected.toFixed(2)}
+                                    ${s.efectivo_final_esperado.toFixed(2)}
                                   </td>
                                   <td className="p-3 text-center">
                                     <button
@@ -2124,27 +2124,27 @@ const Sales = () => {
                     </thead>
                     <tbody className="divide-y divide-gray-100 text-xs">
                       {displayedSales.map((sale) => {
-                        const date = new Date(sale.created_at);
+                        const date = new Date(sale.creado_en);
                         const formattedDate = isNaN(date.getTime()) 
-                          ? sale.created_at.replace("T", " ").split(".")[0] 
+                          ? sale.creado_en.replace("T", " ").split(".")[0] 
                           : date.toLocaleString('es-MX', { hour12: false });
                         
                         const unitPrice = sale.product_price;
-                        const total = (unitPrice * sale.quantity);
+                        const total = (unitPrice * sale.cantidad);
                         
                         return (
                           <tr key={sale.id} className="hover:bg-brand-50/30">
                             <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formattedDate}</td>
                             <td className="px-4 py-3 text-gray-600 font-semibold">{sale.cashier_name || "Desconocido"}</td>
-                            <td className="px-4 py-3 font-medium text-gray-800">{sale.product_name}</td>
-                            <td className="px-4 py-3 text-center font-bold text-gray-700">{sale.quantity}</td>
+                            <td className="px-4 py-3 font-medium text-gray-800">{sale.nombre_producto}</td>
+                            <td className="px-4 py-3 text-center font-bold text-gray-700">{sale.cantidad}</td>
                             <td className="px-4 py-3 text-right font-semibold text-gray-600">${unitPrice.toFixed(2)}</td>
                             <td className="px-4 py-3 text-right font-black text-gray-900">${total.toFixed(2)}</td>
                             <td className="px-4 py-3 text-center">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                sale.is_cancelled ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+                                sale.cancelado ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
                               }`}>
-                                {sale.is_cancelled ? 'Cancelada' : 'Completada'}
+                                {sale.cancelado ? 'Cancelada' : 'Completada'}
                               </span>
                             </td>
                             {historyTab === 'sales' ? (
@@ -2159,8 +2159,8 @@ const Sales = () => {
                               </td>
                             ) : (
                               <>
-                                <td className="px-4 py-3 text-gray-600 font-bold">{getAuthorizedBy(sale.cancel_reason)}</td>
-                                <td className="px-4 py-3 text-gray-700 font-medium italic">{getCleanReason(sale.cancel_reason)}</td>
+                                <td className="px-4 py-3 text-gray-600 font-bold">{getAuthorizedBy(sale.motivo_cancelacion)}</td>
+                                <td className="px-4 py-3 text-gray-700 font-medium italic">{getCleanReason(sale.motivo_cancelacion)}</td>
                               </>
                             )}
                           </tr>
@@ -2186,7 +2186,7 @@ const Sales = () => {
                 Autorización del Supervisor
               </h3>
               <button 
-                onClick={() => setCancelConfirm({ show: false, saleId: null, reason: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, quantity: 1 })}
+                onClick={() => setCancelConfirm({ show: false, saleId: null, motivo: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, cantidad: 1 })}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <X size={20} />
@@ -2207,8 +2207,8 @@ const Sales = () => {
                   min="1"
                   max={cancelConfirm.maxQuantity}
                   className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-center font-bold text-lg text-brand-900"
-                  value={cancelConfirm.quantity}
-                  onChange={(e) => setCancelConfirm(prev => ({ ...prev, quantity: e.target.value }))}
+                  value={cancelConfirm.cantidad}
+                  onChange={(e) => setCancelConfirm(prev => ({ ...prev, cantidad: e.target.value }))}
                 />
               </div>
 
@@ -2218,8 +2218,8 @@ const Sales = () => {
                   placeholder="Ej. Error de cobro, devolución física de cliente..."
                   rows={2}
                   className="w-full px-3 py-2 bg-brand-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-xs font-semibold resize-none"
-                  value={cancelConfirm.reason}
-                  onChange={(e) => setCancelConfirm(prev => ({ ...prev, reason: e.target.value }))}
+                  value={cancelConfirm.motivo}
+                  onChange={(e) => setCancelConfirm(prev => ({ ...prev, motivo: e.target.value }))}
                 />
               </div>
 
@@ -2254,7 +2254,7 @@ const Sales = () => {
 
             <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100 flex-shrink-0">
               <button
-                onClick={() => setCancelConfirm({ show: false, saleId: null, reason: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, quantity: 1 })}
+                onClick={() => setCancelConfirm({ show: false, saleId: null, motivo: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, cantidad: 1 })}
                 className="w-1/3 py-2.5 rounded-xl font-bold text-xs text-gray-500 bg-gray-100 hover:bg-gray-200"
               >
                 Volver
@@ -2276,8 +2276,8 @@ const Sales = () => {
         <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
           <div className="bg-white rounded-3xl shadow-xl w-full max-w-xs overflow-hidden border border-white p-5 text-center animate-scale-in">
             <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
-              customAlert.type === 'success' ? 'bg-green-50 text-green-500' :
-              customAlert.type === 'warning' ? 'bg-orange-50 text-orange-500' :
+              customAlert.tipo === 'success' ? 'bg-green-50 text-green-500' :
+              customAlert.tipo === 'warning' ? 'bg-orange-50 text-orange-500' :
               'bg-red-50 text-red-500'
             }`}>
               <AlertCircle size={24} />
@@ -2287,8 +2287,8 @@ const Sales = () => {
             <button
               onClick={() => setCustomAlert(prev => ({ ...prev, show: false }))}
               className={`w-full py-2.5 rounded-xl font-extrabold text-xs text-white ${
-                customAlert.type === 'success' ? 'bg-green-600 hover:bg-green-700' :
-                customAlert.type === 'warning' ? 'bg-orange-500 hover:bg-orange-600' :
+                customAlert.tipo === 'success' ? 'bg-green-600 hover:bg-green-700' :
+                customAlert.tipo === 'warning' ? 'bg-orange-500 hover:bg-orange-600' :
                 'bg-red-600 hover:bg-red-700'
               }`}
             >

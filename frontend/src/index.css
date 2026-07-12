@@ -218,6 +218,7 @@ body.branded-dark-theme .bg-white\/95,
 body.branded-dark-theme .bg-white\/40,
 body.branded-dark-theme .bg-slate-50\/50,
 body.branded-dark-theme .bg-stone-50,
+body.branded-dark-theme .bg-stone-100,
 body.branded-dark-theme .bg-brand-50\/50,
 body.branded-dark-theme .glass {
   background-color: rgba(255, 255, 255, 0.08) !important;
@@ -227,6 +228,54 @@ body.branded-dark-theme .glass {
   border-color: rgba(255, 255, 255, 0.1) !important;
   color: #ffffff !important;
   box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Custom primary background adaptation for dark theme */
+body.branded-dark-theme .bg-\[\#064e3b\] {
+  background-color: var(--primary-color, #064E3B) !important;
+}
+body.branded-dark-theme .bg-\[\#064e3b\]:hover {
+  filter: brightness(1.15) !important;
+}
+
+/* Custom accent background & text adaptation for dark theme */
+body.branded-dark-theme .bg-chiluda-red,
+body.branded-dark-theme .bg-chiluda-darkred {
+  background-color: var(--accent-color, #ef4444) !important;
+}
+body.branded-dark-theme .bg-chiluda-red:hover,
+body.branded-dark-theme .bg-chiluda-darkred:hover {
+  filter: brightness(1.15) !important;
+}
+body.branded-dark-theme .bg-chiluda-red:disabled,
+body.branded-dark-theme .bg-chiluda-darkred:disabled,
+body.branded-dark-theme .bg-chiluda-lightred {
+  background-color: var(--accent-color, #ef4444) !important;
+  opacity: 0.5 !important;
+}
+body.branded-dark-theme .text-chiluda-red {
+  color: var(--accent-color, #ef4444) !important;
+}
+body.branded-dark-theme .border-chiluda-red {
+  border-color: var(--accent-color, #ef4444) !important;
+}
+
+/* Custom emerald background adaptation for dark theme */
+body.branded-dark-theme .bg-emerald-600,
+body.branded-dark-theme .bg-emerald-700,
+body.branded-dark-theme .bg-emerald-500 {
+  background-color: var(--accent-color, #059669) !important;
+}
+body.branded-dark-theme .bg-emerald-600:hover,
+body.branded-dark-theme .bg-emerald-700:hover,
+body.branded-dark-theme .bg-emerald-500:hover {
+  filter: brightness(1.15) !important;
+}
+body.branded-dark-theme .bg-emerald-600:disabled,
+body.branded-dark-theme .bg-emerald-700:disabled,
+body.branded-dark-theme .disabled\:bg-emerald-400:disabled {
+  background-color: var(--accent-color, #059669) !important;
+  opacity: 0.5 !important;
 }
 
 /* Input styles inside branded dark theme */
@@ -248,13 +297,20 @@ body.branded-dark-theme textarea:focus {
 body.branded-dark-theme .text-brand-900,
 body.branded-dark-theme .text-stone-850,
 body.branded-dark-theme .text-stone-700,
+body.branded-dark-theme .text-stone-655,
 body.branded-dark-theme .text-stone-650,
 body.branded-dark-theme .text-stone-605,
 body.branded-dark-theme .text-stone-600,
 body.branded-dark-theme .text-stone-500,
 body.branded-dark-theme .text-slate-700,
 body.branded-dark-theme .text-slate-600,
-body.branded-dark-theme .text-slate-500 {
+body.branded-dark-theme .text-slate-500,
+body.branded-dark-theme .text-gray-900,
+body.branded-dark-theme .text-gray-800,
+body.branded-dark-theme .text-gray-700,
+body.branded-dark-theme .text-gray-600,
+body.branded-dark-theme .text-\[\#064e3b\],
+body.branded-dark-theme .text-\[\#064E3B\] {
   color: #e5e7eb !important; /* light gray text */
 }
 
@@ -262,6 +318,13 @@ body.branded-dark-theme .text-stone-400,
 body.branded-dark-theme .text-slate-400,
 body.branded-dark-theme .text-gray-400 {
   color: #9ca3af !important; /* muted gray text */
+}
+
+body.branded-dark-theme .text-red-700,
+body.branded-dark-theme .text-red-600,
+body.branded-dark-theme .text-red-505,
+body.branded-dark-theme .text-red-500 {
+  color: #f87171 !important; /* Brighter red: red-400 */
 }
 
 /* Table elements */
@@ -293,12 +356,42 @@ body.branded-dark-theme form {
 }
 
 /* Badge and Header overrides for branded dark theme */
-body.branded-dark-theme .text-emerald-800 {
-  color: #34d399 !important; /* Brighter green: emerald-400 */
+body.branded-dark-theme .text-emerald-850,
+body.branded-dark-theme .text-emerald-800,
+body.branded-dark-theme .text-emerald-700 {
+  color: var(--accent-color, #34d399) !important;
 }
 body.branded-dark-theme .bg-emerald-500\/10 {
   background-color: rgba(16, 185, 129, 0.25) !important; 
   border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+/* Accent icon, text, and border overrides for branded dark theme */
+body.branded-dark-theme .text-emerald-600,
+body.branded-dark-theme .text-emerald-500 {
+  color: var(--accent-color, #34d399) !important;
+}
+body.branded-dark-theme .border-emerald-100,
+body.branded-dark-theme .border-emerald-200\/20,
+body.branded-dark-theme .border-stone-200,
+body.branded-dark-theme .border-stone-150 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Custom translucent accent backgrounds and borders for branded dark theme */
+body.branded-dark-theme .bg-\[\#064e3b\]\/10,
+body.branded-dark-theme .bg-emerald-50 {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+body.branded-dark-theme .bg-\[\#064e3b\]\/5 {
+  background-color: rgba(255, 255, 255, 0.03) !important;
+}
+body.branded-dark-theme .hover\:bg-emerald-100:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+body.branded-dark-theme .border-\[\#064e3b\]\/10,
+body.branded-dark-theme .border-\[\#064e3b\]\/20 {
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 body.branded-dark-theme .text-blue-800 {
@@ -309,6 +402,10 @@ body.branded-dark-theme .bg-blue-500\/10 {
   border-color: rgba(59, 130, 246, 0.3) !important;
 }
 
+body.branded-dark-theme .text-purple-800 {
+  color: #c084fc !important; /* Brighter purple: purple-400 */
+}
+
 body.branded-dark-theme .text-amber-800 {
   color: #fbbf24 !important; /* Brighter amber: amber-400 */
 }
@@ -317,7 +414,11 @@ body.branded-dark-theme .bg-amber-500\/10 {
   border-color: rgba(245, 158, 11, 0.3) !important;
 }
 
-body.branded-dark-theme .hover\:bg-stone-100:hover {
+body.branded-dark-theme .hover\:bg-stone-50:hover,
+body.branded-dark-theme .hover\:bg-stone-100:hover,
+body.branded-dark-theme .hover\:bg-stone-250:hover,
+body.branded-dark-theme .hover\:bg-slate-50:hover,
+body.branded-dark-theme .hover\:bg-slate-100:hover {
   background-color: rgba(255, 255, 255, 0.08) !important;
 }
 

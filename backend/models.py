@@ -1,249 +1,256 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, synonym
 from database import Base
 
-class Tenant(Base):
-    __tablename__ = "tenants"
+class Inquilino(Base):
+    __tablename__ = "inquilinos"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    subdomain = Column(String, unique=True, index=True, nullable=True)
-    subscription_status = Column(String, default="active") # active, trialing, past_due, canceled
-    plan_tier = Column(String, default="free") # free, premium
-    created_at = Column(String)
-    stripe_customer_id = Column(String, nullable=True)
-    stripe_subscription_id = Column(String, nullable=True)
-    subscription_end = Column(String, nullable=True)
-    last_payment_date = Column(String, nullable=True)
+    nombre = Column(String, index=True)
+    name = synonym('nombre')
+    subdominio = Column(String, unique=True, index=True, nullable=True)
+    estado_suscripcion = Column(String, default="active") # active, trialing, past_due, canceled
+    nivel_plan = Column(String, default="free") # free, premium
+    creado_en = Column(String)
+    stripe_id_cliente = Column(String, nullable=True)
+    stripe_id_suscripcion = Column(String, nullable=True)
+    fin_suscripcion = Column(String, nullable=True)
+    fecha_ultimo_pago = Column(String, nullable=True)
 
-class User(Base):
-    __tablename__ = "users"
+class Usuario(Base):
+    __tablename__ = "usuarios"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    username = Column(String, unique=True, index=True)
-    full_name = Column(String)
-    hashed_password = Column(String)
-    role = Column(String, default="user")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    nombre_usuario = Column(String, unique=True, index=True)
+    nombre_completo = Column(String)
+    contrasena_encriptada = Column(String)
+    rol = Column(String, default="user")
 
-    tenant = relationship("Tenant")
+    inquilino = relationship("Inquilino")
 
-class Product(Base):
-    __tablename__ = "products"
+class Producto(Base):
+    __tablename__ = "productos"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    name = Column(String, index=True)
-    barcode = Column(String, index=True, nullable=True)
-    price = Column(Float)
-    cost_price = Column(Float, default=0.0)
-    quantity = Column(Integer)
-    min_stock = Column(Integer, default=3)
-    sold = Column(Integer, default=0)
-    entry_date = Column(String, nullable=True)
-    image = Column(String, nullable=True)
-    sat_key = Column(String, default="01010101")
-    sat_unit_key = Column(String, default="H87")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    nombre = Column(String, index=True)
+    name = synonym('nombre')
+    codigo_barras = Column(String, index=True, nullable=True)
+    precio = Column(Float)
+    precio_costo = Column(Float, default=0.0)
+    cantidad = Column(Integer)
+    inventario_minimo = Column(Integer, default=3)
+    vendido = Column(Integer, default=0)
+    fecha_entrada = Column(String, nullable=True)
+    imagen = Column(String, nullable=True)
+    clave_sat = Column(String, default="01010101")
+    clave_unidad_sat = Column(String, default="H87")
     
-    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan", lazy="joined")
-    tenant = relationship("Tenant")
+    variantes = relationship("VarianteProducto", back_populates="producto", cascade="all, delete-orphan", lazy="joined")
+    inquilino = relationship("Inquilino")
 
-class ProductVariant(Base):
-    __tablename__ = "product_variants"
+class VarianteProducto(Base):
+    __tablename__ = "variantes_producto"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    product_id = Column(Integer, ForeignKey("products.id"), index=True)
-    name = Column(String, index=True)
-    barcode = Column(String, index=True, nullable=True)
-    cost_price = Column(Float, nullable=True)
-    price = Column(Float, nullable=True)
-    quantity = Column(Integer)
-    sold = Column(Integer, default=0)
-    sat_key = Column(String, default="01010101")
-    sat_unit_key = Column(String, default="H87")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    producto_id = Column(Integer, ForeignKey("productos.id"), index=True)
+    nombre = Column(String, index=True)
+    name = synonym('nombre')
+    codigo_barras = Column(String, index=True, nullable=True)
+    precio_costo = Column(Float, nullable=True)
+    precio = Column(Float, nullable=True)
+    cantidad = Column(Integer)
+    vendido = Column(Integer, default=0)
+    clave_sat = Column(String, default="01010101")
+    clave_unidad_sat = Column(String, default="H87")
 
-    product = relationship("Product", back_populates="variants")
-    tenant = relationship("Tenant")
+    producto = relationship("Producto", back_populates="variantes")
+    inquilino = relationship("Inquilino")
 
-class Notification(Base):
-    __tablename__ = "notifications"
+class Notificacion(Base):
+    __tablename__ = "notificaciones"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    message = Column(String)
-    is_read = Column(Boolean, default=False)
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    mensaje = Column(String)
+    leido = Column(Boolean, default=False)
+    inquilino = relationship("Inquilino")
 
-class Shift(Base):
-    __tablename__ = "shifts"
+class Turno(Base):
+    __tablename__ = "turnos"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    user_id = Column(Integer, index=True)
-    start_time = Column(String)
-    end_time = Column(String, nullable=True)
-    initial_cash = Column(Float)
-    final_cash_real = Column(Float, nullable=True)
-    final_cash_expected = Column(Float, default=0.0)
-    difference = Column(Float, nullable=True)
-    status = Column(String, default="open") # "open", "closed"
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    usuario_id = Column(Integer, index=True)
+    hora_inicio = Column(String)
+    hora_fin = Column(String, nullable=True)
+    efectivo_inicial = Column(Float)
+    efectivo_final_real = Column(Float, nullable=True)
+    efectivo_final_esperado = Column(Float, default=0.0)
+    diferencia = Column(Float, nullable=True)
+    estado = Column(String, default="open") # "open", "closed"
+    inquilino = relationship("Inquilino")
 
-class CashMovement(Base):
-    __tablename__ = "cash_movements"
+class MovimientoCaja(Base):
+    __tablename__ = "movimientos_caja"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    shift_id = Column(Integer, index=True)
-    type = Column(String) # "entrada", "salida", "retiro_parcial"
-    amount = Column(Float)
-    reason = Column(String)
-    created_at = Column(String)
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    turno_id = Column(Integer, index=True)
+    tipo = Column(String) # "entrada", "salida", "retiro_parcial"
+    monto = Column(Float)
+    motivo = Column(String)
+    creado_en = Column(String)
+    inquilino = relationship("Inquilino")
 
-class SaleHistory(Base):
-    __tablename__ = "sales_history"
+class HistorialVenta(Base):
+    __tablename__ = "historial_ventas"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    product_id = Column(Integer, index=True)
-    variant_id = Column(Integer, index=True, nullable=True)
-    shift_id = Column(Integer, index=True, nullable=True)
-    user_id = Column(Integer, index=True, nullable=True)
-    quantity = Column(Integer)
-    price_sold = Column(Float, nullable=True) # Actual selling price
-    cost_price_sold = Column(Float, default=0.0) # Cost price at transaction time
-    discount = Column(Float, default=0.0) # Discount applied
-    payment_method = Column(String, default="efectivo") # "efectivo", "tarjeta", "mixto"
-    cash_amount = Column(Float, default=0.0)
-    card_amount = Column(Float, default=0.0)
-    created_at = Column(String) # We will use ISO format string for simplicity with SQLite/Postgres compatibility
-    is_cancelled = Column(Boolean, default=False)
-    cancel_reason = Column(String, nullable=True)
-    authorized_by = Column(String, nullable=True)
-    invoice_id = Column(Integer, ForeignKey("invoices.id"), index=True, nullable=True)
-    customer_id = Column(Integer, ForeignKey("customers.id"), index=True, nullable=True)
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    producto_id = Column(Integer, index=True)
+    variante_id = Column(Integer, index=True, nullable=True)
+    turno_id = Column(Integer, index=True, nullable=True)
+    usuario_id = Column(Integer, index=True, nullable=True)
+    cantidad = Column(Integer)
+    precio_vendido = Column(Float, nullable=True) # Actual selling price
+    precio_costo_vendido = Column(Float, default=0.0) # Cost price at transaction time
+    descuento = Column(Float, default=0.0) # Discount applied
+    metodo_pago = Column(String, default="efectivo") # "efectivo", "tarjeta", "mixto"
+    monto_efectivo = Column(Float, default=0.0)
+    monto_tarjeta = Column(Float, default=0.0)
+    creado_en = Column(String)
+    cancelado = Column(Boolean, default=False)
+    motivo_cancelacion = Column(String, nullable=True)
+    autorizado_por = Column(String, nullable=True)
+    factura_id = Column(Integer, ForeignKey("facturas.id"), index=True, nullable=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), index=True, nullable=True)
+    inquilino = relationship("Inquilino")
 
-class ProductReturn(Base):
-    __tablename__ = "product_returns"
+class DevolucionProducto(Base):
+    __tablename__ = "devoluciones_producto"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    sale_id = Column(Integer, index=True)
-    product_id = Column(Integer, index=True)
-    quantity = Column(Integer)
-    price = Column(Float)
-    reason = Column(String)
-    authorized_by = Column(String, nullable=True)
-    created_at = Column(String)
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    venta_id = Column(Integer, index=True)
+    producto_id = Column(Integer, index=True)
+    cantidad = Column(Integer)
+    precio = Column(Float)
+    motivo = Column(String)
+    autorizado_por = Column(String, nullable=True)
+    creado_en = Column(String)
+    inquilino = relationship("Inquilino")
 
-
-class BillingProfile(Base):
-    __tablename__ = "billing_profiles"
+class PerfilFacturacion(Base):
+    __tablename__ = "perfiles_facturacion"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
     rfc = Column(String, unique=True, index=True)
     razon_social = Column(String, index=True)
     regimen_fiscal = Column(String)
     codigo_postal = Column(String)
     correo = Column(String)
-    tenant = relationship("Tenant")
+    inquilino = relationship("Inquilino")
 
-
-class Invoice(Base):
-    __tablename__ = "invoices"
+class Factura(Base):
+    __tablename__ = "facturas"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
     uuid = Column(String, unique=True, index=True)
     monto_total = Column(Float)
     xml_url = Column(String, nullable=True)
     pdf_url = Column(String, nullable=True)
-    created_at = Column(String)
-    status = Column(String, default="active") # "active", "cancelled"
-    tenant = relationship("Tenant")
+    creado_en = Column(String)
+    estado = Column(String, default="active") # "active", "cancelled"
+    inquilino = relationship("Inquilino")
 
-
-class Supplier(Base):
-    __tablename__ = "suppliers"
+class Proveedor(Base):
+    __tablename__ = "proveedores"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    name = Column(String, index=True)
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    nombre = Column(String, index=True)
+    name = synonym('nombre')
     rfc = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    email = Column(String, nullable=True)
-    address = Column(String, nullable=True)
-    notes = Column(String, nullable=True)
-    tenant = relationship("Tenant")
+    telefono = Column(String, nullable=True)
+    correo = Column(String, nullable=True)
+    direccion = Column(String, nullable=True)
+    notas = Column(String, nullable=True)
+    inquilino = relationship("Inquilino")
 
-
-class Purchase(Base):
-    __tablename__ = "purchases"
+class Compra(Base):
+    __tablename__ = "compras"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    supplier_id = Column(Integer, ForeignKey("suppliers.id"), nullable=True)
-    invoice_number = Column(String, nullable=True)
-    total_cost = Column(Float, default=0.0)
-    created_at = Column(String)
-    notes = Column(String, nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    proveedor_id = Column(Integer, ForeignKey("proveedores.id"), nullable=True)
+    numero_factura = Column(String, nullable=True)
+    costo_total = Column(Float, default=0.0)
+    creado_en = Column(String)
+    notas = Column(String, nullable=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
 
-    supplier = relationship("Supplier")
-    items = relationship("PurchaseItem", back_populates="purchase", cascade="all, delete-orphan")
-    tenant = relationship("Tenant")
+    proveedor = relationship("Proveedor")
+    elementos = relationship("ElementoCompra", back_populates="compra", cascade="all, delete-orphan")
+    inquilino = relationship("Inquilino")
 
-
-class PurchaseItem(Base):
-    __tablename__ = "purchase_items"
+class ElementoCompra(Base):
+    __tablename__ = "elementos_compra"
     id = Column(Integer, primary_key=True, index=True)
-    purchase_id = Column(Integer, ForeignKey("purchases.id"))
-    product_id = Column(Integer, ForeignKey("products.id"))
-    variant_id = Column(Integer, ForeignKey("product_variants.id"), nullable=True)
-    quantity = Column(Integer)
-    cost_price = Column(Float)
-    price = Column(Float, nullable=True)
+    compra_id = Column(Integer, ForeignKey("compras.id"))
+    producto_id = Column(Integer, ForeignKey("productos.id"))
+    variante_id = Column(Integer, ForeignKey("variantes_producto.id"), nullable=True)
+    cantidad = Column(Integer)
+    precio_costo = Column(Float)
+    precio = Column(Float, nullable=True)
 
-    purchase = relationship("Purchase", back_populates="items")
-    product = relationship("Product")
-    variant = relationship("ProductVariant")
+    compra = relationship("Compra", back_populates="elementos")
+    producto = relationship("Producto")
+    variante = relationship("VarianteProducto")
 
-
-class StoreSettings(Base):
-    __tablename__ = "store_settings"
+class ConfiguracionesTienda(Base):
+    __tablename__ = "configuraciones_tienda"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    store_name = Column(String, default="ABARROTES ED & E")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    nombre_tienda = Column(String, default="ABARROTES ED & E")
     rfc = Column(String, nullable=True)
-    phone = Column(String, nullable=True)
-    email = Column(String, nullable=True)
-    address = Column(String, nullable=True)
-    tax_rate = Column(Float, default=16.0)
-    ticket_footer = Column(String, default="¡Gracias por su compra!")
+    telefono = Column(String, nullable=True)
+    correo = Column(String, nullable=True)
+    direccion = Column(String, nullable=True)
+    tasa_impuesto = Column(Float, default=16.0)
+    pie_ticket = Column(String, default="¡Gracias por su compra!")
     logo_url = Column(String, nullable=True)
-    primary_color = Column(String, default="#064E3B")
-    accent_color = Column(String, default="#064E3B")
-    tenant = relationship("Tenant")
+    color_primario = Column(String, default="#064E3B")
+    color_secundario = Column(String, default="#064E3B")
+    inquilino = relationship("Inquilino")
 
-
-class Customer(Base):
-    __tablename__ = "customers"
+class Cliente(Base):
+    __tablename__ = "clientes"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    name = Column(String, index=True)
-    phone = Column(String, nullable=True)
-    email = Column(String, nullable=True)
-    credit_limit = Column(Float, default=0.0)
-    current_balance = Column(Float, default=0.0)
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    nombre = Column(String, index=True)
+    name = synonym('nombre')
+    telefono = Column(String, nullable=True)
+    correo = Column(String, nullable=True)
+    limite_credito = Column(Float, default=0.0)
+    saldo_actual = Column(Float, default=0.0)
+    inquilino = relationship("Inquilino")
 
-
-class CustomerPayment(Base):
-    __tablename__ = "customer_payments"
+class PagoCliente(Base):
+    __tablename__ = "pagos_cliente"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("tenants.id"), index=True, nullable=True)
-    customer_id = Column(Integer, ForeignKey("customers.id"))
-    shift_id = Column(Integer, nullable=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    amount = Column(Float)
-    created_at = Column(String)
-    notes = Column(String, nullable=True)
-    tenant = relationship("Tenant")
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"))
+    turno_id = Column(Integer, nullable=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"))
+    monto = Column(Float)
+    creado_en = Column(String)
+    notas = Column(String, nullable=True)
+    inquilino = relationship("Inquilino")
 
+class BitacoraUsuario(Base):
+    __tablename__ = "bitacora_usuarios"
+    id = Column(Integer, primary_key=True, index=True)
+    inquilino_id = Column(Integer, ForeignKey("inquilinos.id"), index=True, nullable=True)
+    usuario = Column(String)
+    nombre_usuario = synonym('usuario')
+    nombre_completo = Column(String)
+    rol = Column(String)
+    accion = Column(String)
+    action = synonym('accion')
+    detalles = Column(String)
+    details = synonym('detalles')
+    fecha_hora = Column(String)
 
-
-
-
-
+    inquilino = relationship("Inquilino")

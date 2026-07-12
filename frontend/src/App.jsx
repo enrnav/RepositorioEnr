@@ -22,7 +22,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   }
   
   const user = JSON.parse(userStr);
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  if (allowedRoles && !allowedRoles.includes(user.rol)) {
     return <Navigate to="/sales" replace />;
   }
   
@@ -33,7 +33,7 @@ const PublicRoute = ({ children }) => {
   const userStr = sessionStorage.getItem('user');
   if (userStr) {
     const user = JSON.parse(userStr);
-    return user.role === 'admin' ? <Navigate to="/dashboard" replace /> : <Navigate to="/sales" replace />;
+    return user.rol === 'admin' ? <Navigate to="/dashboard" replace /> : <Navigate to="/sales" replace />;
   }
   return children;
 };
@@ -44,7 +44,7 @@ function App() {
       <Routes>
         <Route path="/" element={<PublicRoute><Navigate to="/login" replace /></PublicRoute>} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-        <Route path="/register-tenant" element={<PublicRoute><RegisterTenant /></PublicRoute>} />
+        <Route path="/register-inquilino" element={<PublicRoute><RegisterTenant /></PublicRoute>} />
         
         <Route element={
           <ProtectedRoute>

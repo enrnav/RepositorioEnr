@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, status as estado, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session, lazyload
@@ -20,278 +20,342 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 def get_current_user(request: Request, token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
+        status_code=estado.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(token, auth.SECRET_KEY, algorithms=[auth.ALGORITHM])
-        username: str = payload.get("sub")
-        if username is None:
+        nombre_usuario: str = payload.get("sub")
+        if nombre_usuario is None:
             raise credentials_exception
-        token_data = schemas.TokenData(username=username)
+        token_data = schemas.TokenData(nombre_usuario=nombre_usuario)
     except JWTError:
         raise credentials_exception
         
-    user = db.query(models.User).filter(models.User.username == token_data.username).first()
+    user = db.query(models.Usuario).filter(models.Usuario.nombre_usuario == token_data.nombre_usuario).first()
     if user is None:
         raise credentials_exception
         
     # Verificar estado del Tenant si tiene uno
-    if user.tenant_id:
-        tenant = db.query(models.Tenant).filter(models.Tenant.id == user.tenant_id).first()
-        if not tenant:
+    if user.inquilino_id:
+        inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == user.inquilino_id).first()
+        if not inquilino:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=estado.HTTP_403_FORBIDDEN,
                 detail="Tienda no encontrada."
             )
         
         # Check if subscription has expired
-        if tenant.plan_tier == 'premium' and tenant.subscription_end:
+        if inquilino.nivel_plan == 'premium' and inquilino.fin_suscripcion:
             try:
                 now_str = datetime.utcnow().isoformat()
-                if now_str > tenant.subscription_end and tenant.subscription_status == 'active':
-                    tenant.subscription_status = 'suspended'
+                if now_str > inquilino.fin_suscripcion and inquilino.estado_suscripcion == 'active':
+                    inquilino.estado_suscripcion = 'suspended'
                     db.commit()
             except Exception as e:
                 print("Error checking subscription expiration:", e)
                 
         # If suspended, block all endpoints EXCEPT billing, superadmin, and basic auth information
         path = request.url.path
-        if tenant.subscription_status not in ["active", "trialing"]:
-            is_billing_route = "/billing" in path or "/superadmin" in path or "/auth/tenant" in path or "/auth/users" in path
+        if inquilino.estado_suscripcion not in ["active", "trialing"]:
+            is_billing_route = "/billing" in path or "/superadmin" in path or "/auth/inquilino" in path or "/auth/users" in path
             if not is_billing_route:
                 raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                    status_code=estado.HTTP_403_FORBIDDEN,
                     detail="Suscripción inactiva. Por favor verifique sus pagos."
                 )
             
     return user
 
-@router.get("/auth/tenant-branding/{subdomain}")
-def get_tenant_branding(subdomain: str, db: Session = Depends(get_db)):
-    tenant = db.query(models.Tenant).filter(models.Tenant.subdomain == subdomain).first()
-    if not tenant:
+@router.get("/auth/inquilino-branding/{subdominio}")
+def get_tenant_branding(subdominio: str, db: Session = Depends(get_db)):
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.subdominio == subdominio).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada")
     
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.tenant_id == tenant.id).first()
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.inquilino_id == inquilino.id).first()
     if not settings:
         return {
-            "store_name": tenant.name,
+            "nombre_tienda": inquilino.nombre,
             "logo_url": None,
-            "primary_color": "#064E3B",
-            "accent_color": "#DC2626"
+            "color_primario": "#064E3B",
+            "color_secundario": "#DC2626"
         }
     
     return {
-        "store_name": settings.store_name,
+        "nombre_tienda": settings.nombre_tienda,
         "logo_url": settings.logo_url,
-        "primary_color": settings.primary_color,
-        "accent_color": settings.accent_color
+        "color_primario": settings.color_primario,
+        "color_secundario": settings.color_secundario
     }
 
-@router.post("/auth/register-tenant")
-def register_tenant(req: schemas.TenantRegisterRequest, db: Session = Depends(get_db)):
+@router.post("/auth/register-inquilino")
+def register_tenant(req: schemas.InquilinoRegistroRequest, db: Session = Depends(get_db)):
     # 1. Validar si usuario admin ya existe
-    existing_user = db.query(models.User).filter(models.User.username == req.admin_username).first()
+    existing_user = db.query(models.Usuario).filter(models.Usuario.nombre_usuario == req.usuario_admin).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="El usuario administrador ya existe")
 
     # 2. Validar subdominio único si se provee
-    if req.subdomain:
-        existing_tenant = db.query(models.Tenant).filter(models.Tenant.subdomain == req.subdomain).first()
+    if req.subdominio:
+        existing_tenant = db.query(models.Inquilino).filter(models.Inquilino.subdominio == req.subdominio).first()
         if existing_tenant:
             raise HTTPException(status_code=400, detail="El subdominio ya está registrado")
 
     try:
         # 3. Crear el Tenant
-        db_tenant = models.Tenant(
-            name=req.store_name,
-            subdomain=req.subdomain or str(uuid.uuid4())[:8],
-            subscription_status="active",
-            plan_tier="free",  # Default to free plan
-            created_at=datetime.utcnow().isoformat()
+        db_tenant = models.Inquilino(
+            nombre=req.nombre_tienda,
+            subdominio=req.subdominio or str(uuid.uuid4())[:8],
+            estado_suscripcion="active",
+            nivel_plan="free",  # Default to free plan
+            creado_en=datetime.utcnow().isoformat()
         )
         db.add(db_tenant)
         db.commit()
         db.refresh(db_tenant)
 
         # 4. Crear el usuario Administrador para el Tenant
-        hashed_password = auth.get_password_hash(req.admin_password)
-        db_user = models.User(
-            tenant_id=db_tenant.id,
-            username=req.admin_username,
-            full_name=req.admin_name,
-            hashed_password=hashed_password,
-            role="admin"
+        contrasena_encriptada = auth.get_password_hash(req.contrasena_admin)
+        db_user = models.Usuario(
+            inquilino_id=db_tenant.id,
+            nombre_usuario=req.usuario_admin,
+            nombre_completo=req.nombre_admin,
+            contrasena_encriptada=contrasena_encriptada,
+            rol="admin"
         )
         db.add(db_user)
 
         # 5. Crear StoreSettings por defecto para este Tenant
-        db_settings = models.StoreSettings(
-            tenant_id=db_tenant.id,
-            store_name=req.store_name,
-            ticket_footer="¡Gracias por su compra!",
+        db_settings = models.ConfiguracionesTienda(
+            inquilino_id=db_tenant.id,
+            nombre_tienda=req.nombre_tienda,
+            pie_ticket="¡Gracias por su compra!",
             logo_url=req.logo_url,
-            primary_color=req.primary_color or "#064E3B",
-            accent_color=req.accent_color or "#064E3B"
+            color_primario=req.color_primario or "#064E3B",
+            color_secundario=req.color_secundario or "#064E3B"
         )
         db.add(db_settings)
 
         db.commit()
+
+        # Log action
+        log_entry = models.BitacoraUsuario(
+            inquilino_id=db_tenant.id,
+            usuario=db_user.nombre_usuario,
+            nombre_completo=db_user.nombre_completo,
+            rol=db_user.rol,
+            accion="creacion",
+            detalles="Usuario administrador inicial creado durante el registro de la tienda.",
+            fecha_hora=datetime.utcnow().isoformat()
+        )
+        db.add(log_entry)
+        db.commit()
+
         return {
             "message": "Tenant and Admin created successfully", 
-            "tenant_id": db_tenant.id,
-            "subdomain": db_tenant.subdomain
+            "inquilino_id": db_tenant.id,
+            "subdominio": db_tenant.subdominio
         }
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/auth/register")
-def register(user: schemas.UserCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    existing_user = db.query(models.User).filter(models.User.username == user.username).first()
+def register(user: schemas.UsuarioCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    existing_user = db.query(models.Usuario).filter(models.Usuario.nombre_usuario == user.nombre_usuario).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="El usuario ya existe")
 
     # Validar permisos
-    if current_user.role not in ['admin', 'supervisor']:
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para registrar usuarios")
         
     # Hash the password
-    hashed_password = auth.get_password_hash(user.password)
+    contrasena_encriptada = auth.get_password_hash(user.contrasena)
     
-    db_user = models.User(
-        tenant_id=current_user.tenant_id,
-        username=user.username, 
-        full_name=user.full_name, 
-        hashed_password=hashed_password,
-        role=user.role
+    db_user = models.Usuario(
+        inquilino_id=current_user.inquilino_id,
+        nombre_usuario=user.nombre_usuario, 
+        nombre_completo=user.nombre_completo, 
+        contrasena_encriptada=contrasena_encriptada,
+        rol=user.rol
     )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    # Log action
+    log_entry = models.BitacoraUsuario(
+        inquilino_id=current_user.inquilino_id,
+        nombre_usuario=db_user.nombre_usuario,
+        nombre_completo=db_user.nombre_completo,
+        rol=db_user.rol,
+        action="creacion",
+        details=f"Usuario creado por {current_user.nombre_usuario} ({current_user.nombre_completo}) con el rol de {db_user.rol}.",
+        fecha_hora=datetime.utcnow().isoformat()
+    )
+    db.add(log_entry)
+    db.commit()
+    
     return {"message": "User created successfully"}
 
 @router.post("/auth/login", response_model=schemas.Token)
-def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
-    db_user = db.query(models.User).filter(models.User.username == user.username).first()
-    if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
+def login(user: schemas.UsuarioLogin, db: Session = Depends(get_db)):
+    db_user = db.query(models.Usuario).filter(models.Usuario.nombre_usuario == user.nombre_usuario).first()
+    if not db_user or not auth.verify_password(user.contrasena, db_user.contrasena_encriptada):
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
+            status_code=estado.HTTP_401_UNAUTHORIZED,
             detail="Usuario o contraseña incorrectos",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
     # Verificar estado del Tenant si tiene uno
     sub_status = "active"
-    subdomain = None
-    if db_user.tenant_id:
-        tenant = db.query(models.Tenant).filter(models.Tenant.id == db_user.tenant_id).first()
-        if not tenant:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tienda no encontrada")
+    subdominio = None
+    if db_user.inquilino_id:
+        inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == db_user.inquilino_id).first()
+        if not inquilino:
+            raise HTTPException(status_code=estado.HTTP_403_FORBIDDEN, detail="Tienda no encontrada")
         
         # Check if subscription has expired
-        if tenant.plan_tier == 'premium' and tenant.subscription_end:
+        if inquilino.nivel_plan == 'premium' and inquilino.fin_suscripcion:
             try:
                 now_str = datetime.utcnow().isoformat()
-                if now_str > tenant.subscription_end and tenant.subscription_status == 'active':
-                    tenant.subscription_status = 'suspended'
+                if now_str > inquilino.fin_suscripcion and inquilino.estado_suscripcion == 'active':
+                    inquilino.estado_suscripcion = 'suspended'
                     db.commit()
             except Exception:
                 pass
-        sub_status = tenant.subscription_status
-        subdomain = tenant.subdomain
+        sub_status = inquilino.estado_suscripcion
+        subdominio = inquilino.subdominio
         
     access_token = auth.create_access_token(data={
-        "sub": db_user.username, 
-        "role": db_user.role,
-        "tenant_id": db_user.tenant_id
+        "sub": db_user.nombre_usuario, 
+        "rol": db_user.rol,
+        "inquilino_id": db_user.inquilino_id
     })
     
     return {
         "access_token": access_token, 
         "token_type": "bearer",
-        "user": {
+        "usuario": {
             "id": db_user.id, 
-            "tenant_id": db_user.tenant_id,
-            "username": db_user.username, 
-            "full_name": db_user.full_name,
-            "role": db_user.role,
-            "subscription_status": sub_status,
-            "subdomain": subdomain
+            "inquilino_id": db_user.inquilino_id,
+            "nombre_usuario": db_user.nombre_usuario, 
+            "nombre_completo": db_user.nombre_completo,
+            "rol": db_user.rol,
+            "estado_suscripcion": sub_status,
+            "subdominio": subdominio
         }
     }
 
-@router.get("/auth/tenant", response_model=schemas.TenantResponse)
-def get_current_tenant(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user.tenant_id:
+@router.get("/auth/inquilino", response_model=schemas.InquilinoResponse)
+def get_current_tenant(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if not current_user.inquilino_id:
         raise HTTPException(status_code=404, detail="No se encontró tienda vinculada a tu usuario")
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
-    if not tenant:
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == current_user.inquilino_id).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada")
-    return tenant
+    return inquilino
 
-@router.post("/auth/tenant/change-plan", response_model=schemas.TenantResponse)
-def change_tenant_plan(req: schemas.TenantPlanChangeRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin':
+@router.post("/auth/inquilino/change-plan", response_model=schemas.InquilinoResponse)
+def change_tenant_plan(req: schemas.InquilinoCambioPlanRequest, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin':
         raise HTTPException(status_code=403, detail="Solo el administrador de la tienda puede cambiar de plan")
-    if not current_user.tenant_id:
+    if not current_user.inquilino_id:
         raise HTTPException(status_code=404, detail="No se encontró tienda vinculada a tu usuario")
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
-    if not tenant:
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == current_user.inquilino_id).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada")
     
-    tenant.plan_tier = req.plan_tier
+    inquilino.nivel_plan = req.nivel_plan
     db.commit()
-    db.refresh(tenant)
-    return tenant
+    db.refresh(inquilino)
+    return inquilino
 
-@router.get("/auth/users", response_model=List[schemas.UserResponse])
-def get_users(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin':
+@router.get("/auth/users", response_model=List[schemas.UsuarioResponse])
+def get_users(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    return db.query(models.User).filter(models.User.tenant_id == current_user.tenant_id).all()
+    return db.query(models.Usuario).filter(models.Usuario.inquilino_id == current_user.inquilino_id).all()
 
-@router.put("/auth/users/{user_id}", response_model=schemas.UserResponse)
-def update_user(user_id: int, user_data: schemas.UserUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin' and current_user.id != user_id:
+@router.put("/auth/users/{usuario_id}", response_model=schemas.UsuarioResponse)
+def update_user(usuario_id: int, user_data: schemas.UsuarioUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin' and current_user.id != usuario_id:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    db_user = db.query(models.User).filter(
-        models.User.id == user_id,
-        models.User.tenant_id == current_user.tenant_id
+    db_user = db.query(models.Usuario).filter(
+        models.Usuario.id == usuario_id,
+        models.Usuario.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     
     update_data = user_data.dict(exclude_unset=True)
-    if "password" in update_data and update_data["password"]:
-        db_user.hashed_password = auth.get_password_hash(update_data["password"])
-        del update_data["password"]
+    if "contrasena" in update_data and update_data["contrasena"]:
+        db_user.contrasena_encriptada = auth.get_password_hash(update_data["contrasena"])
+        del update_data["contrasena"]
         
     for key, value in update_data.items():
         setattr(db_user, key, value)
         
     db.commit()
     db.refresh(db_user)
+
+    # Log action
+    log_entry = models.BitacoraUsuario(
+        inquilino_id=current_user.inquilino_id,
+        usuario=db_user.nombre_usuario,
+        nombre_completo=db_user.nombre_completo,
+        rol=db_user.rol,
+        accion="actualizacion",
+        detalles=f"Usuario modificado por {current_user.nombre_usuario} ({current_user.nombre_completo}).",
+        fecha_hora=datetime.utcnow().isoformat()
+    )
+    db.add(log_entry)
+    db.commit()
+    
     return db_user
 
-@router.delete("/auth/users/{user_id}")
-def delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin':
+@router.delete("/auth/users/{usuario_id}")
+def delete_user(usuario_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    db_user = db.query(models.User).filter(
-        models.User.id == user_id,
-        models.User.tenant_id == current_user.tenant_id
+    db_user = db.query(models.Usuario).filter(
+        models.Usuario.id == usuario_id,
+        models.Usuario.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
         
+    # Log action
+    log_entry = models.BitacoraUsuario(
+        inquilino_id=current_user.inquilino_id,
+        usuario=db_user.nombre_usuario,
+        nombre_completo=db_user.nombre_completo,
+        rol=db_user.rol,
+        accion="eliminacion",
+        detalles=f"Usuario eliminado por {current_user.nombre_usuario} ({current_user.nombre_completo}).",
+        fecha_hora=datetime.utcnow().isoformat()
+    )
+    db.add(log_entry)
+    
     db.delete(db_user)
     db.commit()
     return {"message": "Usuario eliminado exitosamente"}
+
+@router.get("/auth/users/logs", response_model=List[schemas.BitacoraUsuarioResponse])
+def get_user_logs(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="Acceso denegado. Se requieren privilegios elevados.")
+    
+    logs = db.query(models.BitacoraUsuario).filter(
+        models.BitacoraUsuario.inquilino_id == current_user.inquilino_id
+    ).order_by(models.BitacoraUsuario.id.desc()).all()
+    return logs
 
 def search_product_image(query: str) -> Optional[str]:
     import urllib.request
@@ -379,89 +443,89 @@ def search_product_image(query: str) -> Optional[str]:
         
     return None
 
-@router.get("/inventory/search-image")
-def get_product_image_search(q: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.get("/inventory/search-imagen")
+def get_product_image_search(q: str, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     if not q or not q.strip():
         return {"image_url": None}
     img_url = search_product_image(q.strip())
     return {"image_url": img_url}
 
-@router.get("/inventory/", response_model=List[schemas.ProductResponse])
-def get_inventory(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
+@router.get("/inventory/", response_model=List[schemas.ProductoResponse])
+def get_inventory(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    products = db.query(models.Producto).filter(models.Producto.inquilino_id == current_user.inquilino_id).all()
     return products
 
-@router.post("/inventory/", response_model=schemas.ProductResponse)
-def create_product(product: schemas.ProductCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.post("/inventory/", response_model=schemas.ProductoResponse)
+def create_product(producto: schemas.ProductoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
     # Validar límite de plan gratis
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
-    if tenant and tenant.plan_tier == 'free':
-        prod_count = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).count()
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == current_user.inquilino_id).first()
+    if inquilino and inquilino.nivel_plan == 'free':
+        prod_count = db.query(models.Producto).filter(models.Producto.inquilino_id == current_user.inquilino_id).count()
         if prod_count >= 50:
             raise HTTPException(
                 status_code=400,
                 detail="Límite del plan gratuito alcanzado (máximo 50 productos). Por favor, actualiza tu cuenta a Premium."
             )
 
-    prod_data = product.dict()
-    variants_data = prod_data.pop("variants", [])
+    prod_data = producto.dict()
+    variants_data = prod_data.pop("variantes", [])
     
-    db_product = models.Product(**prod_data, tenant_id=current_user.tenant_id)
+    db_product = models.Producto(**prod_data, inquilino_id=current_user.inquilino_id)
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
     
     if variants_data:
         for v in variants_data:
-            db_var = models.ProductVariant(
-                tenant_id=current_user.tenant_id,
-                product_id=db_product.id,
-                name=v["name"],
-                barcode=v.get("barcode"),
-                cost_price=v.get("cost_price") if v.get("cost_price") is not None else db_product.cost_price,
-                price=v.get("price") if v.get("price") is not None else db_product.price,
-                quantity=v["quantity"]
+            db_var = models.VarianteProducto(
+                inquilino_id=current_user.inquilino_id,
+                producto_id=db_product.id,
+                nombre=v["nombre"],
+                codigo_barras=v.get("codigo_barras"),
+                precio_costo=v.get("precio_costo") if v.get("precio_costo") is not None else db_product.precio_costo,
+                precio=v.get("precio") if v.get("precio") is not None else db_product.precio,
+                cantidad=v["cantidad"]
             )
             db.add(db_var)
         db.commit()
         db.refresh(db_product)
     return db_product
 
-@router.put("/inventory/{product_id}", response_model=schemas.ProductResponse)
-def update_product(product_id: int, product: schemas.ProductCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.put("/inventory/{producto_id}", response_model=schemas.ProductoResponse)
+def update_product(producto_id: int, producto: schemas.ProductoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    db_product = db.query(models.Product).filter(
-        models.Product.id == product_id,
-        models.Product.tenant_id == current_user.tenant_id
+    db_product = db.query(models.Producto).filter(
+        models.Producto.id == producto_id,
+        models.Producto.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    prod_data = product.dict()
-    variants_data = prod_data.pop("variants", [])
+    prod_data = producto.dict()
+    variants_data = prod_data.pop("variantes", [])
     
     for key, value in prod_data.items():
         setattr(db_product, key, value)
     
-    # Sync variants (simple delete and recreate)
-    db.query(models.ProductVariant).filter(
-        models.ProductVariant.product_id == product_id,
-        models.ProductVariant.tenant_id == current_user.tenant_id
+    # Sync variantes (simple delete and recreate)
+    db.query(models.VarianteProducto).filter(
+        models.VarianteProducto.producto_id == producto_id,
+        models.VarianteProducto.inquilino_id == current_user.inquilino_id
     ).delete()
     if variants_data:
         for v in variants_data:
-            db_var = models.ProductVariant(
-                tenant_id=current_user.tenant_id,
-                product_id=db_product.id,
-                name=v["name"],
-                barcode=v.get("barcode"),
-                cost_price=v.get("cost_price") if v.get("cost_price") is not None else db_product.cost_price,
-                price=v.get("price") if v.get("price") is not None else db_product.price,
-                quantity=v["quantity"]
+            db_var = models.VarianteProducto(
+                inquilino_id=current_user.inquilino_id,
+                producto_id=db_product.id,
+                nombre=v["nombre"],
+                codigo_barras=v.get("codigo_barras"),
+                precio_costo=v.get("precio_costo") if v.get("precio_costo") is not None else db_product.precio_costo,
+                precio=v.get("precio") if v.get("precio") is not None else db_product.precio,
+                cantidad=v["cantidad"]
             )
             db.add(db_var)
             
@@ -469,13 +533,13 @@ def update_product(product_id: int, product: schemas.ProductCreate, db: Session 
     db.refresh(db_product)
     return db_product
 
-@router.delete("/inventory/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.delete("/inventory/{producto_id}")
+def delete_product(producto_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    db_product = db.query(models.Product).filter(
-        models.Product.id == product_id,
-        models.Product.tenant_id == current_user.tenant_id
+    db_product = db.query(models.Producto).filter(
+        models.Producto.id == producto_id,
+        models.Producto.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -484,11 +548,11 @@ def delete_product(product_id: int, db: Session = Depends(get_db), current_user:
     db.commit()
     return {"message": "Product deleted successfully"}
 
-@router.post("/inventory/{product_id}/sell", response_model=schemas.ProductResponse)
-def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_product = db.query(models.Product).filter(
-        models.Product.id == product_id,
-        models.Product.tenant_id == current_user.tenant_id
+@router.post("/inventory/{producto_id}/sell", response_model=schemas.ProductoResponse)
+def sell_product(producto_id: int, sell_data: schemas.ProductoVenta, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    db_product = db.query(models.Producto).filter(
+        models.Producto.id == producto_id,
+        models.Producto.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -496,23 +560,23 @@ def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = 
     from sqlalchemy import text
     try:
         db.execute(
-            text("SELECT vender_producto(:product_id, :quantity, :created_at)"),
+            text("SELECT vender_producto(:producto_id, :cantidad, :creado_en)"),
             {
-                "product_id": product_id,
-                "quantity": sell_data.quantity,
-                "created_at": datetime.utcnow().isoformat()
+                "producto_id": producto_id,
+                "cantidad": sell_data.cantidad,
+                "creado_en": datetime.utcnow().isoformat()
             }
         )
         db.commit()
         
-        # Actualizar tenant_id en el registro de venta recién creado por el SP vender_producto
-        latest_sale = db.query(models.SaleHistory).filter(
-            models.SaleHistory.product_id == product_id,
-            models.SaleHistory.tenant_id == None
-        ).order_by(models.SaleHistory.id.desc()).first()
+        # Actualizar inquilino_id en el registro de venta recién creado por el SP vender_producto
+        latest_sale = db.query(models.HistorialVenta).filter(
+            models.HistorialVenta.producto_id == producto_id,
+            models.HistorialVenta.inquilino_id == None
+        ).order_by(models.HistorialVenta.id.desc()).first()
         if latest_sale:
-            latest_sale.tenant_id = current_user.tenant_id
-            latest_sale.user_id = current_user.id
+            latest_sale.inquilino_id = current_user.inquilino_id
+            latest_sale.usuario_id = current_user.id
             db.commit()
             
     except Exception as e:
@@ -529,20 +593,20 @@ def sell_product(product_id: int, sell_data: schemas.ProductSell, db: Session = 
                 error_msg = orig_msg.split("\n")[0].strip()
         raise HTTPException(status_code=400, detail=error_msg)
         
-    db_product = db.query(models.Product).filter(
-        models.Product.id == product_id,
-        models.Product.tenant_id == current_user.tenant_id
+    db_product = db.query(models.Producto).filter(
+        models.Producto.id == producto_id,
+        models.Producto.inquilino_id == current_user.inquilino_id
     ).first()
     return db_product
 
 @router.get("/inventory/sales_report")
-def get_sales_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+def get_sales_report(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
-    sales = db.query(models.SaleHistory).filter(
-        models.SaleHistory.tenant_id == current_user.tenant_id,
-        models.SaleHistory.is_cancelled == False
+    products = db.query(models.Producto).filter(models.Producto.inquilino_id == current_user.inquilino_id).all()
+    sales = db.query(models.HistorialVenta).filter(
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id,
+        models.HistorialVenta.cancelado == False
     ).all()
     
     now = datetime.utcnow()
@@ -552,27 +616,27 @@ def get_sales_report(db: Session = Depends(get_db), current_user: models.User = 
     
     report = []
     for p in products:
-        p_sales = [s for s in sales if s.product_id == p.id]
+        p_sales = [s for s in sales if s.producto_id == p.id]
         
-        sales_today = sum(s.quantity for s in p_sales if datetime.fromisoformat(s.created_at) >= today_start)
-        sales_week = sum(s.quantity for s in p_sales if datetime.fromisoformat(s.created_at) >= week_start)
-        sales_month = sum(s.quantity for s in p_sales if datetime.fromisoformat(s.created_at) >= month_start)
+        sales_today = sum(s.cantidad for s in p_sales if datetime.fromisoformat(s.creado_en) >= today_start)
+        sales_week = sum(s.cantidad for s in p_sales if datetime.fromisoformat(s.creado_en) >= week_start)
+        sales_month = sum(s.cantidad for s in p_sales if datetime.fromisoformat(s.creado_en) >= month_start)
         
         def get_sale_revenue(s):
-            price = s.price_sold if s.price_sold is not None else p.price
-            return (price * s.quantity) - s.discount
+            precio = s.price_sold if s.price_sold is not None else p.precio
+            return (precio * s.cantidad) - s.discount
  
-        revenue_today = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.created_at) >= today_start)
-        revenue_week = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.created_at) >= week_start)
-        revenue_month = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.created_at) >= month_start)
+        revenue_today = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.creado_en) >= today_start)
+        revenue_week = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.creado_en) >= week_start)
+        revenue_month = sum(get_sale_revenue(s) for s in p_sales if datetime.fromisoformat(s.creado_en) >= month_start)
         revenue_total = sum(get_sale_revenue(s) for s in p_sales)
         
         report.append({
             "id": p.id,
-            "name": p.name,
-            "price": p.price,
-            "quantity": p.quantity,
-            "sold_total": p.sold,
+            "nombre": p.nombre,
+            "precio": p.precio,
+            "cantidad": p.cantidad,
+            "sold_total": p.vendido,
             "sales_today": sales_today,
             "revenue_today": revenue_today,
             "sales_week": sales_week,
@@ -585,13 +649,13 @@ def get_sales_report(db: Session = Depends(get_db), current_user: models.User = 
     return report
 
 @router.get("/dashboard/stats")
-def get_stats(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin':
+def get_stats(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
-    total_stock = sum(p.quantity for p in products)
-    total_sold = sum(p.sold for p in products)
-    low_stock = sum(1 for p in products if p.quantity < 20)
+    products = db.query(models.Producto).filter(models.Producto.inquilino_id == current_user.inquilino_id).all()
+    total_stock = sum(p.cantidad for p in products)
+    total_sold = sum(p.vendido for p in products)
+    low_stock = sum(1 for p in products if p.cantidad < 20)
     
     return {
         "total_stock": total_stock,
@@ -600,120 +664,120 @@ def get_stats(db: Session = Depends(get_db), current_user: models.User = Depends
     }
 
 @router.get("/sales/recent")
-def get_recent_sales(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_recent_sales(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     results = db.query(
-        models.SaleHistory.id,
-        models.SaleHistory.product_id,
-        models.SaleHistory.quantity,
-        models.SaleHistory.created_at,
-        models.SaleHistory.is_cancelled,
-        models.SaleHistory.cancel_reason,
-        models.SaleHistory.authorized_by,
-        models.Product.name.label("product_name"),
-        models.Product.price.label("product_price"),
-        models.User.full_name.label("cashier_name")
+        models.HistorialVenta.id,
+        models.HistorialVenta.producto_id,
+        models.HistorialVenta.cantidad,
+        models.HistorialVenta.creado_en,
+        models.HistorialVenta.cancelado,
+        models.HistorialVenta.motivo_cancelacion,
+        models.HistorialVenta.autorizado_por,
+        models.Producto.nombre.label("nombre_producto"),
+        models.Producto.precio.label("product_price"),
+        models.Usuario.nombre_completo.label("cashier_name")
     ).join(
-        models.Product, models.Product.id == models.SaleHistory.product_id
+        models.Producto, models.Producto.id == models.HistorialVenta.producto_id
     ).outerjoin(
-        models.User, models.User.id == models.SaleHistory.user_id
+        models.Usuario, models.Usuario.id == models.HistorialVenta.usuario_id
     ).filter(
-        models.SaleHistory.tenant_id == current_user.tenant_id
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
     ).order_by(
-        models.SaleHistory.id.desc()
+        models.HistorialVenta.id.desc()
     ).limit(50).all()
     
     return [
         {
             "id": r.id,
-            "product_id": r.product_id,
-            "product_name": r.product_name,
+            "producto_id": r.producto_id,
+            "nombre_producto": r.nombre_producto,
             "product_price": r.product_price,
-            "quantity": r.quantity,
-            "created_at": r.created_at,
-            "is_cancelled": r.is_cancelled,
-            "cancel_reason": r.cancel_reason,
-            "authorized_by": r.authorized_by,
+            "cantidad": r.cantidad,
+            "creado_en": r.creado_en,
+            "cancelado": r.cancelado,
+            "motivo_cancelacion": r.motivo_cancelacion,
+            "autorizado_por": r.autorizado_por,
             "cashier_name": r.cashier_name or "Desconocido"
         }
         for r in results
     ]
 
-@router.post("/sales/{sale_id}/cancel")
-def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    authorized_by_username = current_user.username
-    if current_user.role == "cajero" or current_user.role == "user":
+@router.post("/sales/{venta_id}/cancel")
+def cancel_sale_endpoint(venta_id: int, cancel_data: schemas.CancelarVentaRequest, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    authorized_by_username = current_user.nombre_usuario
+    if current_user.rol == "cajero" or current_user.rol == "user":
         # Requiere credenciales de admin o supervisor
         if not cancel_data.auth_username or not cancel_data.auth_password:
             raise HTTPException(status_code=403, detail="Las cancelaciones están restringidas para cajeros. Se requieren credenciales de Supervisor o Administrador.")
         
-        supervisor_user = db.query(models.User).filter(
-            models.User.username == cancel_data.auth_username,
-            models.User.tenant_id == current_user.tenant_id
+        supervisor_user = db.query(models.Usuario).filter(
+            models.Usuario.nombre_usuario == cancel_data.auth_username,
+            models.Usuario.inquilino_id == current_user.inquilino_id
         ).first()
-        if not supervisor_user or not auth.verify_password(cancel_data.auth_password, supervisor_user.hashed_password):
+        if not supervisor_user or not auth.verify_password(cancel_data.auth_password, supervisor_user.contrasena_encriptada):
             raise HTTPException(status_code=403, detail="Usuario o contraseña del supervisor incorrectos.")
         
-        if supervisor_user.role not in ["admin", "supervisor"]:
+        if supervisor_user.rol not in ["admin", "supervisor"]:
             raise HTTPException(status_code=403, detail="El usuario autorizador no tiene permisos de Supervisor o Administrador.")
-        authorized_by_username = supervisor_user.username
+        authorized_by_username = supervisor_user.nombre_usuario
 
     # Cancelar venta transaccional en python
     try:
-        sale = db.query(models.SaleHistory).filter(
-            models.SaleHistory.id == sale_id,
-            models.SaleHistory.tenant_id == current_user.tenant_id
+        sale = db.query(models.HistorialVenta).filter(
+            models.HistorialVenta.id == venta_id,
+            models.HistorialVenta.inquilino_id == current_user.inquilino_id
         ).with_for_update().first()
         
         if not sale:
             raise HTTPException(status_code=404, detail="La venta no existe.")
             
-        if sale.is_cancelled:
+        if sale.cancelado:
             raise HTTPException(status_code=400, detail="Esta venta ya fue cancelada o devuelta por completo.")
             
         # Determinar cantidad a cancelar/devolver
-        qty_to_cancel = cancel_data.quantity
+        qty_to_cancel = cancel_data.cantidad
         if qty_to_cancel is None:
-            qty_to_cancel = sale.quantity
+            qty_to_cancel = sale.cantidad
             
-        if qty_to_cancel <= 0 or qty_to_cancel > sale.quantity:
-            raise HTTPException(status_code=400, detail=f"Cantidad inválida a cancelar. Disponible: {sale.quantity}, Solicitado: {qty_to_cancel}")
+        if qty_to_cancel <= 0 or qty_to_cancel > sale.cantidad:
+            raise HTTPException(status_code=400, detail=f"Cantidad inválida a cancelar. Disponible: {sale.cantidad}, Solicitado: {qty_to_cancel}")
             
         # Devolver stock
-        if sale.variant_id:
-            var = db.query(models.ProductVariant).filter(
-                models.ProductVariant.id == sale.variant_id,
-                models.ProductVariant.tenant_id == current_user.tenant_id
+        if sale.variante_id:
+            var = db.query(models.VarianteProducto).filter(
+                models.VarianteProducto.id == sale.variante_id,
+                models.VarianteProducto.inquilino_id == current_user.inquilino_id
             ).with_for_update().first()
             if var:
-                var.quantity += qty_to_cancel
-                var.sold -= qty_to_cancel
-            prod = db.query(models.Product).filter(
-                models.Product.id == sale.product_id,
-                models.Product.tenant_id == current_user.tenant_id
-            ).options(lazyload(models.Product.variants)).with_for_update().first()
+                var.cantidad += qty_to_cancel
+                var.vendido -= qty_to_cancel
+            prod = db.query(models.Producto).filter(
+                models.Producto.id == sale.producto_id,
+                models.Producto.inquilino_id == current_user.inquilino_id
+            ).options(lazyload(models.Producto.variantes)).with_for_update().first()
             if prod:
-                prod.quantity += qty_to_cancel
-                prod.sold -= qty_to_cancel
+                prod.cantidad += qty_to_cancel
+                prod.vendido -= qty_to_cancel
         else:
-            prod = db.query(models.Product).filter(
-                models.Product.id == sale.product_id,
-                models.Product.tenant_id == current_user.tenant_id
-            ).options(lazyload(models.Product.variants)).with_for_update().first()
+            prod = db.query(models.Producto).filter(
+                models.Producto.id == sale.producto_id,
+                models.Producto.inquilino_id == current_user.inquilino_id
+            ).options(lazyload(models.Producto.variantes)).with_for_update().first()
             if prod:
-                prod.quantity += qty_to_cancel
-                prod.sold -= qty_to_cancel
+                prod.cantidad += qty_to_cancel
+                prod.vendido -= qty_to_cancel
                 
         # Calcular reembolsos proporcionales y deducir del turno de caja activo
-        ratio = qty_to_cancel / sale.quantity
+        ratio = qty_to_cancel / sale.cantidad
         discount_refund = sale.discount * ratio
         cash_refund = (sale.cash_amount or 0.0) * ratio
         card_refund = (sale.card_amount or 0.0) * ratio
         
-        if sale.shift_id:
-            shift = db.query(models.Shift).filter(
-                models.Shift.id == sale.shift_id,
-                models.Shift.tenant_id == current_user.tenant_id,
-                models.Shift.status == "open"
+        if sale.turno_id:
+            shift = db.query(models.Turno).filter(
+                models.Turno.id == sale.turno_id,
+                models.Turno.inquilino_id == current_user.inquilino_id,
+                models.Turno.estado == "open"
             ).first()
             if shift:
                 cash_to_deduct = 0.0
@@ -722,41 +786,41 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
                 elif sale.payment_method == "mixto":
                     cash_to_deduct = cash_refund
                     
-                shift.final_cash_expected -= cash_to_deduct
+                shift.efectivo_final_esperado -= cash_to_deduct
                 
         price_val = sale.price_sold if sale.price_sold is not None else 0.0
         
         # Guardar registro en product_returns
-        prod_return = models.ProductReturn(
-            tenant_id=current_user.tenant_id,
-            sale_id=sale.id,
-            product_id=sale.product_id,
-            quantity=qty_to_cancel,
-            price=price_val,
-            reason=cancel_data.reason,
-            authorized_by=authorized_by_username,
-            created_at=datetime.utcnow().isoformat()
+        prod_return = models.DevolucionProducto(
+            inquilino_id=current_user.inquilino_id,
+            venta_id=sale.id,
+            producto_id=sale.producto_id,
+            cantidad=qty_to_cancel,
+            precio=price_val,
+            motivo=cancel_data.motivo,
+            autorizado_por=authorized_by_username,
+            creado_en=datetime.utcnow().isoformat()
         )
         db.add(prod_return)
         
         # Actualizar el registro original de la venta
-        sale.authorized_by = authorized_by_username
-        if qty_to_cancel == sale.quantity:
-            sale.is_cancelled = True
-            sale.cancel_reason = cancel_data.reason
+        sale.autorizado_por = authorized_by_username
+        if qty_to_cancel == sale.cantidad:
+            sale.cancelado = True
+            sale.motivo_cancelacion = cancel_data.motivo
         else:
-            sale.quantity -= qty_to_cancel
+            sale.cantidad -= qty_to_cancel
             sale.discount -= discount_refund
             if sale.cash_amount:
                 sale.cash_amount -= cash_refund
             if sale.card_amount:
                 sale.card_amount -= card_refund
             
-            partial_reason = f"Devolución parcial de {qty_to_cancel} pzs: {cancel_data.reason}"
-            if sale.cancel_reason:
-                sale.cancel_reason += f" | {partial_reason}"
+            partial_reason = f"Devolución parcial de {qty_to_cancel} pzs: {cancel_data.motivo}"
+            if sale.motivo_cancelacion:
+                sale.motivo_cancelacion += f" | {partial_reason}"
             else:
-                sale.cancel_reason = partial_reason
+                sale.motivo_cancelacion = partial_reason
         
         db.commit()
         return {"message": f"Devolución de {qty_to_cancel} piezas procesada exitosamente."}
@@ -765,40 +829,40 @@ def cancel_sale_endpoint(sale_id: int, cancel_data: schemas.CancelSaleRequest, d
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/inventory/returns_report", response_model=List[schemas.ReturnResponse])
-def get_returns_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.get("/inventory/returns_report", response_model=List[schemas.DevolucionResponse])
+def get_returns_report(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
     results = db.query(
-        models.ProductReturn.id,
-        models.ProductReturn.sale_id,
-        models.ProductReturn.product_id,
-        models.ProductReturn.quantity,
-        models.ProductReturn.price,
-        models.ProductReturn.reason,
-        models.ProductReturn.authorized_by,
-        models.ProductReturn.created_at,
-        models.Product.name.label("product_name")
+        models.DevolucionProducto.id,
+        models.DevolucionProducto.venta_id,
+        models.DevolucionProducto.producto_id,
+        models.DevolucionProducto.cantidad,
+        models.DevolucionProducto.precio,
+        models.DevolucionProducto.motivo,
+        models.DevolucionProducto.autorizado_por,
+        models.DevolucionProducto.creado_en,
+        models.Producto.nombre.label("nombre_producto")
     ).join(
-        models.Product, models.Product.id == models.ProductReturn.product_id
+        models.Producto, models.Producto.id == models.DevolucionProducto.producto_id
     ).filter(
-        models.ProductReturn.tenant_id == current_user.tenant_id
+        models.DevolucionProducto.inquilino_id == current_user.inquilino_id
     ).order_by(
-        models.ProductReturn.id.desc()
+        models.DevolucionProducto.id.desc()
     ).all()
     
     return [
         {
             "id": r.id,
-            "sale_id": r.sale_id,
-            "product_id": r.product_id,
-            "product_name": r.product_name,
-            "quantity": r.quantity,
-            "price": r.price,
-            "reason": r.reason,
-            "authorized_by": r.authorized_by,
-            "created_at": r.created_at
+            "venta_id": r.venta_id,
+            "producto_id": r.producto_id,
+            "nombre_producto": r.nombre_producto,
+            "cantidad": r.cantidad,
+            "precio": r.precio,
+            "motivo": r.motivo,
+            "autorizado_por": r.autorizado_por,
+            "creado_en": r.creado_en
         }
         for r in results
     ]
@@ -806,34 +870,34 @@ def get_returns_report(db: Session = Depends(get_db), current_user: models.User 
 # --- NUEVOS ENDPOINTS MEJORAS POS ---
 
 @router.post("/sales/checkout")
-def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     shift = None
-    if checkout_data.shift_id is not None:
-        shift = db.query(models.Shift).filter(
-            models.Shift.id == checkout_data.shift_id,
-            models.Shift.tenant_id == current_user.tenant_id,
-            models.Shift.status == "open"
+    if checkout_data.turno_id is not None:
+        shift = db.query(models.Turno).filter(
+            models.Turno.id == checkout_data.turno_id,
+            models.Turno.inquilino_id == current_user.inquilino_id,
+            models.Turno.estado == "open"
         ).first()
-        if not shift and current_user.role != 'admin':
+        if not shift and current_user.rol != 'admin':
             raise HTTPException(status_code=400, detail="No hay un turno de caja activo o el ID del turno es incorrecto.")
-    elif current_user.role != 'admin':
+    elif current_user.rol != 'admin':
         raise HTTPException(status_code=400, detail="Se requiere un turno de caja activo para procesar la venta.")
         
     # Validar cliente si es pago a crédito
     customer = None
     if checkout_data.payment_method == "credito":
-        if not checkout_data.customer_id:
+        if not checkout_data.cliente_id:
             raise HTTPException(status_code=400, detail="Debe seleccionar un cliente para realizar una venta a crédito.")
-        customer = db.query(models.Customer).filter(
-            models.Customer.id == checkout_data.customer_id,
-            models.Customer.tenant_id == current_user.tenant_id
+        customer = db.query(models.Cliente).filter(
+            models.Cliente.id == checkout_data.cliente_id,
+            models.Cliente.inquilino_id == current_user.inquilino_id
         ).with_for_update().first()
         if not customer:
             raise HTTPException(status_code=404, detail="El cliente seleccionado no existe.")
-    elif checkout_data.customer_id:
-        customer = db.query(models.Customer).filter(
-            models.Customer.id == checkout_data.customer_id,
-            models.Customer.tenant_id == current_user.tenant_id
+    elif checkout_data.cliente_id:
+        customer = db.query(models.Cliente).filter(
+            models.Cliente.id == checkout_data.cliente_id,
+            models.Cliente.inquilino_id == current_user.inquilino_id
         ).first()
 
     try:
@@ -842,38 +906,38 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
         items_to_process = []
         
         for item in checkout_data.items:
-            if item.variant_id:
-                var = db.query(models.ProductVariant).filter(
-                    models.ProductVariant.id == item.variant_id,
-                    models.ProductVariant.tenant_id == current_user.tenant_id
+            if item.variante_id:
+                var = db.query(models.VarianteProducto).filter(
+                    models.VarianteProducto.id == item.variante_id,
+                    models.VarianteProducto.inquilino_id == current_user.inquilino_id
                 ).with_for_update().first()
                 if not var:
-                    raise HTTPException(status_code=404, detail=f"La variante con ID {item.variant_id} no existe.")
-                if var.quantity < item.quantity:
-                    raise HTTPException(status_code=400, detail=f"Stock insuficiente para la variante {var.name}. Disponible: {var.quantity}, Solicitado: {item.quantity}")
+                    raise HTTPException(status_code=404, detail=f"La variante con ID {item.variante_id} no existe.")
+                if var.cantidad < item.cantidad:
+                    raise HTTPException(status_code=400, detail=f"Stock insuficiente para la variante {var.nombre}. Disponible: {var.cantidad}, Solicitado: {item.cantidad}")
                 
-                prod = db.query(models.Product).filter(
-                    models.Product.id == var.product_id,
-                    models.Product.tenant_id == current_user.tenant_id
+                prod = db.query(models.Producto).filter(
+                    models.Producto.id == var.producto_id,
+                    models.Producto.inquilino_id == current_user.inquilino_id
                 ).first()
-                price = var.price if var.price is not None else prod.price
-                cost = var.cost_price if var.cost_price is not None else prod.cost_price
-                subtotal += price * item.quantity
-                items_to_process.append((item, var, prod, price, cost))
+                precio = var.precio if var.precio is not None else prod.precio
+                cost = var.precio_costo if var.precio_costo is not None else prod.precio_costo
+                subtotal += precio * item.cantidad
+                items_to_process.append((item, var, prod, precio, cost))
             else:
-                prod = db.query(models.Product).filter(
-                    models.Product.id == item.product_id,
-                    models.Product.tenant_id == current_user.tenant_id
-                ).options(lazyload(models.Product.variants)).with_for_update().first()
+                prod = db.query(models.Producto).filter(
+                    models.Producto.id == item.producto_id,
+                    models.Producto.inquilino_id == current_user.inquilino_id
+                ).options(lazyload(models.Producto.variantes)).with_for_update().first()
                 if not prod:
-                    raise HTTPException(status_code=404, detail=f"El producto con ID {item.product_id} no existe.")
-                if prod.quantity < item.quantity:
-                    raise HTTPException(status_code=400, detail=f"Stock insuficiente para el producto {prod.name}. Disponible: {prod.quantity}, Solicitado: {item.quantity}")
+                    raise HTTPException(status_code=404, detail=f"El producto con ID {item.producto_id} no existe.")
+                if prod.cantidad < item.cantidad:
+                    raise HTTPException(status_code=400, detail=f"Stock insuficiente para el producto {prod.nombre}. Disponible: {prod.cantidad}, Solicitado: {item.cantidad}")
                 
-                price = prod.price
-                cost = prod.cost_price
-                subtotal += price * item.quantity
-                items_to_process.append((item, None, prod, price, cost))
+                precio = prod.precio
+                cost = prod.precio_costo
+                subtotal += precio * item.cantidad
+                items_to_process.append((item, None, prod, precio, cost))
                 
         if subtotal <= 0:
             raise HTTPException(status_code=400, detail="El total de la venta debe ser mayor a 0.")
@@ -882,46 +946,46 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
 
         # Validar límite de crédito del cliente si aplica
         if checkout_data.payment_method == "credito" and customer:
-            if customer.current_balance + sale_total > customer.credit_limit:
+            if customer.saldo_actual + sale_total > customer.limite_credito:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Límite de crédito excedido. Disponible: ${customer.credit_limit - customer.current_balance:.2f}, Total venta: ${sale_total:.2f}"
+                    detail=f"Límite de crédito excedido. Disponible: ${customer.limite_credito - customer.saldo_actual:.2f}, Total venta: ${sale_total:.2f}"
                 )
-            customer.current_balance += sale_total
+            customer.saldo_actual += sale_total
 
         discount_ratio = checkout_data.discount / subtotal if checkout_data.discount > 0 else 0.0
         
         for item_data in items_to_process:
-            item, var, prod, price, cost = item_data
-            qty = item.quantity
+            item, var, prod, precio, cost = item_data
+            qty = item.cantidad
             
-            item_subtotal = price * qty
+            item_subtotal = precio * qty
             item_discount = item_subtotal * discount_ratio
             
             if var:
-                var.quantity -= qty
-                var.sold += qty
-                prod.quantity -= qty
-                prod.sold += qty
+                var.cantidad -= qty
+                var.vendido += qty
+                prod.cantidad -= qty
+                prod.vendido += qty
             else:
-                prod.quantity -= qty
-                prod.sold += qty
+                prod.cantidad -= qty
+                prod.vendido += qty
                 
-            sale_record = models.SaleHistory(
-                tenant_id=current_user.tenant_id,
-                product_id=prod.id,
-                variant_id=var.id if var else None,
-                shift_id=shift.id if shift else None,
-                user_id=current_user.id,
-                quantity=qty,
-                price_sold=price,
+            sale_record = models.HistorialVenta(
+                inquilino_id=current_user.inquilino_id,
+                producto_id=prod.id,
+                variante_id=var.id if var else None,
+                turno_id=shift.id if shift else None,
+                usuario_id=current_user.id,
+                cantidad=qty,
+                price_sold=precio,
                 cost_price_sold=cost,
                 discount=item_discount,
                 payment_method=checkout_data.payment_method,
                 cash_amount=checkout_data.cash_amount * (item_subtotal / subtotal) if checkout_data.payment_method == "mixto" else (sale_total if checkout_data.payment_method == "efectivo" else 0.0),
                 card_amount=checkout_data.card_amount * (item_subtotal / subtotal) if checkout_data.payment_method == "mixto" else (sale_total if checkout_data.payment_method == "tarjeta" else 0.0),
-                created_at=now_str,
-                customer_id=checkout_data.customer_id
+                creado_en=now_str,
+                cliente_id=checkout_data.cliente_id
             )
             db.add(sale_record)
             
@@ -932,11 +996,11 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
             elif checkout_data.payment_method == "mixto":
                 cash_sale_total = checkout_data.cash_amount
                 
-            shift.final_cash_expected += cash_sale_total
+            shift.efectivo_final_esperado += cash_sale_total
         
         db.commit()
         db.refresh(sale_record)
-        return {"message": "Venta procesada exitosamente", "sale_id": sale_record.id}
+        return {"message": "Venta procesada exitosamente", "venta_id": sale_record.id}
 
         
     except Exception as e:
@@ -945,82 +1009,82 @@ def checkout(checkout_data: schemas.CheckoutRequest, db: Session = Depends(get_d
             raise e
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.get("/shifts/active", response_model=Optional[schemas.ShiftResponse])
-def get_active_shift(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    shift = db.query(models.Shift).filter(
-        models.Shift.user_id == current_user.id,
-        models.Shift.tenant_id == current_user.tenant_id,
-        models.Shift.status == "open"
+@router.get("/shifts/active", response_model=Optional[schemas.TurnoResponse])
+def get_active_shift(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    shift = db.query(models.Turno).filter(
+        models.Turno.usuario_id == current_user.id,
+        models.Turno.inquilino_id == current_user.inquilino_id,
+        models.Turno.estado == "open"
     ).first()
     return shift
 
-@router.post("/shifts/open", response_model=schemas.ShiftResponse)
-def open_shift(shift_data: schemas.ShiftCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    existing = db.query(models.Shift).filter(
-        models.Shift.user_id == current_user.id,
-        models.Shift.tenant_id == current_user.tenant_id,
-        models.Shift.status == "open"
+@router.post("/shifts/open", response_model=schemas.TurnoResponse)
+def open_shift(shift_data: schemas.TurnoCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    existing = db.query(models.Turno).filter(
+        models.Turno.usuario_id == current_user.id,
+        models.Turno.inquilino_id == current_user.inquilino_id,
+        models.Turno.estado == "open"
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya tienes un turno de caja abierto.")
         
-    new_shift = models.Shift(
-        tenant_id=current_user.tenant_id,
-        user_id=current_user.id,
-        start_time=datetime.utcnow().isoformat(),
-        initial_cash=shift_data.initial_cash,
-        final_cash_expected=shift_data.initial_cash,
-        status="open"
+    new_shift = models.Turno(
+        inquilino_id=current_user.inquilino_id,
+        usuario_id=current_user.id,
+        hora_inicio=datetime.utcnow().isoformat(),
+        efectivo_inicial=shift_data.efectivo_inicial,
+        efectivo_final_esperado=shift_data.efectivo_inicial,
+        estado="open"
     )
     db.add(new_shift)
     db.commit()
     db.refresh(new_shift)
     return new_shift
 
-@router.post("/shifts/close", response_model=schemas.ShiftResponse)
-def close_shift(close_data: schemas.ShiftClose, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    shift = db.query(models.Shift).filter(
-        models.Shift.user_id == current_user.id,
-        models.Shift.tenant_id == current_user.tenant_id,
-        models.Shift.status == "open"
+@router.post("/shifts/close", response_model=schemas.TurnoResponse)
+def close_shift(close_data: schemas.TurnoClose, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    shift = db.query(models.Turno).filter(
+        models.Turno.usuario_id == current_user.id,
+        models.Turno.inquilino_id == current_user.inquilino_id,
+        models.Turno.estado == "open"
     ).first()
     if not shift:
         raise HTTPException(status_code=404, detail="No tienes ningún turno de caja activo.")
         
-    shift.end_time = datetime.utcnow().isoformat()
-    shift.final_cash_real = close_data.final_cash_real
-    shift.difference = close_data.final_cash_real - shift.final_cash_expected
-    shift.status = "closed"
+    shift.hora_fin = datetime.utcnow().isoformat()
+    shift.efectivo_final_real = close_data.efectivo_final_real
+    shift.diferencia = close_data.efectivo_final_real - shift.efectivo_final_esperado
+    shift.estado = "closed"
     
     db.commit()
     db.refresh(shift)
     return shift
 
-@router.post("/shifts/movement", response_model=schemas.CashMovementResponse)
-def add_cash_movement(movement: schemas.CashMovementCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    shift = db.query(models.Shift).filter(
-        models.Shift.user_id == current_user.id,
-        models.Shift.tenant_id == current_user.tenant_id,
-        models.Shift.status == "open"
+@router.post("/shifts/movement", response_model=schemas.MovimientoCajaResponse)
+def add_cash_movement(movement: schemas.MovimientoCajaCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    shift = db.query(models.Turno).filter(
+        models.Turno.usuario_id == current_user.id,
+        models.Turno.inquilino_id == current_user.inquilino_id,
+        models.Turno.estado == "open"
     ).first()
     if not shift:
         raise HTTPException(status_code=400, detail="No tienes un turno de caja abierto para registrar movimientos.")
         
-    db_mov = models.CashMovement(
-        tenant_id=current_user.tenant_id,
-        shift_id=shift.id,
-        type=movement.type,
-        amount=movement.amount,
-        reason=movement.reason,
-        created_at=datetime.utcnow().isoformat()
+    db_mov = models.MovimientoCaja(
+        inquilino_id=current_user.inquilino_id,
+        turno_id=shift.id,
+        tipo=movement.tipo,
+        monto=movement.monto,
+        motivo=movement.motivo,
+        creado_en=datetime.utcnow().isoformat()
     )
     
-    if movement.type == "entrada":
-        shift.final_cash_expected += movement.amount
-    elif movement.type in ["salida", "retiro_parcial"]:
-        if shift.final_cash_expected < movement.amount:
+    if movement.tipo == "entrada":
+        shift.efectivo_final_esperado += movement.monto
+    elif movement.tipo in ["salida", "retiro_parcial"]:
+        if shift.efectivo_final_esperado < movement.monto:
             raise HTTPException(status_code=400, detail="No puedes retirar una cantidad mayor a la que hay en caja actualmente.")
-        shift.final_cash_expected -= movement.amount
+        shift.efectivo_final_esperado -= movement.monto
         
     db.add(db_mov)
     db.commit()
@@ -1028,86 +1092,86 @@ def add_cash_movement(movement: schemas.CashMovementCreate, db: Session = Depend
     return db_mov
 
 @router.get("/shifts/active-all")
-def get_all_active_shifts(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin':
+def get_all_active_shifts(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
         
-    active_shifts = db.query(models.Shift).filter(
-        models.Shift.status == "open",
-        models.Shift.tenant_id == current_user.tenant_id
+    active_shifts = db.query(models.Turno).filter(
+        models.Turno.estado == "open",
+        models.Turno.inquilino_id == current_user.inquilino_id
     ).all()
     
     result = []
     for s in active_shifts:
-        user = db.query(models.User).filter(
-            models.User.id == s.user_id,
-            models.User.tenant_id == current_user.tenant_id
+        user = db.query(models.Usuario).filter(
+            models.Usuario.id == s.usuario_id,
+            models.Usuario.inquilino_id == current_user.inquilino_id
         ).first()
         result.append({
             "id": s.id,
-            "user_id": s.user_id,
-            "username": user.username if user else "Desconocido",
-            "full_name": user.full_name if user else "Desconocido",
-            "start_time": s.start_time,
-            "initial_cash": s.initial_cash,
-            "final_cash_expected": s.final_cash_expected,
-            "status": s.status
+            "usuario_id": s.usuario_id,
+            "nombre_usuario": user.nombre_usuario if user else "Desconocido",
+            "nombre_completo": user.nombre_completo if user else "Desconocido",
+            "hora_inicio": s.hora_inicio,
+            "efectivo_inicial": s.efectivo_inicial,
+            "efectivo_final_esperado": s.efectivo_final_esperado,
+            "estado": s.estado
         })
     return result
 
-@router.post("/shifts/{shift_id}/close", response_model=schemas.ShiftResponse)
-def close_any_shift(shift_id: int, close_data: schemas.ShiftClose, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != 'admin':
+@router.post("/shifts/{turno_id}/close", response_model=schemas.TurnoResponse)
+def close_any_shift(turno_id: int, close_data: schemas.TurnoClose, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != 'admin':
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
         
-    shift = db.query(models.Shift).filter(
-        models.Shift.id == shift_id,
-        models.Shift.tenant_id == current_user.tenant_id,
-        models.Shift.status == "open"
+    shift = db.query(models.Turno).filter(
+        models.Turno.id == turno_id,
+        models.Turno.inquilino_id == current_user.inquilino_id,
+        models.Turno.estado == "open"
     ).first()
     if not shift:
         raise HTTPException(status_code=404, detail="Turno no encontrado o ya está cerrado.")
         
-    shift.end_time = datetime.utcnow().isoformat()
-    shift.final_cash_real = close_data.final_cash_real
-    shift.difference = close_data.final_cash_real - shift.final_cash_expected
-    shift.status = "closed"
+    shift.hora_fin = datetime.utcnow().isoformat()
+    shift.efectivo_final_real = close_data.efectivo_final_real
+    shift.diferencia = close_data.efectivo_final_real - shift.efectivo_final_esperado
+    shift.estado = "closed"
     db.commit()
     db.refresh(shift)
     return shift
 
-@router.get("/shifts/{shift_id}/report")
-def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    shift = db.query(models.Shift).filter(
-        models.Shift.id == shift_id,
-        models.Shift.tenant_id == current_user.tenant_id
+@router.get("/shifts/{turno_id}/report")
+def get_shift_report(turno_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    shift = db.query(models.Turno).filter(
+        models.Turno.id == turno_id,
+        models.Turno.inquilino_id == current_user.inquilino_id
     ).first()
     if not shift:
         raise HTTPException(status_code=404, detail="Turno no encontrado.")
         
-    if current_user.role == "cajero" and shift.user_id != current_user.id:
+    if current_user.rol == "cajero" and shift.usuario_id != current_user.id:
         raise HTTPException(status_code=403, detail="No tienes permisos para ver el reporte de otros turnos.")
         
-    movements = db.query(models.CashMovement).filter(
-        models.CashMovement.shift_id == shift.id,
-        models.CashMovement.tenant_id == current_user.tenant_id
+    movements = db.query(models.MovimientoCaja).filter(
+        models.MovimientoCaja.turno_id == shift.id,
+        models.MovimientoCaja.inquilino_id == current_user.inquilino_id
     ).all()
     
     sales = db.query(
-        models.SaleHistory.id,
-        models.SaleHistory.quantity,
-        models.SaleHistory.price_sold,
-        models.SaleHistory.discount,
-        models.SaleHistory.payment_method,
-        models.SaleHistory.cash_amount,
-        models.SaleHistory.card_amount,
-        models.SaleHistory.is_cancelled,
-        models.Product.name.label("product_name")
+        models.HistorialVenta.id,
+        models.HistorialVenta.cantidad,
+        models.HistorialVenta.price_sold,
+        models.HistorialVenta.discount,
+        models.HistorialVenta.payment_method,
+        models.HistorialVenta.cash_amount,
+        models.HistorialVenta.card_amount,
+        models.HistorialVenta.cancelado,
+        models.Producto.nombre.label("nombre_producto")
     ).join(
-        models.Product, models.Product.id == models.SaleHistory.product_id
+        models.Producto, models.Producto.id == models.HistorialVenta.producto_id
     ).filter(
-        models.SaleHistory.shift_id == shift.id,
-        models.SaleHistory.tenant_id == current_user.tenant_id
+        models.HistorialVenta.turno_id == shift.id,
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
     ).all()
     
     cash_sales = 0.0
@@ -1117,8 +1181,8 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
     
     sales_list = []
     for s in sales:
-        total = (s.price_sold * s.quantity) - s.discount
-        if s.is_cancelled:
+        total = (s.price_sold * s.cantidad) - s.discount
+        if s.cancelado:
             cancelled_sales_total += total
         else:
             if s.payment_method == "efectivo":
@@ -1133,32 +1197,32 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
                 
         sales_list.append({
             "id": s.id,
-            "product_name": s.product_name,
-            "quantity": s.quantity,
+            "nombre_producto": s.nombre_producto,
+            "cantidad": s.cantidad,
             "total": total,
             "payment_method": s.payment_method,
-            "is_cancelled": s.is_cancelled
+            "cancelado": s.cancelado
         })
         
-    entries = sum(m.amount for m in movements if m.type == "entrada")
-    withdrawals = sum(m.amount for m in movements if m.type in ["salida", "retiro_parcial"])
+    entries = sum(m.monto for m in movements if m.tipo == "entrada")
+    withdrawals = sum(m.monto for m in movements if m.tipo in ["salida", "retiro_parcial"])
     
-    cajero = db.query(models.User).filter(
-        models.User.id == shift.user_id,
-        models.User.tenant_id == current_user.tenant_id
+    cajero = db.query(models.Usuario).filter(
+        models.Usuario.id == shift.usuario_id,
+        models.Usuario.inquilino_id == current_user.inquilino_id
     ).first()
     
     return {
         "shift": {
             "id": shift.id,
-            "cashier_name": cajero.full_name if cajero else "Desconocido",
-            "start_time": shift.start_time,
-            "end_time": shift.end_time,
-            "initial_cash": shift.initial_cash,
-            "final_cash_real": shift.final_cash_real,
-            "final_cash_expected": shift.final_cash_expected,
-            "difference": shift.difference,
-            "status": shift.status
+            "cashier_name": cajero.nombre_completo if cajero else "Desconocido",
+            "hora_inicio": shift.hora_inicio,
+            "hora_fin": shift.hora_fin,
+            "efectivo_inicial": shift.efectivo_inicial,
+            "efectivo_final_real": shift.efectivo_final_real,
+            "efectivo_final_esperado": shift.efectivo_final_esperado,
+            "diferencia": shift.diferencia,
+            "estado": shift.estado
         },
         "totals": {
             "cash_sales": cash_sales,
@@ -1172,10 +1236,10 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
         "movements": [
             {
                 "id": m.id,
-                "type": m.type,
-                "amount": m.amount,
-                "reason": m.reason,
-                "created_at": m.created_at
+                "tipo": m.tipo,
+                "monto": m.monto,
+                "motivo": m.motivo,
+                "creado_en": m.creado_en
             }
             for m in movements
         ],
@@ -1183,31 +1247,31 @@ def get_shift_report(shift_id: int, db: Session = Depends(get_db), current_user:
     }
 
 @router.get("/reports/profit-margin")
-def get_profit_margin_report(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ["admin", "supervisor"]:
+def get_profit_margin_report(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ["admin", "supervisor"]:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
         
-    products = db.query(models.Product).filter(models.Product.tenant_id == current_user.tenant_id).all()
-    sales = db.query(models.SaleHistory).filter(
-        models.SaleHistory.tenant_id == current_user.tenant_id,
-        models.SaleHistory.is_cancelled == False
+    products = db.query(models.Producto).filter(models.Producto.inquilino_id == current_user.inquilino_id).all()
+    sales = db.query(models.HistorialVenta).filter(
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id,
+        models.HistorialVenta.cancelado == False
     ).all()
     
     report = []
     total_revenue = 0.0
-    total_cost = 0.0
+    costo_total = 0.0
     
     for p in products:
-        p_sales = [s for s in sales if s.product_id == p.id]
-        qty_sold = sum(s.quantity for s in p_sales)
+        p_sales = [s for s in sales if s.producto_id == p.id]
+        qty_sold = sum(s.cantidad for s in p_sales)
         
         def get_sale_revenue(s):
-            price = s.price_sold if s.price_sold is not None else p.price
-            return (price * s.quantity) - s.discount
+            precio = s.price_sold if s.price_sold is not None else p.precio
+            return (precio * s.cantidad) - s.discount
             
         def get_sale_cost(s):
-            cost = s.cost_price_sold if s.cost_price_sold is not None else p.cost_price
-            return cost * s.quantity
+            cost = s.cost_price_sold if s.cost_price_sold is not None else p.precio_costo
+            return cost * s.cantidad
 
         revenue = sum(get_sale_revenue(s) for s in p_sales)
         cost = sum(get_sale_cost(s) for s in p_sales)
@@ -1216,11 +1280,11 @@ def get_profit_margin_report(db: Session = Depends(get_db), current_user: models
         margin_pct = (profit / revenue * 100) if revenue > 0 else 0.0
         
         total_revenue += revenue
-        total_cost += cost
+        costo_total += cost
         
         report.append({
-            "product_id": p.id,
-            "product_name": p.name,
+            "producto_id": p.id,
+            "nombre_producto": p.nombre,
             "quantity_sold": qty_sold,
             "revenue": revenue,
             "cost": cost,
@@ -1233,36 +1297,36 @@ def get_profit_margin_report(db: Session = Depends(get_db), current_user: models
     return {
         "summary": {
             "total_revenue": total_revenue,
-            "total_cost": total_cost,
-            "total_profit": total_revenue - total_cost,
-            "average_margin_percentage": ((total_revenue - total_cost) / total_revenue * 100) if total_revenue > 0 else 0.0
+            "costo_total": costo_total,
+            "total_profit": total_revenue - costo_total,
+            "average_margin_percentage": ((total_revenue - costo_total) / total_revenue * 100) if total_revenue > 0 else 0.0
         },
         "products": report
     }
 
 # --- FACTURACIÓN ELECTRÓNICA ENDPOINTS ---
 
-@router.get("/billing/profiles", response_model=List[schemas.BillingProfileResponse])
-def get_billing_profiles(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    query = db.query(models.BillingProfile).filter(models.BillingProfile.tenant_id == current_user.tenant_id)
+@router.get("/billing/profiles", response_model=List[schemas.PerfilFacturacionResponse])
+def get_billing_profiles(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    query = db.query(models.PerfilFacturacion).filter(models.PerfilFacturacion.inquilino_id == current_user.inquilino_id)
     if q:
         query = query.filter(
-            (models.BillingProfile.rfc.ilike(f"%{q}%")) |
-            (models.BillingProfile.razon_social.ilike(f"%{q}%"))
+            (models.PerfilFacturacion.rfc.ilike(f"%{q}%")) |
+            (models.PerfilFacturacion.razon_social.ilike(f"%{q}%"))
         )
     return query.all()
 
-@router.post("/billing/profiles", response_model=schemas.BillingProfileResponse)
-def create_billing_profile(profile: schemas.BillingProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    existing = db.query(models.BillingProfile).filter(
-        models.BillingProfile.rfc == profile.rfc.upper().strip(),
-        models.BillingProfile.tenant_id == current_user.tenant_id
+@router.post("/billing/profiles", response_model=schemas.PerfilFacturacionResponse)
+def create_billing_profile(profile: schemas.PerfilFacturacionCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    existing = db.query(models.PerfilFacturacion).filter(
+        models.PerfilFacturacion.rfc == profile.rfc.upper().strip(),
+        models.PerfilFacturacion.inquilino_id == current_user.inquilino_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un perfil de facturación con este RFC")
         
-    db_profile = models.BillingProfile(
-        tenant_id=current_user.tenant_id,
+    db_profile = models.PerfilFacturacion(
+        inquilino_id=current_user.inquilino_id,
         rfc=profile.rfc.upper().strip(),
         razon_social=profile.razon_social.upper().strip(),
         regimen_fiscal=profile.regimen_fiscal,
@@ -1274,11 +1338,11 @@ def create_billing_profile(profile: schemas.BillingProfileCreate, db: Session = 
     db.refresh(db_profile)
     return db_profile
 
-@router.put("/billing/profiles/{profile_id}", response_model=schemas.BillingProfileResponse)
-def update_billing_profile(profile_id: int, profile: schemas.BillingProfileCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_profile = db.query(models.BillingProfile).filter(
-        models.BillingProfile.id == profile_id,
-        models.BillingProfile.tenant_id == current_user.tenant_id
+@router.put("/billing/profiles/{profile_id}", response_model=schemas.PerfilFacturacionResponse)
+def update_billing_profile(profile_id: int, profile: schemas.PerfilFacturacionCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    db_profile = db.query(models.PerfilFacturacion).filter(
+        models.PerfilFacturacion.id == profile_id,
+        models.PerfilFacturacion.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_profile:
         raise HTTPException(status_code=404, detail="Perfil de facturación no encontrado")
@@ -1294,116 +1358,116 @@ def update_billing_profile(profile_id: int, profile: schemas.BillingProfileCreat
     return db_profile
 
 @router.get("/billing/tickets/{ticket_id}")
-def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_ticket_details(ticket_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     # Buscamos la línea de venta de referencia
-    ref_sale = db.query(models.SaleHistory).filter(
-        models.SaleHistory.id == ticket_id,
-        models.SaleHistory.tenant_id == current_user.tenant_id
+    ref_sale = db.query(models.HistorialVenta).filter(
+        models.HistorialVenta.id == ticket_id,
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
     ).first()
     if not ref_sale:
         raise HTTPException(status_code=404, detail="Ticket de venta no encontrado")
         
-    # Agrupamos todas las ventas que comparten la misma fecha (created_at) y cajero
+    # Agrupamos todas las ventas que comparten la misma fecha (creado_en) y cajero
     sales = db.query(
-        models.SaleHistory.id,
-        models.SaleHistory.product_id,
-        models.SaleHistory.variant_id,
-        models.SaleHistory.quantity,
-        models.SaleHistory.price_sold,
-        models.SaleHistory.discount,
-        models.SaleHistory.created_at,
-        models.SaleHistory.payment_method,
-        models.SaleHistory.invoice_id,
-        models.SaleHistory.is_cancelled,
-        models.Product.name.label("product_name"),
-        models.Product.sat_key.label("product_sat_key"),
-        models.Product.sat_unit_key.label("product_sat_unit_key")
+        models.HistorialVenta.id,
+        models.HistorialVenta.producto_id,
+        models.HistorialVenta.variante_id,
+        models.HistorialVenta.cantidad,
+        models.HistorialVenta.price_sold,
+        models.HistorialVenta.discount,
+        models.HistorialVenta.creado_en,
+        models.HistorialVenta.payment_method,
+        models.HistorialVenta.factura_id,
+        models.HistorialVenta.cancelado,
+        models.Producto.nombre.label("nombre_producto"),
+        models.Producto.clave_sat.label("product_sat_key"),
+        models.Producto.clave_unidad_sat.label("product_sat_unit_key")
     ).join(
-        models.Product, models.Product.id == models.SaleHistory.product_id
+        models.Producto, models.Producto.id == models.HistorialVenta.producto_id
     ).filter(
-        models.SaleHistory.created_at == ref_sale.created_at,
-        models.SaleHistory.tenant_id == current_user.tenant_id
+        models.HistorialVenta.creado_en == ref_sale.creado_en,
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
     ).all()
     
     if not sales:
         raise HTTPException(status_code=404, detail="No se encontraron artículos para este ticket")
         
-    items = []
+    elementos = []
     subtotal = 0.0
     discount_total = 0.0
     
     for s in sales:
-        price = s.price_sold or 0.0
-        item_subtotal = price * s.quantity
+        precio = s.price_sold or 0.0
+        item_subtotal = precio * s.cantidad
         subtotal += item_subtotal
         discount_total += s.discount or 0.0
         
-        items.append({
-            "sale_id": s.id,
-            "product_id": s.product_id,
-            "product_name": s.product_name,
-            "quantity": s.quantity,
-            "price": price,
+        elementos.append({
+            "venta_id": s.id,
+            "producto_id": s.producto_id,
+            "nombre_producto": s.nombre_producto,
+            "cantidad": s.cantidad,
+            "precio": precio,
             "discount": s.discount,
             "total": item_subtotal - s.discount,
-            "sat_key": s.product_sat_key,
-            "sat_unit_key": s.product_sat_unit_key,
-            "is_cancelled": s.is_cancelled
+            "clave_sat": s.product_sat_key,
+            "clave_unidad_sat": s.product_sat_unit_key,
+            "cancelado": s.cancelado
         })
         
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.id == 1).first()
     if not settings:
-        settings = models.StoreSettings(
+        settings = models.ConfiguracionesTienda(
             id=1,
-            store_name="ABARROTES ED & E",
+            nombre_tienda="ABARROTES ED & E",
             rfc="AED180425EE3",
-            phone="8112345678",
-            email="ventas@abarrotesede.com",
-            address="Av. Constitución #450, Monterrey, N.L. C.P. 64000",
-            tax_rate=16.0,
-            ticket_footer="¡Gracias por su compra!"
+            telefono="8112345678",
+            correo="ventas@abarrotesede.com",
+            direccion="Av. Constitución #450, Monterrey, N.L. C.P. 64000",
+            tasa_impuesto=16.0,
+            pie_ticket="¡Gracias por su compra!"
         )
         db.add(settings)
         db.commit()
         db.refresh(settings)
 
-    tax_factor = 1 + (settings.tax_rate / 100)
+    tax_factor = 1 + (settings.tasa_impuesto / 100)
         
     taxes_total = round((subtotal - discount_total) - ((subtotal - discount_total) / tax_factor), 2)
     total = round(subtotal - discount_total, 2)
     
     # Comprobar si ya está facturada
-    invoice_id = sales[0].invoice_id
+    factura_id = sales[0].factura_id
     invoice = None
-    if invoice_id:
-        inv_record = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    if factura_id:
+        inv_record = db.query(models.Factura).filter(models.Factura.id == factura_id).first()
         if inv_record:
             invoice = {
                 "id": inv_record.id,
                 "uuid": inv_record.uuid,
-                "created_at": inv_record.created_at,
-                "status": inv_record.status
+                "creado_en": inv_record.creado_en,
+                "estado": inv_record.estado
             }
             
     return {
         "ticket_id": ticket_id,
-        "created_at": ref_sale.created_at,
+        "creado_en": ref_sale.creado_en,
         "payment_method": ref_sale.payment_method,
-        "items": items,
+        "elementos": elementos,
         "subtotal": round((subtotal - discount_total) / tax_factor, 2),
         "discount": discount_total,
         "taxes": taxes_total,
         "total": total,
         "invoice": invoice,
-        "is_cancelled": any(s.is_cancelled for s in sales)
+        "cancelado": any(s.cancelado for s in sales)
     }
 
-@router.post("/billing/invoice", response_model=schemas.InvoiceResponse)
-def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.post("/billing/invoice", response_model=schemas.FacturaResponse)
+def create_invoice(req: schemas.FacturaPeticionCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     # 1. Obtener los registros de venta (sale_history) que se van a facturar
     sale_ids = []
-    if req.sale_id:
-        sale_ids.append(req.sale_id)
+    if req.venta_id:
+        sale_ids.append(req.venta_id)
     if req.sale_ids:
         sale_ids.extend(req.sale_ids)
         
@@ -1411,21 +1475,21 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
         raise HTTPException(status_code=400, detail="Debe especificar al menos un ID de venta para facturar")
         
     # Obtener las ventas físicas de la BD
-    sales = db.query(models.SaleHistory).filter(models.SaleHistory.id.in_(sale_ids)).all()
+    sales = db.query(models.HistorialVenta).filter(models.HistorialVenta.id.in_(sale_ids)).all()
     if not sales:
         raise HTTPException(status_code=404, detail="No se encontraron registros de venta para facturar")
         
     # Validar que ninguna venta esté ya facturada
     for s in sales:
-        if s.invoice_id:
+        if s.factura_id:
             raise HTTPException(status_code=400, detail=f"La venta con ID {s.id} ya se encuentra asociada a una factura activa.")
-        if s.is_cancelled:
+        if s.cancelado:
             raise HTTPException(status_code=400, detail=f"La venta con ID {s.id} está cancelada y no se puede facturar.")
             
     # 2. Resolver Perfil Fiscal
     billing_profile = None
     if req.billing_profile_id:
-        profile_record = db.query(models.BillingProfile).filter(models.BillingProfile.id == req.billing_profile_id).first()
+        profile_record = db.query(models.PerfilFacturacion).filter(models.PerfilFacturacion.id == req.billing_profile_id).first()
         if not profile_record:
             raise HTTPException(status_code=404, detail="Perfil de facturación no encontrado")
         billing_profile = {
@@ -1438,12 +1502,12 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
     elif req.new_billing_profile:
         # Registrar perfil al vuelo
         profile_data = req.new_billing_profile
-        existing = db.query(models.BillingProfile).filter(models.BillingProfile.rfc == profile_data.rfc.upper().strip()).first()
+        existing = db.query(models.PerfilFacturacion).filter(models.PerfilFacturacion.rfc == profile_data.rfc.upper().strip()).first()
         if existing:
             # Reutilizar existente
             profile_record = existing
         else:
-            profile_record = models.BillingProfile(
+            profile_record = models.PerfilFacturacion(
                 rfc=profile_data.rfc.upper().strip(),
                 razon_social=profile_data.razon_social.upper().strip(),
                 regimen_fiscal=profile_data.regimen_fiscal,
@@ -1472,26 +1536,26 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
         }
         
     # 3. Preparar lista de conceptos para el generador
-    items = []
+    elementos = []
     subtotal = 0.0
     discount_total = 0.0
     
     for s in sales:
-        prod = db.query(models.Product).filter(models.Product.id == s.product_id).first()
-        name = prod.name if prod else "PRODUCTO DESCONOCIDO"
-        sat_key = (prod.sat_key if prod else "01010101") or "01010101"
-        sat_unit_key = (prod.sat_unit_key if prod else "H87") or "H87"
+        prod = db.query(models.Producto).filter(models.Producto.id == s.producto_id).first()
+        name = prod.nombre if prod else "PRODUCTO DESCONOCIDO"
+        clave_sat = (prod.clave_sat if prod else "01010101") or "01010101"
+        clave_unidad_sat = (prod.clave_unidad_sat if prod else "H87") or "H87"
         
-        price = s.price_sold or 0.0
-        subtotal += price * s.quantity
+        precio = s.price_sold or 0.0
+        subtotal += precio * s.cantidad
         discount_total += s.discount or 0.0
         
-        items.append({
-            "name": name,
-            "quantity": s.quantity,
-            "price": price,
-            "sat_key": sat_key,
-            "sat_unit_key": sat_unit_key
+        elementos.append({
+            "nombre": name,
+            "cantidad": s.cantidad,
+            "precio": precio,
+            "clave_sat": clave_sat,
+            "clave_unidad_sat": clave_unidad_sat
         })
         
     total = round(subtotal - discount_total, 2)
@@ -1508,17 +1572,17 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
     pdf_path = os.path.join(invoices_dir, f"{invoice_uuid}.pdf")
     
     # Generar archivos físicos con configuración dinámica
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.id == 1).first()
     store_settings_dict = None
     if settings:
         store_settings_dict = {
-            "store_name": settings.store_name,
+            "nombre_tienda": settings.nombre_tienda,
             "rfc": settings.rfc,
-            "phone": settings.phone,
-            "email": settings.email,
-            "address": settings.address,
-            "tax_rate": settings.tax_rate,
-            "ticket_footer": settings.ticket_footer
+            "telefono": settings.telefono,
+            "correo": settings.correo,
+            "direccion": settings.direccion,
+            "tasa_impuesto": settings.tasa_impuesto,
+            "pie_ticket": settings.pie_ticket
         }
 
     try:
@@ -1526,7 +1590,7 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
         xml_content = facturacion.generate_cfdi_xml(
             sale_info={"payment_method": sales[0].payment_method, "discount": discount_total},
             billing_profile=billing_profile,
-            items=items,
+            elementos=elementos,
             invoice_uuid=invoice_uuid,
             timestamp_str=timestamp_str,
             store_settings=store_settings_dict
@@ -1539,7 +1603,7 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
             pdf_path=pdf_path,
             sale_info={"payment_method": sales[0].payment_method, "discount": discount_total},
             billing_profile=billing_profile,
-            items=items,
+            elementos=elementos,
             invoice_uuid=invoice_uuid,
             timestamp_str=timestamp_str,
             store_settings=store_settings_dict
@@ -1548,14 +1612,14 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
         raise HTTPException(status_code=500, detail=f"Error al generar los documentos fiscales: {str(e)}")
         
     # 5. Guardar en Base de Datos
-    db_invoice = models.Invoice(
-        tenant_id=current_user.tenant_id,
+    db_invoice = models.Factura(
+        inquilino_id=current_user.inquilino_id,
         uuid=invoice_uuid,
         monto_total=total,
         xml_url=f"/api/billing/invoices/{invoice_uuid}/xml",
         pdf_url=f"/api/billing/invoices/{invoice_uuid}/pdf",
-        created_at=timestamp_str,
-        status="active"
+        creado_en=timestamp_str,
+        estado="active"
     )
     db.add(db_invoice)
     db.commit()
@@ -1563,18 +1627,18 @@ def create_invoice(req: schemas.InvoiceCreateRequest, db: Session = Depends(get_
     
     # Vincular los SaleHistory
     for s in sales:
-        s.invoice_id = db_invoice.id
+        s.factura_id = db_invoice.id
     db.commit()
     
     return db_invoice
 
-@router.get("/billing/invoices", response_model=List[schemas.InvoiceResponse])
-def get_invoices(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    return db.query(models.Invoice).filter(models.Invoice.tenant_id == current_user.tenant_id).order_by(models.Invoice.id.desc()).all()
+@router.get("/billing/invoices", response_model=List[schemas.FacturaResponse])
+def get_invoices(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    return db.query(models.Factura).filter(models.Factura.inquilino_id == current_user.inquilino_id).order_by(models.Factura.id.desc()).all()
 
 @router.get("/billing/invoices/{invoice_uuid}/xml")
 def download_invoice_xml(invoice_uuid: str, db: Session = Depends(get_db)):
-    invoice = db.query(models.Invoice).filter(models.Invoice.uuid == invoice_uuid).first()
+    invoice = db.query(models.Factura).filter(models.Factura.uuid == invoice_uuid).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
         
@@ -1587,7 +1651,7 @@ def download_invoice_xml(invoice_uuid: str, db: Session = Depends(get_db)):
 
 @router.get("/billing/invoices/{invoice_uuid}/pdf")
 def download_invoice_pdf(invoice_uuid: str, db: Session = Depends(get_db)):
-    invoice = db.query(models.Invoice).filter(models.Invoice.uuid == invoice_uuid).first()
+    invoice = db.query(models.Factura).filter(models.Factura.uuid == invoice_uuid).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
         
@@ -1598,29 +1662,29 @@ def download_invoice_pdf(invoice_uuid: str, db: Session = Depends(get_db)):
         
     return FileResponse(file_path, media_type="application/pdf", filename=f"Factura_{invoice_uuid}.pdf")
 
-@router.post("/billing/invoices/{invoice_id}/cancel", response_model=schemas.InvoiceResponse)
-def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ["admin", "supervisor"]:
+@router.post("/billing/invoices/{factura_id}/cancel", response_model=schemas.FacturaResponse)
+def cancel_invoice(factura_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ["admin", "supervisor"]:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para cancelar facturas")
         
-    invoice = db.query(models.Invoice).filter(
-        models.Invoice.id == invoice_id,
-        models.Invoice.tenant_id == current_user.tenant_id
+    invoice = db.query(models.Factura).filter(
+        models.Factura.id == factura_id,
+        models.Factura.inquilino_id == current_user.inquilino_id
     ).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
         
-    if invoice.status == "cancelled":
+    if invoice.estado == "cancelled":
         raise HTTPException(status_code=400, detail="Esta factura ya se encuentra cancelada")
         
     # Cambiar estatus de la factura
-    invoice.status = "cancelled"
+    invoice.estado = "cancelled"
     
-    # Desvincular ventas asociadas (o dejarlas marcadas, pero para permitir volver a facturarlas, ponemos su invoice_id en NULL!)
-    db.query(models.SaleHistory).filter(
-        models.SaleHistory.invoice_id == invoice.id,
-        models.SaleHistory.tenant_id == current_user.tenant_id
-    ).update({models.SaleHistory.invoice_id: None})
+    # Desvincular ventas asociadas (o dejarlas marcadas, pero para permitir volver a facturarlas, ponemos su factura_id en NULL!)
+    db.query(models.HistorialVenta).filter(
+        models.HistorialVenta.factura_id == invoice.id,
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
+    ).update({models.HistorialVenta.factura_id: None})
     
     db.commit()
     db.refresh(invoice)
@@ -1629,86 +1693,86 @@ def cancel_invoice(invoice_id: int, db: Session = Depends(get_db), current_user:
 
 # --- PROVEEDORES (SUPPLIERS) ENDPOINTS ---
 
-@router.get("/suppliers/", response_model=List[schemas.SupplierResponse])
-def get_suppliers(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.get("/suppliers/", response_model=List[schemas.ProveedorResponse])
+def get_suppliers(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
-    return db.query(models.Supplier).filter(models.Supplier.tenant_id == current_user.tenant_id).order_by(models.Supplier.name).all()
+    return db.query(models.Proveedor).filter(models.Proveedor.inquilino_id == current_user.inquilino_id).order_by(models.Proveedor.nombre).all()
 
-@router.post("/suppliers/", response_model=schemas.SupplierResponse)
-def create_supplier(supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.post("/suppliers/", response_model=schemas.ProveedorResponse)
+def create_supplier(proveedor: schemas.ProveedorCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
-    if supplier.rfc and supplier.rfc.strip():
-        existing = db.query(models.Supplier).filter(
-            models.Supplier.rfc == supplier.rfc.upper().strip(),
-            models.Supplier.tenant_id == current_user.tenant_id
+    if proveedor.rfc and proveedor.rfc.strip():
+        existing = db.query(models.Proveedor).filter(
+            models.Proveedor.rfc == proveedor.rfc.upper().strip(),
+            models.Proveedor.inquilino_id == current_user.inquilino_id
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Ya existe un proveedor con ese RFC")
 
-    db_supplier = models.Supplier(
-        tenant_id=current_user.tenant_id,
-        name=supplier.name.strip(),
-        rfc=supplier.rfc.upper().strip() if supplier.rfc else None,
-        phone=supplier.phone.strip() if supplier.phone else None,
-        email=supplier.email.lower().strip() if supplier.email else None,
-        address=supplier.address.strip() if supplier.address else None,
-        notes=supplier.notes.strip() if supplier.notes else None
+    db_supplier = models.Proveedor(
+        inquilino_id=current_user.inquilino_id,
+        name=proveedor.nombre.strip(),
+        rfc=proveedor.rfc.upper().strip() if proveedor.rfc else None,
+        telefono=proveedor.telefono.strip() if proveedor.telefono else None,
+        correo=proveedor.correo.lower().strip() if proveedor.correo else None,
+        direccion=proveedor.direccion.strip() if proveedor.direccion else None,
+        notas=proveedor.notas.strip() if proveedor.notas else None
     )
     db.add(db_supplier)
     db.commit()
     db.refresh(db_supplier)
     return db_supplier
 
-@router.put("/suppliers/{supplier_id}", response_model=schemas.SupplierResponse)
-def update_supplier(supplier_id: int, supplier: schemas.SupplierCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.put("/suppliers/{proveedor_id}", response_model=schemas.ProveedorResponse)
+def update_supplier(proveedor_id: int, proveedor: schemas.ProveedorCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
-    db_supplier = db.query(models.Supplier).filter(
-        models.Supplier.id == supplier_id,
-        models.Supplier.tenant_id == current_user.tenant_id
+    db_supplier = db.query(models.Proveedor).filter(
+        models.Proveedor.id == proveedor_id,
+        models.Proveedor.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_supplier:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
 
-    if supplier.rfc and supplier.rfc.strip():
-        existing = db.query(models.Supplier).filter(
-            models.Supplier.rfc == supplier.rfc.upper().strip(), 
-            models.Supplier.id != supplier_id,
-            models.Supplier.tenant_id == current_user.tenant_id
+    if proveedor.rfc and proveedor.rfc.strip():
+        existing = db.query(models.Proveedor).filter(
+            models.Proveedor.rfc == proveedor.rfc.upper().strip(), 
+            models.Proveedor.id != proveedor_id,
+            models.Proveedor.inquilino_id == current_user.inquilino_id
         ).first()
         if existing:
             raise HTTPException(status_code=400, detail="Ya existe otro proveedor con ese RFC")
 
-    db_supplier.name = supplier.name.strip()
-    db_supplier.rfc = supplier.rfc.upper().strip() if supplier.rfc else None
-    db_supplier.phone = supplier.phone.strip() if supplier.phone else None
-    db_supplier.email = supplier.email.lower().strip() if supplier.email else None
-    db_supplier.address = supplier.address.strip() if supplier.address else None
-    db_supplier.notes = supplier.notes.strip() if supplier.notes else None
+    db_supplier.nombre = proveedor.nombre.strip()
+    db_supplier.rfc = proveedor.rfc.upper().strip() if proveedor.rfc else None
+    db_supplier.telefono = proveedor.telefono.strip() if proveedor.telefono else None
+    db_supplier.correo = proveedor.correo.lower().strip() if proveedor.correo else None
+    db_supplier.direccion = proveedor.direccion.strip() if proveedor.direccion else None
+    db_supplier.notas = proveedor.notas.strip() if proveedor.notas else None
 
     db.commit()
     db.refresh(db_supplier)
     return db_supplier
 
-@router.delete("/suppliers/{supplier_id}")
-def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.delete("/suppliers/{proveedor_id}")
+def delete_supplier(proveedor_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
     
-    db_supplier = db.query(models.Supplier).filter(
-        models.Supplier.id == supplier_id,
-        models.Supplier.tenant_id == current_user.tenant_id
+    db_supplier = db.query(models.Proveedor).filter(
+        models.Proveedor.id == proveedor_id,
+        models.Proveedor.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_supplier:
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
     
-    associated_purchases = db.query(models.Purchase).filter(
-        models.Purchase.supplier_id == supplier_id,
-        models.Purchase.tenant_id == current_user.tenant_id
+    associated_purchases = db.query(models.Compra).filter(
+        models.Compra.proveedor_id == proveedor_id,
+        models.Compra.inquilino_id == current_user.inquilino_id
     ).first()
     if associated_purchases:
         raise HTTPException(
@@ -1723,151 +1787,151 @@ def delete_supplier(supplier_id: int, db: Session = Depends(get_db), current_use
 
 # --- COMPRAS / ENTRADAS (PURCHASES) ENDPOINTS ---
 
-@router.get("/purchases/", response_model=List[schemas.PurchaseResponse])
-def get_purchases(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.get("/purchases/", response_model=List[schemas.CompraResponse])
+def get_purchases(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    purchases = db.query(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).order_by(models.Purchase.id.desc()).all()
+    purchases = db.query(models.Compra).filter(models.Compra.inquilino_id == current_user.inquilino_id).order_by(models.Compra.id.desc()).all()
     
     result = []
     for p in purchases:
         supplier_name = "Compra Directa / Sin Proveedor"
-        if p.supplier_id:
-            supplier = db.query(models.Supplier).filter(
-                models.Supplier.id == p.supplier_id,
-                models.Supplier.tenant_id == current_user.tenant_id
+        if p.proveedor_id:
+            proveedor = db.query(models.Proveedor).filter(
+                models.Proveedor.id == p.proveedor_id,
+                models.Proveedor.inquilino_id == current_user.inquilino_id
             ).first()
-            if supplier:
-                supplier_name = supplier.name
+            if proveedor:
+                supplier_name = proveedor.nombre
                 
         user_name = "Desconocido"
-        if p.user_id:
-            user = db.query(models.User).filter(
-                models.User.id == p.user_id,
-                models.User.tenant_id == current_user.tenant_id
+        if p.usuario_id:
+            user = db.query(models.Usuario).filter(
+                models.Usuario.id == p.usuario_id,
+                models.Usuario.inquilino_id == current_user.inquilino_id
             ).first()
             if user:
-                user_name = user.full_name
+                user_name = user.nombre_completo
                 
         items_res = []
         for item in p.items:
-            prod = db.query(models.Product).filter(
-                models.Product.id == item.product_id,
-                models.Product.tenant_id == current_user.tenant_id
+            prod = db.query(models.Producto).filter(
+                models.Producto.id == item.producto_id,
+                models.Producto.inquilino_id == current_user.inquilino_id
             ).first()
-            prod_name = prod.name if prod else f"Producto ID {item.product_id}"
-            if item.variant_id:
-                var = db.query(models.ProductVariant).filter(
-                    models.ProductVariant.id == item.variant_id,
-                    models.ProductVariant.tenant_id == current_user.tenant_id
+            prod_name = prod.nombre if prod else f"Producto ID {item.producto_id}"
+            if item.variante_id:
+                var = db.query(models.VarianteProducto).filter(
+                    models.VarianteProducto.id == item.variante_id,
+                    models.VarianteProducto.inquilino_id == current_user.inquilino_id
                 ).first()
                 if var:
-                    prod_name += f" ({var.name})"
+                    prod_name += f" ({var.nombre})"
             
             items_res.append(
-                schemas.PurchaseItemResponse(
+                schemas.ElementoCompraResponse(
                     id=item.id,
-                    purchase_id=item.purchase_id,
-                    product_id=item.product_id,
-                    variant_id=item.variant_id,
-                    quantity=item.quantity,
-                    cost_price=item.cost_price,
-                    price=item.price,
-                    product_name=prod_name
+                    compra_id=item.compra_id,
+                    producto_id=item.producto_id,
+                    variante_id=item.variante_id,
+                    cantidad=item.cantidad,
+                    precio_costo=item.precio_costo,
+                    precio=item.precio,
+                    nombre_producto=prod_name
                 )
             )
             
         result.append(
-            schemas.PurchaseResponse(
+            schemas.CompraResponse(
                 id=p.id,
-                supplier_id=p.supplier_id,
-                invoice_number=p.invoice_number,
-                total_cost=p.total_cost,
-                created_at=p.created_at,
-                notes=p.notes,
-                user_id=p.user_id,
-                items=items_res,
-                supplier_name=supplier_name,
-                user_name=user_name
+                proveedor_id=p.proveedor_id,
+                numero_factura=p.numero_factura,
+                costo_total=p.costo_total,
+                creado_en=p.creado_en,
+                notas=p.notas,
+                usuario_id=p.usuario_id,
+                elementos=items_res,
+                nombre_proveedor=supplier_name,
+                nombre_usuario=user_name
             )
         )
     return result
 
-@router.get("/purchases/{purchase_id}", response_model=schemas.PurchaseResponse)
-def get_purchase_details(purchase_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.get("/purchases/{compra_id}", response_model=schemas.CompraResponse)
+def get_purchase_details(compra_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
-    p = db.query(models.Purchase).filter(
-        models.Purchase.id == purchase_id,
-        models.Purchase.tenant_id == current_user.tenant_id
+    p = db.query(models.Compra).filter(
+        models.Compra.id == compra_id,
+        models.Compra.inquilino_id == current_user.inquilino_id
     ).first()
     if not p:
         raise HTTPException(status_code=404, detail="Compra no encontrada")
         
     supplier_name = "Compra Directa / Sin Proveedor"
-    if p.supplier_id:
-        supplier = db.query(models.Supplier).filter(
-            models.Supplier.id == p.supplier_id,
-            models.Supplier.tenant_id == current_user.tenant_id
+    if p.proveedor_id:
+        proveedor = db.query(models.Proveedor).filter(
+            models.Proveedor.id == p.proveedor_id,
+            models.Proveedor.inquilino_id == current_user.inquilino_id
         ).first()
-        if supplier:
-            supplier_name = supplier.name
+        if proveedor:
+            supplier_name = proveedor.nombre
             
     user_name = "Desconocido"
-    if p.user_id:
-        user = db.query(models.User).filter(
-            models.User.id == p.user_id,
-            models.User.tenant_id == current_user.tenant_id
+    if p.usuario_id:
+        user = db.query(models.Usuario).filter(
+            models.Usuario.id == p.usuario_id,
+            models.Usuario.inquilino_id == current_user.inquilino_id
         ).first()
         if user:
-            user_name = user.full_name
+            user_name = user.nombre_completo
             
     items_res = []
     for item in p.items:
-        prod = db.query(models.Product).filter(
-            models.Product.id == item.product_id,
-            models.Product.tenant_id == current_user.tenant_id
+        prod = db.query(models.Producto).filter(
+            models.Producto.id == item.producto_id,
+            models.Producto.inquilino_id == current_user.inquilino_id
         ).first()
-        prod_name = prod.name if prod else f"Producto ID {item.product_id}"
-        if item.variant_id:
-            var = db.query(models.ProductVariant).filter(
-                models.ProductVariant.id == item.variant_id,
-                models.ProductVariant.tenant_id == current_user.tenant_id
+        prod_name = prod.nombre if prod else f"Producto ID {item.producto_id}"
+        if item.variante_id:
+            var = db.query(models.VarianteProducto).filter(
+                models.VarianteProducto.id == item.variante_id,
+                models.VarianteProducto.inquilino_id == current_user.inquilino_id
             ).first()
             if var:
-                prod_name += f" ({var.name})"
+                prod_name += f" ({var.nombre})"
         
         items_res.append(
-            schemas.PurchaseItemResponse(
+            schemas.ElementoCompraResponse(
                 id=item.id,
-                purchase_id=item.purchase_id,
-                product_id=item.product_id,
-                variant_id=item.variant_id,
-                quantity=item.quantity,
-                cost_price=item.cost_price,
-                price=item.price,
-                product_name=prod_name
+                compra_id=item.compra_id,
+                producto_id=item.producto_id,
+                variante_id=item.variante_id,
+                cantidad=item.cantidad,
+                precio_costo=item.precio_costo,
+                precio=item.precio,
+                nombre_producto=prod_name
             )
         )
         
-    return schemas.PurchaseResponse(
+    return schemas.CompraResponse(
         id=p.id,
-        supplier_id=p.supplier_id,
-        invoice_number=p.invoice_number,
-        total_cost=p.total_cost,
-        created_at=p.created_at,
-        notes=p.notes,
-        user_id=p.user_id,
-        items=items_res,
-        supplier_name=supplier_name,
-        user_name=user_name
+        proveedor_id=p.proveedor_id,
+        numero_factura=p.numero_factura,
+        costo_total=p.costo_total,
+        creado_en=p.creado_en,
+        notas=p.notas,
+        usuario_id=p.usuario_id,
+        elementos=items_res,
+        nombre_proveedor=supplier_name,
+        nombre_usuario=user_name
     )
 
-@router.post("/purchases/", response_model=schemas.PurchaseResponse)
-def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.post("/purchases/", response_model=schemas.CompraResponse)
+def create_purchase(purchase_data: schemas.CompraCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes")
         
     if not purchase_data.items:
@@ -1876,71 +1940,71 @@ def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends
     try:
         now_str = datetime.utcnow().isoformat()
         
-        db_purchase = models.Purchase(
-            tenant_id=current_user.tenant_id,
-            supplier_id=purchase_data.supplier_id,
-            invoice_number=purchase_data.invoice_number.strip() if purchase_data.invoice_number else None,
-            total_cost=0.0,
-            created_at=now_str,
-            notes=purchase_data.notes.strip() if purchase_data.notes else None,
-            user_id=current_user.id
+        db_purchase = models.Compra(
+            inquilino_id=current_user.inquilino_id,
+            proveedor_id=purchase_data.proveedor_id,
+            numero_factura=purchase_data.numero_factura.strip() if purchase_data.numero_factura else None,
+            costo_total=0.0,
+            creado_en=now_str,
+            notas=purchase_data.notas.strip() if purchase_data.notas else None,
+            usuario_id=current_user.id
         )
         db.add(db_purchase)
         db.commit()
         db.refresh(db_purchase)
         
-        total_cost = 0.0
+        costo_total = 0.0
         
         for item in purchase_data.items:
-            product = db.query(models.Product).filter(
-                models.Product.id == item.product_id,
-                models.Product.tenant_id == current_user.tenant_id
+            producto = db.query(models.Producto).filter(
+                models.Producto.id == item.producto_id,
+                models.Producto.inquilino_id == current_user.inquilino_id
             ).with_for_update().first()
-            if not product:
-                raise HTTPException(status_code=404, detail=f"El producto con ID {item.product_id} no existe.")
+            if not producto:
+                raise HTTPException(status_code=404, detail=f"El producto con ID {item.producto_id} no existe.")
             
-            if item.variant_id:
-                variant = db.query(models.ProductVariant).filter(
-                    models.ProductVariant.id == item.variant_id,
-                    models.ProductVariant.product_id == item.product_id,
-                    models.ProductVariant.tenant_id == current_user.tenant_id
+            if item.variante_id:
+                variante = db.query(models.VarianteProducto).filter(
+                    models.VarianteProducto.id == item.variante_id,
+                    models.VarianteProducto.producto_id == item.producto_id,
+                    models.VarianteProducto.inquilino_id == current_user.inquilino_id
                 ).with_for_update().first()
-                if not variant:
+                if not variante:
                     raise HTTPException(
                         status_code=404, 
-                        detail=f"La variante ID {item.variant_id} para el producto ID {item.product_id} no existe."
+                        detail=f"La variante ID {item.variante_id} para el producto ID {item.producto_id} no existe."
                     )
                 
-                variant.quantity += item.quantity
-                variant.cost_price = item.cost_price
-                if item.price is not None and item.price > 0:
-                    variant.price = item.price
+                variante.cantidad += item.cantidad
+                variante.precio_costo = item.precio_costo
+                if item.precio is not None and item.precio > 0:
+                    variante.precio = item.precio
                 
-                product.quantity += item.quantity
+                producto.cantidad += item.cantidad
             else:
-                product.quantity += item.quantity
-                product.cost_price = item.cost_price
-                if item.price is not None and item.price > 0:
-                    product.price = item.price
+                producto.cantidad += item.cantidad
+                producto.precio_costo = item.precio_costo
+                if item.precio is not None and item.precio > 0:
+                    producto.precio = item.precio
                     
-            item_cost = item.cost_price * item.quantity
-            total_cost += item_cost
+            item_cost = item.precio_costo * item.cantidad
+            costo_total += item_cost
             
-            db_item = models.PurchaseItem(
-                purchase_id=db_purchase.id,
-                product_id=item.product_id,
-                variant_id=item.variant_id,
-                quantity=item.quantity,
-                cost_price=item.cost_price,
-                price=item.price
+            db_item = models.ElementoCompra(
+                compra_id=db_purchase.id,
+                producto_id=item.producto_id,
+                variante_id=item.variante_id,
+                cantidad=item.cantidad,
+                precio_costo=item.precio_costo,
+                precio=item.precio
             )
             db.add(db_item)
             
-        db_purchase.total_cost = total_cost
+        db_purchase.costo_total = costo_total
         db.commit()
         db.refresh(db_purchase)
         
-        return get_purchase_details(purchase_id=db_purchase.id, db=db, current_user=current_user)
+        return get_purchase_details(compra_id=db_purchase.id, db=db, current_user=current_user)
         
     except Exception as e:
         db.rollback()
@@ -1951,33 +2015,33 @@ def create_purchase(purchase_data: schemas.PurchaseCreate, db: Session = Depends
 
 # --- AJUSTES DE TIENDA (STORE SETTINGS) ENDPOINTS ---
 
-@router.get("/settings", response_model=schemas.StoreSettingsResponse)
-def get_store_settings(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.tenant_id == current_user.tenant_id).first()
+@router.get("/settings", response_model=schemas.ConfiguracionesTiendaResponse)
+def get_store_settings(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.inquilino_id == current_user.inquilino_id).first()
     if not settings:
-        settings = models.StoreSettings(
-            tenant_id=current_user.tenant_id,
-            store_name="ABARROTES ED & E",
+        settings = models.ConfiguracionesTienda(
+            inquilino_id=current_user.inquilino_id,
+            nombre_tienda="ABARROTES ED & E",
             rfc="AED180425EE3",
-            phone="8112345678",
-            email="ventas@abarrotesede.com",
-            address="Av. Constitución #450, Monterrey, N.L. C.P. 64000",
-            tax_rate=16.0,
-            ticket_footer="¡Gracias por su compra!"
+            telefono="8112345678",
+            correo="ventas@abarrotesede.com",
+            direccion="Av. Constitución #450, Monterrey, N.L. C.P. 64000",
+            tasa_impuesto=16.0,
+            pie_ticket="¡Gracias por su compra!"
         )
         db.add(settings)
         db.commit()
         db.refresh(settings)
     return settings
 
-@router.put("/settings", response_model=schemas.StoreSettingsResponse)
-def update_store_settings(settings_data: schemas.StoreSettingsCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.put("/settings", response_model=schemas.ConfiguracionesTiendaResponse)
+def update_store_settings(settings_data: schemas.ConfiguracionesTiendaCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para cambiar la configuración.")
     
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.tenant_id == current_user.tenant_id).first()
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.inquilino_id == current_user.inquilino_id).first()
     if not settings:
-        settings = models.StoreSettings(tenant_id=current_user.tenant_id)
+        settings = models.ConfiguracionesTienda(inquilino_id=current_user.inquilino_id)
         db.add(settings)
         
     for key, value in settings_data.dict().items():
@@ -1990,124 +2054,124 @@ def update_store_settings(settings_data: schemas.StoreSettingsCreate, db: Sessio
 
 # --- CLIENTES Y CRÉDITOS (CUSTOMERS & CREDIT) ENDPOINTS ---
 
-@router.get("/customers", response_model=List[schemas.CustomerResponse])
-def get_customers(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    query = db.query(models.Customer).filter(models.Customer.tenant_id == current_user.tenant_id)
+@router.get("/customers", response_model=List[schemas.ClienteResponse])
+def get_customers(q: Optional[str] = None, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    query = db.query(models.Cliente).filter(models.Cliente.inquilino_id == current_user.inquilino_id)
     if q:
         query = query.filter(
-            (models.Customer.name.ilike(f"%{q}%")) |
-            (models.Customer.phone.ilike(f"%{q}%"))
+            (models.Cliente.nombre.ilike(f"%{q}%")) |
+            (models.Cliente.telefono.ilike(f"%{q}%"))
         )
-    return query.order_by(models.Customer.name).all()
+    return query.order_by(models.Cliente.nombre).all()
 
-@router.post("/customers", response_model=schemas.CustomerResponse)
-def create_customer(customer_data: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    existing = db.query(models.Customer).filter(
-        models.Customer.name.ilike(customer_data.name.strip()),
-        models.Customer.tenant_id == current_user.tenant_id
+@router.post("/customers", response_model=schemas.ClienteResponse)
+def create_customer(customer_data: schemas.ClienteCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    existing = db.query(models.Cliente).filter(
+        models.Cliente.nombre.ilike(customer_data.nombre.strip()),
+        models.Cliente.inquilino_id == current_user.inquilino_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un cliente con ese nombre.")
         
-    db_customer = models.Customer(
-        tenant_id=current_user.tenant_id,
-        name=customer_data.name.strip(),
-        phone=customer_data.phone.strip() if customer_data.phone else None,
-        email=customer_data.email.lower().strip() if customer_data.email else None,
-        credit_limit=customer_data.credit_limit,
-        current_balance=0.0
+    db_customer = models.Cliente(
+        inquilino_id=current_user.inquilino_id,
+        name=customer_data.nombre.strip(),
+        telefono=customer_data.telefono.strip() if customer_data.telefono else None,
+        correo=customer_data.correo.lower().strip() if customer_data.correo else None,
+        limite_credito=customer_data.limite_credito,
+        saldo_actual=0.0
     )
     db.add(db_customer)
     db.commit()
     db.refresh(db_customer)
     return db_customer
 
-@router.put("/customers/{customer_id}", response_model=schemas.CustomerResponse)
-def update_customer(customer_id: int, customer_data: schemas.CustomerCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    db_customer = db.query(models.Customer).filter(
-        models.Customer.id == customer_id,
-        models.Customer.tenant_id == current_user.tenant_id
+@router.put("/customers/{cliente_id}", response_model=schemas.ClienteResponse)
+def update_customer(cliente_id: int, customer_data: schemas.ClienteCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    db_customer = db.query(models.Cliente).filter(
+        models.Cliente.id == cliente_id,
+        models.Cliente.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
-    existing = db.query(models.Customer).filter(
-        models.Customer.name.ilike(customer_data.name.strip()), 
-        models.Customer.id != customer_id,
-        models.Customer.tenant_id == current_user.tenant_id
+    existing = db.query(models.Cliente).filter(
+        models.Cliente.nombre.ilike(customer_data.nombre.strip()), 
+        models.Cliente.id != cliente_id,
+        models.Cliente.inquilino_id == current_user.inquilino_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe otro cliente con ese nombre.")
         
-    db_customer.name = customer_data.name.strip()
-    db_customer.phone = customer_data.phone.strip() if customer_data.phone else None
-    db_customer.email = customer_data.email.lower().strip() if customer_data.email else None
-    db_customer.credit_limit = customer_data.credit_limit
+    db_customer.nombre = customer_data.nombre.strip()
+    db_customer.telefono = customer_data.telefono.strip() if customer_data.telefono else None
+    db_customer.correo = customer_data.correo.lower().strip() if customer_data.correo else None
+    db_customer.limite_credito = customer_data.limite_credito
     
     db.commit()
     db.refresh(db_customer)
     return db_customer
 
-@router.delete("/customers/{customer_id}")
-def delete_customer(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ['admin', 'supervisor']:
+@router.delete("/customers/{cliente_id}")
+def delete_customer(cliente_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes para eliminar clientes.")
         
-    db_customer = db.query(models.Customer).filter(
-        models.Customer.id == customer_id,
-        models.Customer.tenant_id == current_user.tenant_id
+    db_customer = db.query(models.Cliente).filter(
+        models.Cliente.id == cliente_id,
+        models.Cliente.inquilino_id == current_user.inquilino_id
     ).first()
     if not db_customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
-    if db_customer.current_balance > 0:
+    if db_customer.saldo_actual > 0:
         raise HTTPException(status_code=400, detail="No se puede eliminar el cliente porque tiene un saldo deudor pendiente.")
         
     db.delete(db_customer)
     db.commit()
     return {"message": "Cliente eliminado exitosamente"}
 
-@router.post("/customers/{customer_id}/pay", response_model=schemas.CustomerPaymentResponse)
-def register_customer_payment(customer_id: int, payment_data: schemas.CustomerPaymentCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    shift = db.query(models.Shift).filter(
-        models.Shift.user_id == current_user.id,
-        models.Shift.tenant_id == current_user.tenant_id,
-        models.Shift.status == "open"
+@router.post("/customers/{cliente_id}/pay", response_model=schemas.PagoClienteResponse)
+def register_customer_payment(cliente_id: int, payment_data: schemas.PagoClienteCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    shift = db.query(models.Turno).filter(
+        models.Turno.usuario_id == current_user.id,
+        models.Turno.inquilino_id == current_user.inquilino_id,
+        models.Turno.estado == "open"
     ).first()
-    if not shift and current_user.role != 'admin':
+    if not shift and current_user.rol != 'admin':
         raise HTTPException(status_code=400, detail="Debe tener un turno de caja abierto para registrar un abono.")
         
-    customer = db.query(models.Customer).filter(
-        models.Customer.id == customer_id,
-        models.Customer.tenant_id == current_user.tenant_id
+    customer = db.query(models.Cliente).filter(
+        models.Cliente.id == cliente_id,
+        models.Cliente.inquilino_id == current_user.inquilino_id
     ).with_for_update().first()
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
-    if payment_data.amount <= 0:
+    if payment_data.monto <= 0:
         raise HTTPException(status_code=400, detail="El monto del abono debe ser mayor a 0.")
         
-    db_payment = models.CustomerPayment(
-        tenant_id=current_user.tenant_id,
-        customer_id=customer_id,
-        shift_id=shift.id if shift else None,
-        user_id=current_user.id,
-        amount=payment_data.amount,
-        created_at=datetime.utcnow().isoformat(),
-        notes=payment_data.notes.strip() if payment_data.notes else None
+    db_payment = models.PagoCliente(
+        inquilino_id=current_user.inquilino_id,
+        cliente_id=cliente_id,
+        turno_id=shift.id if shift else None,
+        usuario_id=current_user.id,
+        monto=payment_data.monto,
+        creado_en=datetime.utcnow().isoformat(),
+        notas=payment_data.notas.strip() if payment_data.notas else None
     )
     
-    customer.current_balance -= payment_data.amount
+    customer.saldo_actual -= payment_data.monto
     
     if shift:
-        db_mov = models.CashMovement(
-            shift_id=shift.id,
-            type="entrada",
-            amount=payment_data.amount,
-            reason=f"Abono de cliente: {customer.name}",
-            created_at=datetime.utcnow().isoformat()
+        db_mov = models.MovimientoCaja(
+            turno_id=shift.id,
+            tipo="entrada",
+            monto=payment_data.monto,
+            motivo=f"Abono de cliente: {customer.nombre}",
+            creado_en=datetime.utcnow().isoformat()
         )
-        shift.final_cash_expected += payment_data.amount
+        shift.efectivo_final_esperado += payment_data.monto
         db.add(db_mov)
         
     db.add(db_payment)
@@ -2115,77 +2179,77 @@ def register_customer_payment(customer_id: int, payment_data: schemas.CustomerPa
     db.refresh(db_payment)
     return db_payment
 
-@router.get("/customers/{customer_id}/history")
-def get_customer_history(customer_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    customer = db.query(models.Customer).filter(
-        models.Customer.id == customer_id,
-        models.Customer.tenant_id == current_user.tenant_id
+@router.get("/customers/{cliente_id}/history")
+def get_customer_history(cliente_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    customer = db.query(models.Cliente).filter(
+        models.Cliente.id == cliente_id,
+        models.Cliente.inquilino_id == current_user.inquilino_id
     ).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Cliente no encontrado.")
         
     sales = db.query(
-        models.SaleHistory.id,
-        models.SaleHistory.created_at,
-        models.SaleHistory.payment_method,
-        models.SaleHistory.price_sold,
-        models.SaleHistory.quantity,
-        models.SaleHistory.discount,
-        models.Product.name.label("product_name")
+        models.HistorialVenta.id,
+        models.HistorialVenta.creado_en,
+        models.HistorialVenta.payment_method,
+        models.HistorialVenta.price_sold,
+        models.HistorialVenta.cantidad,
+        models.HistorialVenta.discount,
+        models.Producto.nombre.label("nombre_producto")
     ).join(
-        models.Product, models.Product.id == models.SaleHistory.product_id
+        models.Producto, models.Producto.id == models.HistorialVenta.producto_id
     ).filter(
-        models.SaleHistory.customer_id == customer_id,
-        models.SaleHistory.tenant_id == current_user.tenant_id
+        models.HistorialVenta.cliente_id == cliente_id,
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
     ).all()
     
-    payments = db.query(models.CustomerPayment).filter(
-        models.CustomerPayment.customer_id == customer_id,
-        models.CustomerPayment.tenant_id == current_user.tenant_id
+    payments = db.query(models.PagoCliente).filter(
+        models.PagoCliente.cliente_id == cliente_id,
+        models.PagoCliente.inquilino_id == current_user.inquilino_id
     ).all()
     
     history = []
     sales_by_ticket = {}
     for s in sales:
-        total_item = (s.price_sold * s.quantity) - s.discount
-        date_key = s.created_at
+        total_item = (s.price_sold * s.cantidad) - s.discount
+        date_key = s.creado_en
         if date_key not in sales_by_ticket:
             sales_by_ticket[date_key] = {
                 "id": s.id,
-                "type": "compra",
+                "tipo": "compra",
                 "payment_method": s.payment_method,
-                "created_at": s.created_at,
-                "amount": 0.0,
+                "creado_en": s.creado_en,
+                "monto": 0.0,
                 "details": []
             }
-        sales_by_ticket[date_key]["amount"] += total_item
-        sales_by_ticket[date_key]["details"].append(f"{s.quantity}x {s.product_name}")
+        sales_by_ticket[date_key]["monto"] += total_item
+        sales_by_ticket[date_key]["details"].append(f"{s.cantidad}x {s.nombre_producto}")
         
     for ticket in sales_by_ticket.values():
         history.append({
             "id": ticket["id"],
-            "type": "compra_credito" if ticket["payment_method"] == "credito" else "compra_asociada",
+            "tipo": "compra_credito" if ticket["payment_method"] == "credito" else "compra_asociada",
             "description": ", ".join(ticket["details"]),
-            "amount": round(ticket["amount"], 2),
-            "created_at": ticket["created_at"]
+            "monto": round(ticket["monto"], 2),
+            "creado_en": ticket["creado_en"]
         })
         
     for p in payments:
         history.append({
             "id": p.id,
-            "type": "abono",
-            "description": p.notes or "Abono a cuenta",
-            "amount": p.amount,
-            "created_at": p.created_at
+            "tipo": "abono",
+            "description": p.notas or "Abono a cuenta",
+            "monto": p.monto,
+            "creado_en": p.creado_en
         })
         
-    history = sorted(history, key=lambda x: x["created_at"], reverse=True)
+    history = sorted(history, key=lambda x: x["creado_en"], reverse=True)
     return {
         "customer": {
             "id": customer.id,
-            "name": customer.name,
-            "current_balance": customer.current_balance,
-            "credit_limit": customer.credit_limit
+            "nombre": customer.nombre,
+            "saldo_actual": customer.saldo_actual,
+            "limite_credito": customer.limite_credito
         },
         "history": history
     }
@@ -2199,15 +2263,15 @@ from fastapi import UploadFile, File
 from sqlalchemy import text
 
 @router.get("/backup/export")
-def export_backup_database(format: str = "json", db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != "admin":
+def export_backup_database(format: str = "json", db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != "admin":
         raise HTTPException(status_code=403, detail="No tienes permisos para exportar respaldos.")
         
     def serialize_table(model):
-        if hasattr(model, "tenant_id"):
-            rows = db.query(model).filter(model.tenant_id == current_user.tenant_id).all()
+        if hasattr(model, "inquilino_id"):
+            rows = db.query(model).filter(model.inquilino_id == current_user.inquilino_id).all()
         elif model.__tablename__ == "purchase_items":
-            rows = db.query(models.PurchaseItem).join(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).all()
+            rows = db.query(models.ElementoCompra).join(models.Compra).filter(models.Compra.inquilino_id == current_user.inquilino_id).all()
         else:
             rows = db.query(model).all()
             
@@ -2224,22 +2288,22 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
 
     if format == "json":
         backup_data = {
-            "store_settings": serialize_table(models.StoreSettings),
-            "users": serialize_table(models.User),
-            "suppliers": serialize_table(models.Supplier),
-            "billing_profiles": serialize_table(models.BillingProfile),
-            "customers": serialize_table(models.Customer),
-            "products": serialize_table(models.Product),
-            "product_variants": serialize_table(models.ProductVariant),
-            "invoices": serialize_table(models.Invoice),
-            "shifts": serialize_table(models.Shift),
-            "customer_payments": serialize_table(models.CustomerPayment),
-            "purchases": serialize_table(models.Purchase),
-            "purchase_items": serialize_table(models.PurchaseItem),
-            "cash_movements": serialize_table(models.CashMovement),
-            "sales_history": serialize_table(models.SaleHistory),
-            "product_returns": serialize_table(models.ProductReturn),
-            "notifications": serialize_table(models.Notification)
+            "store_settings": serialize_table(models.ConfiguracionesTienda),
+            "users": serialize_table(models.Usuario),
+            "suppliers": serialize_table(models.Proveedor),
+            "billing_profiles": serialize_table(models.PerfilFacturacion),
+            "customers": serialize_table(models.Cliente),
+            "products": serialize_table(models.Producto),
+            "product_variants": serialize_table(models.VarianteProducto),
+            "invoices": serialize_table(models.Factura),
+            "shifts": serialize_table(models.Turno),
+            "customer_payments": serialize_table(models.PagoCliente),
+            "purchases": serialize_table(models.Compra),
+            "purchase_items": serialize_table(models.ElementoCompra),
+            "cash_movements": serialize_table(models.MovimientoCaja),
+            "sales_history": serialize_table(models.HistorialVenta),
+            "product_returns": serialize_table(models.DevolucionProducto),
+            "notifications": serialize_table(models.Notificacion)
         }
         json_str = json.dumps(backup_data, indent=2, ensure_ascii=False)
         stream = io.BytesIO(json_str.encode('utf-8'))
@@ -2253,33 +2317,33 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         sql_lines = []
         sql_lines.append("-- TIENDA DATABASE BACKUP SQL DUMP")
         sql_lines.append(f"-- Generated: {datetime.now().isoformat()}")
-        sql_lines.append(f"-- Tenant: {current_user.tenant_id}")
+        sql_lines.append(f"-- Tenant: {current_user.inquilino_id}")
         sql_lines.append("")
         
         tables = [
-            ("store_settings", models.StoreSettings),
-            ("users", models.User),
-            ("suppliers", models.Supplier),
-            ("billing_profiles", models.BillingProfile),
-            ("customers", models.Customer),
-            ("products", models.Product),
-            ("product_variants", models.ProductVariant),
-            ("invoices", models.Invoice),
-            ("shifts", models.Shift),
-            ("customer_payments", models.CustomerPayment),
-            ("purchases", models.Purchase),
-            ("purchase_items", models.PurchaseItem),
-            ("cash_movements", models.CashMovement),
-            ("sales_history", models.SaleHistory),
-            ("product_returns", models.ProductReturn),
-            ("notifications", models.Notification)
+            ("store_settings", models.ConfiguracionesTienda),
+            ("users", models.Usuario),
+            ("suppliers", models.Proveedor),
+            ("billing_profiles", models.PerfilFacturacion),
+            ("customers", models.Cliente),
+            ("products", models.Producto),
+            ("product_variants", models.VarianteProducto),
+            ("invoices", models.Factura),
+            ("shifts", models.Turno),
+            ("customer_payments", models.PagoCliente),
+            ("purchases", models.Compra),
+            ("purchase_items", models.ElementoCompra),
+            ("cash_movements", models.MovimientoCaja),
+            ("sales_history", models.HistorialVenta),
+            ("product_returns", models.DevolucionProducto),
+            ("notifications", models.Notificacion)
         ]
         
         for table_name, model in tables:
-            if hasattr(model, "tenant_id"):
-                rows = db.query(model).filter(model.tenant_id == current_user.tenant_id).all()
+            if hasattr(model, "inquilino_id"):
+                rows = db.query(model).filter(model.inquilino_id == current_user.inquilino_id).all()
             elif model.__tablename__ == "purchase_items":
-                rows = db.query(models.PurchaseItem).join(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).all()
+                rows = db.query(models.ElementoCompra).join(models.Compra).filter(models.Compra.inquilino_id == current_user.inquilino_id).all()
             else:
                 rows = db.query(model).all()
                 
@@ -2322,21 +2386,21 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         wb.remove(default_sheet)
         
         tables = [
-            ("Ajustes", models.StoreSettings),
-            ("Usuarios", models.User),
-            ("Proveedores", models.Supplier),
-            ("Perfiles_Facturacion", models.BillingProfile),
-            ("Clientes", models.Customer),
-            ("Productos", models.Product),
-            ("Variantes_Producto", models.ProductVariant),
-            ("Facturas", models.Invoice),
-            ("Turnos_Caja", models.Shift),
-            ("Abonos_Clientes", models.CustomerPayment),
-            ("Compras", models.Purchase),
-            ("Items_Compra", models.PurchaseItem),
-            ("Movimientos_Caja", models.CashMovement),
-            ("Historial_Ventas", models.SaleHistory),
-            ("Devoluciones", models.ProductReturn)
+            ("Ajustes", models.ConfiguracionesTienda),
+            ("Usuarios", models.Usuario),
+            ("Proveedores", models.Proveedor),
+            ("Perfiles_Facturacion", models.PerfilFacturacion),
+            ("Clientes", models.Cliente),
+            ("Productos", models.Producto),
+            ("Variantes_Producto", models.VarianteProducto),
+            ("Facturas", models.Factura),
+            ("Turnos_Caja", models.Turno),
+            ("Abonos_Clientes", models.PagoCliente),
+            ("Compras", models.Compra),
+            ("Items_Compra", models.ElementoCompra),
+            ("Movimientos_Caja", models.MovimientoCaja),
+            ("Historial_Ventas", models.HistorialVenta),
+            ("Devoluciones", models.DevolucionProducto)
         ]
         
         title_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -2350,10 +2414,10 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
         
         for sheet_name, model in tables:
             ws = wb.create_sheet(title=sheet_name)
-            if hasattr(model, "tenant_id"):
-                rows = db.query(model).filter(model.tenant_id == current_user.tenant_id).all()
+            if hasattr(model, "inquilino_id"):
+                rows = db.query(model).filter(model.inquilino_id == current_user.inquilino_id).all()
             elif model.__tablename__ == "purchase_items":
-                rows = db.query(models.PurchaseItem).join(models.Purchase).filter(models.Purchase.tenant_id == current_user.tenant_id).all()
+                rows = db.query(models.ElementoCompra).join(models.Compra).filter(models.Compra.inquilino_id == current_user.inquilino_id).all()
             else:
                 rows = db.query(model).all()
                 
@@ -2398,8 +2462,8 @@ def export_backup_database(format: str = "json", db: Session = Depends(get_db), 
 
 
 @router.post("/backup/import")
-def import_backup_database(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role != "admin":
+def import_backup_database(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol != "admin":
         raise HTTPException(status_code=403, detail="No tienes permisos para restaurar respaldos.")
         
     try:
@@ -2409,43 +2473,43 @@ def import_backup_database(file: UploadFile = File(...), db: Session = Depends(g
         raise HTTPException(status_code=400, detail="El archivo no es un JSON válido o tiene codificación incorrecta.")
         
     tables = [
-        ("product_returns", models.ProductReturn),
-        ("sales_history", models.SaleHistory),
-        ("cash_movements", models.CashMovement),
-        ("customer_payments", models.CustomerPayment),
-        ("purchase_items", models.PurchaseItem),
-        ("purchases", models.Purchase),
-        ("invoices", models.Invoice),
-        ("shifts", models.Shift),
-        ("product_variants", models.ProductVariant),
-        ("products", models.Product),
-        ("billing_profiles", models.BillingProfile),
-        ("customers", models.Customer),
-        ("suppliers", models.Supplier),
-        ("users", models.User),
-        ("store_settings", models.StoreSettings),
-        ("notifications", models.Notification)
+        ("product_returns", models.DevolucionProducto),
+        ("sales_history", models.HistorialVenta),
+        ("cash_movements", models.MovimientoCaja),
+        ("customer_payments", models.PagoCliente),
+        ("purchase_items", models.ElementoCompra),
+        ("purchases", models.Compra),
+        ("invoices", models.Factura),
+        ("shifts", models.Turno),
+        ("product_variants", models.VarianteProducto),
+        ("products", models.Producto),
+        ("billing_profiles", models.PerfilFacturacion),
+        ("customers", models.Cliente),
+        ("suppliers", models.Proveedor),
+        ("users", models.Usuario),
+        ("store_settings", models.ConfiguracionesTienda),
+        ("notifications", models.Notificacion)
     ]
     
     try:
-        # Delete rows scoped to current tenant
+        # Delete rows scoped to current inquilino
         for name, model in tables:
-            if hasattr(model, "tenant_id"):
-                db.query(model).filter(model.tenant_id == current_user.tenant_id).delete()
+            if hasattr(model, "inquilino_id"):
+                db.query(model).filter(model.inquilino_id == current_user.inquilino_id).delete()
             elif model.__tablename__ == "purchase_items":
-                # Eliminar items de compras asociadas al tenant
-                purchases_subquery = db.query(models.Purchase.id).filter(models.Purchase.tenant_id == current_user.tenant_id).subquery()
-                db.query(models.PurchaseItem).filter(models.PurchaseItem.purchase_id.in_(purchases_subquery)).delete(synchronize_session=False)
+                # Eliminar elementos de compras asociadas al inquilino
+                purchases_subquery = db.query(models.Compra.id).filter(models.Compra.inquilino_id == current_user.inquilino_id).subquery()
+                db.query(models.ElementoCompra).filter(models.ElementoCompra.compra_id.in_(purchases_subquery)).delete(synchronize_session=False)
         db.commit()
         
-        # Insert rows, overriding tenant_id to prevent hijacking
+        # Insert rows, overriding inquilino_id to prevent hijacking
         for name, model in reversed(tables):
             rows = data.get(name, [])
             valid_keys = model.__mapper__.columns.keys()
             for row_dict in rows:
                 filtered_dict = {k: v for k, v in row_dict.items() if k in valid_keys}
-                if "tenant_id" in valid_keys:
-                    filtered_dict["tenant_id"] = current_user.tenant_id
+                if "inquilino_id" in valid_keys:
+                    filtered_dict["inquilino_id"] = current_user.inquilino_id
                 instance = model(**filtered_dict)
                 db.add(instance)
             db.commit()
@@ -2457,22 +2521,22 @@ def import_backup_database(file: UploadFile = File(...), db: Session = Depends(g
             except Exception as seq_err:
                 db.rollback()
                 
-        return {"status": "success", "message": "Base de datos restaurada correctamente."}
+        return {"estado": "success", "message": "Base de datos restaurada correctamente."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error durante la restauración: {str(e)}")
 
 
 @router.get("/reports/dashboard-details")
-def get_dashboard_details(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if current_user.role not in ["admin", "supervisor"]:
+def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ["admin", "supervisor"]:
         raise HTTPException(status_code=403, detail="No tienes permisos suficientes.")
         
     from datetime import datetime as dt, timedelta
     from sqlalchemy import func
     
     # 1. Active credit balance (total owed by customers)
-    total_owed = db.query(func.coalesce(func.sum(models.Customer.current_balance), 0.0)).filter(models.Customer.tenant_id == current_user.tenant_id).scalar()
+    total_owed = db.query(func.coalesce(func.sum(models.Cliente.saldo_actual), 0.0)).filter(models.Cliente.inquilino_id == current_user.inquilino_id).scalar()
     
     # 2. Setup dates
     local_now = dt.now()
@@ -2486,24 +2550,24 @@ def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Us
     last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     
     # Query non-cancelled sales
-    sales_query = db.query(models.SaleHistory).filter(
-        models.SaleHistory.is_cancelled == False,
-        models.SaleHistory.tenant_id == current_user.tenant_id
+    sales_query = db.query(models.HistorialVenta).filter(
+        models.HistorialVenta.cancelado == False,
+        models.HistorialVenta.inquilino_id == current_user.inquilino_id
     )
     
     def calculate_sales_metrics(query_obj, start_dt, end_dt):
         sales_in_range = query_obj.filter(
-            models.SaleHistory.created_at >= start_dt.isoformat(),
-            models.SaleHistory.created_at <= end_dt.isoformat()
+            models.HistorialVenta.creado_en >= start_dt.isoformat(),
+            models.HistorialVenta.creado_en <= end_dt.isoformat()
         ).all()
         
         revenue = 0.0
         cost = 0.0
         for s in sales_in_range:
-            price = s.price_sold
+            precio = s.price_sold
             cost_val = s.cost_price_sold if s.cost_price_sold is not None else 0.0
-            revenue += (price * s.quantity) - s.discount
-            cost += cost_val * s.quantity
+            revenue += (precio * s.cantidad) - s.discount
+            cost += cost_val * s.cantidad
             
         profit = revenue - cost
         return revenue, profit
@@ -2535,7 +2599,7 @@ def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Us
     # 4. Payment method breakdown (last 30 days)
     last_30_days_start = today_start - timedelta(days=30)
     sales_30_days = sales_query.filter(
-        models.SaleHistory.created_at >= last_30_days_start.isoformat()
+        models.HistorialVenta.creado_en >= last_30_days_start.isoformat()
     ).all()
     
     pm_cash = 0.0
@@ -2543,7 +2607,7 @@ def get_dashboard_details(db: Session = Depends(get_db), current_user: models.Us
     pm_credit = 0.0
     
     for s in sales_30_days:
-        total = (s.price_sold * s.quantity) - s.discount
+        total = (s.price_sold * s.cantidad) - s.discount
         if s.payment_method == "efectivo":
             pm_cash += total
         elif s.payment_method == "tarjeta":
@@ -2672,12 +2736,12 @@ async def recibir_mensaje_whatsapp(request: Request, db: Session = Depends(get_d
                                 pass
                     
                     # Registrar en la base de datos
-                    nuevo_prod = models.Product(
+                    nuevo_prod = models.Producto(
                         name=nombre,
-                        price=precio,
-                        quantity=cantidad,
-                        sat_key="01010101",
-                        sat_unit_key="H87"
+                        precio=precio,
+                        cantidad=cantidad,
+                        clave_sat="01010101",
+                        clave_unidad_sat="H87"
                     )
                     db.add(nuevo_prod)
                     db.commit()
@@ -2699,86 +2763,86 @@ async def recibir_mensaje_whatsapp(request: Request, db: Session = Depends(get_d
     except Exception as e:
         print(f"Error procesando el Webhook de WhatsApp: {e}")
         
-    return {"status": "recibido"}
+    return {"estado": "recibido"}
 
 
 # ==========================================
 # ENVÍO DE TICKETS Y FACTURAS POR WHATSAPP
 # ==========================================
 
-@router.post("/sales/{sale_id}/whatsapp")
+@router.post("/sales/{venta_id}/whatsapp")
 def send_sale_ticket_whatsapp(
-    sale_id: int,
-    req_body: schemas.WhatsAppSendRequest,
+    venta_id: int,
+    req_body: schemas.WhatsAppPeticionEnvio,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.Usuario = Depends(get_current_user)
 ):
     """
     Formatea el ticket de compra y lo envía al número de WhatsApp especificado usando OpenWA.
     """
-    ref_sale = db.query(models.SaleHistory).filter(models.SaleHistory.id == sale_id).first()
+    ref_sale = db.query(models.HistorialVenta).filter(models.HistorialVenta.id == venta_id).first()
     if not ref_sale:
         raise HTTPException(status_code=404, detail="Venta no encontrada")
         
     sales = db.query(
-        models.SaleHistory.id,
-        models.SaleHistory.product_id,
-        models.SaleHistory.variant_id,
-        models.SaleHistory.quantity,
-        models.SaleHistory.price_sold,
-        models.SaleHistory.discount,
-        models.SaleHistory.created_at,
-        models.SaleHistory.payment_method,
-        models.SaleHistory.cash_amount,
-        models.SaleHistory.card_amount,
-        models.Product.name.label("product_name")
+        models.HistorialVenta.id,
+        models.HistorialVenta.producto_id,
+        models.HistorialVenta.variante_id,
+        models.HistorialVenta.cantidad,
+        models.HistorialVenta.price_sold,
+        models.HistorialVenta.discount,
+        models.HistorialVenta.creado_en,
+        models.HistorialVenta.payment_method,
+        models.HistorialVenta.cash_amount,
+        models.HistorialVenta.card_amount,
+        models.Producto.nombre.label("nombre_producto")
     ).join(
-        models.Product, models.Product.id == models.SaleHistory.product_id
+        models.Producto, models.Producto.id == models.HistorialVenta.producto_id
     ).filter(
-        models.SaleHistory.created_at == ref_sale.created_at
+        models.HistorialVenta.creado_en == ref_sale.creado_en
     ).all()
 
     if not sales:
         raise HTTPException(status_code=404, detail="No se encontraron artículos para esta venta")
 
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.id == 1).first()
     store_settings_dict = {
-        "store_name": settings.store_name if settings else "ABARROTES ED & E",
-        "address": settings.address if settings else "",
-        "phone": settings.phone if settings else "",
-        "ticket_footer": settings.ticket_footer if settings else "¡Gracias por su compra!"
+        "nombre_tienda": settings.nombre_tienda if settings else "ABARROTES ED & E",
+        "direccion": settings.direccion if settings else "",
+        "telefono": settings.telefono if settings else "",
+        "pie_ticket": settings.pie_ticket if settings else "¡Gracias por su compra!"
     }
 
     customer_name = None
-    if ref_sale.customer_id:
-        cust = db.query(models.Customer).filter(models.Customer.id == ref_sale.customer_id).first()
+    if ref_sale.cliente_id:
+        cust = db.query(models.Cliente).filter(models.Cliente.id == ref_sale.cliente_id).first()
         if cust:
-            customer_name = cust.name
+            customer_name = cust.nombre
 
     cashier_name = "N/A"
-    if ref_sale.user_id:
-        cashier = db.query(models.User).filter(models.User.id == ref_sale.user_id).first()
+    if ref_sale.usuario_id:
+        cashier = db.query(models.Usuario).filter(models.Usuario.id == ref_sale.usuario_id).first()
         if cashier:
-            cashier_name = cashier.full_name
+            cashier_name = cashier.nombre_completo
 
-    items = []
+    elementos = []
     subtotal = 0.0
     discount_total = 0.0
 
     for s in sales:
-        price = s.price_sold or 0.0
-        item_subtotal = price * s.quantity
+        precio = s.price_sold or 0.0
+        item_subtotal = precio * s.cantidad
         subtotal += item_subtotal
         discount_total += s.discount or 0.0
-        items.append({
-            "product_name": s.product_name,
-            "quantity": s.quantity,
-            "price": price,
+        elementos.append({
+            "nombre_producto": s.nombre_producto,
+            "cantidad": s.cantidad,
+            "precio": precio,
             "discount": s.discount
         })
 
-    tax_rate = settings.tax_rate if settings else 16.0
-    tax_factor = 1 + (tax_rate / 100)
+    tasa_impuesto = settings.tasa_impuesto if settings else 16.0
+    tax_factor = 1 + (tasa_impuesto / 100)
     total = round(subtotal - discount_total, 2)
     subtotal_no_tax = round((subtotal - discount_total) / tax_factor, 2)
 
@@ -2786,11 +2850,11 @@ def send_sale_ticket_whatsapp(
     card_paid = sum(s.card_amount for s in sales)
 
     sale_data = {
-        "id": sale_id,
-        "created_at": ref_sale.created_at,
+        "id": venta_id,
+        "creado_en": ref_sale.creado_en,
         "cashier": cashier_name,
         "customer_name": customer_name,
-        "items": items,
+        "elementos": elementos,
         "subtotal": subtotal_no_tax,
         "discount": discount_total,
         "total": total,
@@ -2804,26 +2868,26 @@ def send_sale_ticket_whatsapp(
     if not success:
         raise HTTPException(status_code=500, detail="No se pudo enviar el ticket por WhatsApp. Verifique la conexión con OpenWA.")
         
-    return {"status": "success", "message": "Ticket enviado exitosamente por WhatsApp."}
+    return {"estado": "success", "message": "Ticket enviado exitosamente por WhatsApp."}
 
 
-@router.post("/billing/invoices/{invoice_id}/whatsapp")
+@router.post("/billing/invoices/{factura_id}/whatsapp")
 def send_invoice_whatsapp(
-    invoice_id: int,
-    req_body: schemas.WhatsAppSendRequest,
+    factura_id: int,
+    req_body: schemas.WhatsAppPeticionEnvio,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(get_current_user)
+    current_user: models.Usuario = Depends(get_current_user)
 ):
     """
     Envía los detalles de la factura y los enlaces de descarga PDF/XML vía WhatsApp usando OpenWA.
     """
-    inv = db.query(models.Invoice).filter(models.Invoice.id == invoice_id).first()
+    inv = db.query(models.Factura).filter(models.Factura.id == factura_id).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Factura no encontrada")
 
-    settings = db.query(models.StoreSettings).filter(models.StoreSettings.id == 1).first()
-    store_name = settings.store_name if settings else "ABARROTES ED & E"
+    settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.id == 1).first()
+    nombre_tienda = settings.nombre_tienda if settings else "ABARROTES ED & E"
 
     base_url = str(request.base_url).rstrip("/")
     # Construir enlaces de descarga basados en el host actual
@@ -2832,13 +2896,13 @@ def send_invoice_whatsapp(
 
     msg_lines = [
         "🧾 *FACTURA ELECTRÓNICA CFDI 4.0*",
-        f"🏢 *{store_name}*",
+        f"🏢 *{nombre_tienda}*",
         "-----------------------------------------",
         f"🆔 *Folio Fiscal (UUID):*",
         f"_{inv.uuid}_",
-        f"📅 *Fecha Certificación:* {inv.created_at}",
+        f"📅 *Fecha Certificación:* {inv.creado_en}",
         f"💵 *Monto Total:* ${inv.monto_total:,.2f} MXN",
-        f"📊 *Estado:* {'Vigente' if inv.status == 'active' else 'Cancelado'}",
+        f"📊 *Estado:* {'Vigente' if inv.estado == 'active' else 'Cancelado'}",
         "-----------------------------------------",
         "📄 *Descargar PDF:*",
         pdf_link,
@@ -2854,109 +2918,140 @@ def send_invoice_whatsapp(
     if not success:
         raise HTTPException(status_code=500, detail="No se pudo enviar la factura por WhatsApp.")
         
-    return {"status": "success", "message": "Factura enviada exitosamente por WhatsApp."}
+    return {"estado": "success", "message": "Factura enviada exitosamente por WhatsApp."}
 
 # --- SUPERADMIN SAAS CONTROL PANEL ENDPOINTS ---
 
-def check_superadmin_privilege(current_user: models.User):
-    # Verify current_user belongs to tenant_id 1 (creator store) and has admin role
-    if current_user.tenant_id != 1 or current_user.role != 'admin':
+def check_superadmin_privilege(current_user: models.Usuario):
+    # Verify current_user belongs to inquilino_id 1 (creator store) and has admin rol
+    if current_user.inquilino_id != 1 or current_user.rol != 'admin':
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
+            status_code=estado.HTTP_403_FORBIDDEN,
             detail="Acceso denegado. Se requieren privilegios de Superadministrador del SaaS."
         )
 
-@router.get("/superadmin/tenants", response_model=List[schemas.SuperAdminTenantResponse])
-def superadmin_get_tenants(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.get("/superadmin/tenants", response_model=List[schemas.SuperAdminInquilinoResponse])
+def superadmin_get_tenants(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     check_superadmin_privilege(current_user)
     
-    tenants = db.query(models.Tenant).all()
+    tenants = db.query(models.Inquilino).all()
     results = []
     
     for t in tenants:
-        # Get admin user info for this tenant
-        admin_user = db.query(models.User).filter(
-            models.User.tenant_id == t.id,
-            models.User.role == 'admin'
+        # Get admin user info for this inquilino
+        admin_user = db.query(models.Usuario).filter(
+            models.Usuario.inquilino_id == t.id,
+            models.Usuario.rol == 'admin'
         ).first()
         
         # Calculate counts
-        product_count = db.query(models.Product).filter(models.Product.tenant_id == t.id).count()
-        sale_count = db.query(models.SaleHistory).filter(models.SaleHistory.tenant_id == t.id).count()
+        product_count = db.query(models.Producto).filter(models.Producto.inquilino_id == t.id).count()
+        sale_count = db.query(models.HistorialVenta).filter(models.HistorialVenta.inquilino_id == t.id).count()
         
         results.append({
             "id": t.id,
-            "name": t.name,
-            "subdomain": t.subdomain,
-            "subscription_status": t.subscription_status,
-            "plan_tier": t.plan_tier,
-            "created_at": t.created_at or datetime.utcnow().isoformat(),
-            "admin_username": admin_user.username if admin_user else "N/A",
-            "admin_name": admin_user.full_name if admin_user else "N/A",
-            "product_count": product_count,
-            "sale_count": sale_count,
-            "last_payment_date": t.last_payment_date,
-            "subscription_end": t.subscription_end
+            "nombre": t.nombre,
+            "subdominio": t.subdominio,
+            "estado_suscripcion": t.estado_suscripcion,
+            "nivel_plan": t.nivel_plan,
+            "creado_en": t.creado_en or datetime.utcnow().isoformat(),
+            "usuario_admin": admin_user.nombre_usuario if admin_user else "N/A",
+            "nombre_admin": admin_user.nombre_completo if admin_user else "N/A",
+            "cantidad_productos": product_count,
+            "cantidad_ventas": sale_count,
+            "fecha_ultimo_pago": t.fecha_ultimo_pago,
+            "fin_suscripcion": t.fin_suscripcion
         })
         
     return results
 
-@router.put("/superadmin/tenants/{tenant_id}/plan", response_model=schemas.TenantResponse)
-def superadmin_update_tenant_plan(tenant_id: int, req: schemas.SuperAdminTenantUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.put("/superadmin/tenants/{inquilino_id}/plan", response_model=schemas.InquilinoResponse)
+def superadmin_update_tenant_plan(inquilino_id: int, req: schemas.SuperAdminInquilinoUpdate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     check_superadmin_privilege(current_user)
     
-    if tenant_id == 1:
-        raise HTTPException(status_code=400, detail="No se puede modificar la suscripción del tenant principal.")
+    if inquilino_id == 1:
+        raise HTTPException(status_code=400, detail="No se puede modificar la suscripción del inquilino principal.")
         
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
-    if not tenant:
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == inquilino_id).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada.")
         
-    tenant.plan_tier = req.plan_tier
-    tenant.subscription_status = req.subscription_status
+    inquilino.nivel_plan = req.nivel_plan
+    inquilino.estado_suscripcion = req.estado_suscripcion
     db.commit()
-    db.refresh(tenant)
-    return tenant
+    db.refresh(inquilino)
+    return inquilino
 
-@router.delete("/superadmin/tenants/{tenant_id}")
-def superadmin_delete_tenant(tenant_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+@router.put("/superadmin/tenants/{inquilino_id}/reset-password")
+def superadmin_reset_tenant_password(inquilino_id: int, req: schemas.SuperAdminInquilinoResetPassword, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     check_superadmin_privilege(current_user)
     
-    if tenant_id == 1:
-        raise HTTPException(status_code=400, detail="No se puede eliminar el tenant principal.")
+    # Buscar el administrador de ese inquilino
+    admin_user = db.query(models.Usuario).filter(
+        models.Usuario.inquilino_id == inquilino_id,
+        models.Usuario.rol == 'admin'
+    ).first()
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Usuario administrador no encontrado para esta tienda.")
+    
+    # Actualizar contraseña
+    admin_user.contrasena_encriptada = auth.get_password_hash(req.new_password)
+    db.commit()
+
+    # Log action
+    log_entry = models.BitacoraUsuario(
+        inquilino_id=inquilino_id,
+        usuario=admin_user.nombre_usuario,
+        nombre_completo=admin_user.nombre_completo,
+        rol=admin_user.rol,
+        accion="actualizacion",
+        detalles="Contraseña del administrador restablecida por el Superadministrador desde la Consola SaaS.",
+        fecha_hora=datetime.utcnow().isoformat()
+    )
+    db.add(log_entry)
+    db.commit()
+    
+    return {"estado": "success", "message": f"Contraseña restablecida exitosamente para el usuario admin @{admin_user.nombre_usuario}."}
+
+@router.delete("/superadmin/tenants/{inquilino_id}")
+def superadmin_delete_tenant(inquilino_id: int, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    check_superadmin_privilege(current_user)
+    
+    if inquilino_id == 1:
+        raise HTTPException(status_code=400, detail="No se puede eliminar el inquilino principal.")
         
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
-    if not tenant:
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == inquilino_id).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada.")
         
     # We clean up child tables first
     tables_to_clean = [
-        ("purchase_items", "purchase_id IN (SELECT id FROM purchases WHERE tenant_id = :tid)"),
-        ("purchases", "tenant_id = :tid"),
-        ("cash_movements", "tenant_id = :tid"),
-        ("customer_payments", "tenant_id = :tid"),
-        ("sales_history", "tenant_id = :tid"),
-        ("product_returns", "tenant_id = :tid"),
-        ("product_variants", "tenant_id = :tid"),
-        ("products", "tenant_id = :tid"),
-        ("billing_profiles", "tenant_id = :tid"),
-        ("invoices", "tenant_id = :tid"),
-        ("suppliers", "tenant_id = :tid"),
-        ("customers", "tenant_id = :tid"),
-        ("notifications", "tenant_id = :tid"),
-        ("shifts", "tenant_id = :tid"),
-        ("store_settings", "tenant_id = :tid"),
-        ("users", "tenant_id = :tid"),
+        ("purchase_items", "compra_id IN (SELECT id FROM purchases WHERE inquilino_id = :tid)"),
+        ("purchases", "inquilino_id = :tid"),
+        ("cash_movements", "inquilino_id = :tid"),
+        ("customer_payments", "inquilino_id = :tid"),
+        ("sales_history", "inquilino_id = :tid"),
+        ("product_returns", "inquilino_id = :tid"),
+        ("product_variants", "inquilino_id = :tid"),
+        ("products", "inquilino_id = :tid"),
+        ("billing_profiles", "inquilino_id = :tid"),
+        ("invoices", "inquilino_id = :tid"),
+        ("suppliers", "inquilino_id = :tid"),
+        ("customers", "inquilino_id = :tid"),
+        ("notifications", "inquilino_id = :tid"),
+        ("shifts", "inquilino_id = :tid"),
+        ("store_settings", "inquilino_id = :tid"),
+        ("users", "inquilino_id = :tid"),
     ]
     
     try:
         from sqlalchemy import text
         for table, condition in tables_to_clean:
-            db.execute(text(f"DELETE FROM {table} WHERE {condition}"), {"tid": tenant_id})
+            db.execute(text(f"DELETE FROM {table} WHERE {condition}"), {"tid": inquilino_id})
             
-        db.delete(tenant)
+        db.delete(inquilino)
         db.commit()
-        return {"status": "success", "message": f"Inquilino {tenant_id} y todos sus datos relacionados fueron eliminados."}
+        return {"estado": "success", "message": f"Inquilino {inquilino_id} y todos sus datos relacionados fueron eliminados."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Error al eliminar inquilino: {str(e)}")
@@ -2966,32 +3061,32 @@ def superadmin_delete_tenant(tenant_id: int, db: Session = Depends(get_db), curr
 import stripe
 
 @router.post("/billing/create-checkout-session")
-def create_checkout_session(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    if not current_user.tenant_id:
+def create_checkout_session(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if not current_user.inquilino_id:
         raise HTTPException(status_code=400, detail="El usuario no pertenece a ninguna tienda.")
         
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
-    if not tenant:
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == current_user.inquilino_id).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada.")
 
     stripe_key = os.getenv("STRIPE_SECRET_KEY")
     if not stripe_key:
         # Fallback to simulation mode for testing out of the box!
-        simulation_url = f"/payment-simulation?tenant_id={tenant.id}&store_name={tenant.name}"
+        simulation_url = f"/payment-simulation?inquilino_id={inquilino.id}&nombre_tienda={inquilino.nombre}"
         return {"url": simulation_url, "simulated": True}
 
     # Real Stripe session setup
     stripe.api_key = stripe_key
     try:
         # Create or retrieve customer
-        customer_id = tenant.stripe_customer_id
-        if not customer_id:
+        cliente_id = inquilino.stripe_id_cliente
+        if not cliente_id:
             customer = stripe.Customer.create(
-                name=tenant.name,
-                metadata={"tenant_id": tenant.id}
+                name=inquilino.nombre,
+                metadata={"inquilino_id": inquilino.id}
             )
-            customer_id = customer.id
-            tenant.stripe_customer_id = customer_id
+            cliente_id = customer.id
+            inquilino.stripe_id_cliente = cliente_id
             db.commit()
 
         # Build callback URLs
@@ -2999,13 +3094,13 @@ def create_checkout_session(db: Session = Depends(get_db), current_user: models.
         
         # Stripe Checkout Session
         session = stripe.checkout.Session.create(
-            customer=customer_id,
+            customer=cliente_id,
             payment_method_types=['card'],
             line_items=[{
                 'price_data': {
                     'currency': 'mxn',
                     'product_data': {
-                        'name': f"Suscripción Mensual - {tenant.name}",
+                        'nombre': f"Suscripción Mensual - {inquilino.nombre}",
                         'description': 'Acceso completo e ilimitado al sistema de Punto de Venta.',
                     },
                     'unit_amount': 49900, # $499.00 MXN in cents
@@ -3013,12 +3108,12 @@ def create_checkout_session(db: Session = Depends(get_db), current_user: models.
                         'interval': 'month',
                     },
                 },
-                'quantity': 1,
+                'cantidad': 1,
             }],
             mode='subscription',
             success_url=f"{origin}/dashboard?payment=success",
             cancel_url=f"{origin}/dashboard?payment=cancel",
-            metadata={"tenant_id": tenant.id}
+            metadata={"inquilino_id": inquilino.id}
         )
         return {"url": session.url, "simulated": False}
     except Exception as e:
@@ -3045,71 +3140,71 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     except stripe.error.SignatureVerificationError:
         raise HTTPException(status_code=400, detail="Firma de webhook inválida")
 
-    event_type = event['type']
+    event_type = event['tipo']
     
     if event_type in ["checkout.session.completed", "invoice.payment_succeeded"]:
         session = event['data']['object']
         
-        # Extract tenant_id
-        tenant_id = None
-        if 'metadata' in session and 'tenant_id' in session['metadata']:
-            tenant_id = int(session['metadata']['tenant_id'])
+        # Extract inquilino_id
+        inquilino_id = None
+        if 'metadata' in session and 'inquilino_id' in session['metadata']:
+            inquilino_id = int(session['metadata']['inquilino_id'])
         elif 'customer' in session:
             # Look up customer in tenants
-            cust = db.query(models.Tenant).filter(models.Tenant.stripe_customer_id == session['customer']).first()
+            cust = db.query(models.Inquilino).filter(models.Inquilino.stripe_id_cliente == session['customer']).first()
             if cust:
-                tenant_id = cust.id
+                inquilino_id = cust.id
 
-        if tenant_id:
-            tenant = db.query(models.Tenant).filter(models.Tenant.id == tenant_id).first()
-            if tenant:
-                tenant.subscription_status = "active"
-                tenant.plan_tier = "premium"
-                tenant.last_payment_date = datetime.utcnow().isoformat()
+        if inquilino_id:
+            inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == inquilino_id).first()
+            if inquilino:
+                inquilino.estado_suscripcion = "active"
+                inquilino.nivel_plan = "premium"
+                inquilino.fecha_ultimo_pago = datetime.utcnow().isoformat()
                 # Set subscription end to 30 days from now
-                tenant.subscription_end = (datetime.utcnow() + timedelta(days=30)).isoformat()
+                inquilino.fin_suscripcion = (datetime.utcnow() + timedelta(days=30)).isoformat()
                 
                 # Update stripe subscription id if present
                 if 'subscription' in session:
-                    tenant.stripe_subscription_id = session['subscription']
+                    inquilino.stripe_id_suscripcion = session['subscription']
                     
                 db.commit()
-                print(f"Suscripción automatizada con éxito para Tenant {tenant_id} a través de Stripe.")
+                print(f"Suscripción automatizada con éxito para Tenant {inquilino_id} a través de Stripe.")
                 
     elif event_type in ["invoice.payment_failed", "customer.subscription.deleted"]:
         obj = event['data']['object']
-        customer_id = obj.get("customer")
-        if customer_id:
-            tenant = db.query(models.Tenant).filter(models.Tenant.stripe_customer_id == customer_id).first()
-            if tenant:
-                tenant.subscription_status = "suspended"
+        cliente_id = obj.get("customer")
+        if cliente_id:
+            inquilino = db.query(models.Inquilino).filter(models.Inquilino.stripe_id_cliente == cliente_id).first()
+            if inquilino:
+                inquilino.estado_suscripcion = "suspended"
                 db.commit()
-                print(f"Suscripción del Tenant {tenant.id} suspendida por fallo en pago de Stripe.")
+                print(f"Suscripción del Tenant {inquilino.id} suspendida por fallo en pago de Stripe.")
 
-    return {"status": "success"}
+    return {"estado": "success"}
 
 
 @router.post("/billing/simulate-success")
-def simulate_payment_success(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    # Anyone can simulate for their own tenant
-    if not current_user.tenant_id:
+def simulate_payment_success(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    # Anyone can simulate for their own inquilino
+    if not current_user.inquilino_id:
         raise HTTPException(status_code=400, detail="El usuario no tiene tienda vinculada.")
 
-    tenant = db.query(models.Tenant).filter(models.Tenant.id == current_user.tenant_id).first()
-    if not tenant:
+    inquilino = db.query(models.Inquilino).filter(models.Inquilino.id == current_user.inquilino_id).first()
+    if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada.")
 
-    tenant.subscription_status = "active"
-    tenant.plan_tier = "premium"
-    tenant.last_payment_date = datetime.utcnow().isoformat()
+    inquilino.estado_suscripcion = "active"
+    inquilino.nivel_plan = "premium"
+    inquilino.fecha_ultimo_pago = datetime.utcnow().isoformat()
     # Expire in 30 days
-    tenant.subscription_end = (datetime.utcnow() + timedelta(days=30)).isoformat()
+    inquilino.fin_suscripcion = (datetime.utcnow() + timedelta(days=30)).isoformat()
     db.commit()
-    db.refresh(tenant)
+    db.refresh(inquilino)
     return {
-        "status": "success",
+        "estado": "success",
         "message": "Pago simulado con éxito. Tu cuenta ahora es Premium y está activa.",
-        "subscription_end": tenant.subscription_end
+        "fin_suscripcion": inquilino.fin_suscripcion
     }
 
 

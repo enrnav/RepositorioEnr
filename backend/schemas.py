@@ -1,376 +1,442 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional, List
 
-# Tenant Schemas
-class TenantBase(BaseModel):
-    name: str
-    subdomain: Optional[str] = None
+# Esquemas de Inquilino
+class InquilinoBase(BaseModel):
+    nombre: Optional[str] = None
+    name: Optional[str] = None
+    subdominio: Optional[str] = None
 
-class TenantCreate(TenantBase):
+    @model_validator(mode='before')
+    @classmethod
+    def sync_names(cls, data):
+        if isinstance(data, dict):
+            if 'name' in data and not data.get('nombre'):
+                data['nombre'] = data['name']
+            elif 'nombre' in data and not data.get('name'):
+                data['name'] = data['nombre']
+        return data
+
+
+class InquilinoCreate(InquilinoBase):
     pass
 
-class TenantResponse(TenantBase):
+class InquilinoResponse(InquilinoBase):
     id: int
-    subscription_status: str
-    plan_tier: str
-    created_at: str
+    estado_suscripcion: str
+    nivel_plan: str
+    creado_en: str
 
     class Config:
         from_attributes = True
 
-class TenantRegisterRequest(BaseModel):
-    store_name: str
-    subdomain: Optional[str] = None
-    admin_name: str
-    admin_username: str
-    admin_password: str
+class InquilinoRegistroRequest(BaseModel):
+    nombre_tienda: str
+    subdominio: Optional[str] = None
+    nombre_admin: str
+    usuario_admin: str
+    contrasena_admin: str
     logo_url: Optional[str] = None
-    primary_color: Optional[str] = None
-    accent_color: Optional[str] = None
+    color_primario: Optional[str] = None
+    color_secundario: Optional[str] = None
 
-class TenantPlanChangeRequest(BaseModel):
-    plan_tier: str
+class InquilinoCambioPlanRequest(BaseModel):
+    nivel_plan: str
 
-# User Schemas
-class UserCreate(BaseModel):
-    username: str
-    password: str
-    full_name: str
-    role: Optional[str] = "cajero" # cajero, supervisor, admin
+# Esquemas de Usuario
+class UsuarioCreate(BaseModel):
+    nombre_usuario: str
+    contrasena: str
+    nombre_completo: str
+    rol: Optional[str] = "cajero" # cajero, supervisor, admin
 
-class UserUpdate(BaseModel):
-    username: Optional[str] = None
-    full_name: Optional[str] = None
-    password: Optional[str] = None
-    role: Optional[str] = None
+class UsuarioUpdate(BaseModel):
+    nombre_usuario: Optional[str] = None
+    nombre_completo: Optional[str] = None
+    contrasena: Optional[str] = None
+    rol: Optional[str] = None
 
-class UserLogin(BaseModel):
-    username: str
-    password: str
+class UsuarioLogin(BaseModel):
+    nombre_usuario: str
+    contrasena: str
 
-class UserResponse(BaseModel):
+class UsuarioResponse(BaseModel):
     id: int
-    tenant_id: Optional[int] = None
-    username: str
-    full_name: str
-    role: str
-    subdomain: Optional[str] = None
+    inquilino_id: Optional[int] = None
+    nombre_usuario: str
+    nombre_completo: str
+    rol: str
+    subdominio: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-# Variant Schemas
-class ProductVariantBase(BaseModel):
-    name: str
-    barcode: Optional[str] = None
-    cost_price: Optional[float] = None
-    price: Optional[float] = None
-    quantity: int
-    sat_key: Optional[str] = "01010101"
-    sat_unit_key: Optional[str] = "H87"
+# Esquemas de Variante de Producto
+class VarianteProductoBase(BaseModel):
+    nombre: Optional[str] = None
+    name: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    precio_costo: Optional[float] = None
+    precio: Optional[float] = None
+    cantidad: int
+    clave_sat: Optional[str] = "01010101"
+    clave_unidad_sat: Optional[str] = "H87"
 
-class ProductVariantCreate(ProductVariantBase):
+    @model_validator(mode='before')
+    @classmethod
+    def sync_names(cls, data):
+        if isinstance(data, dict):
+            if 'name' in data and not data.get('nombre'):
+                data['nombre'] = data['name']
+            elif 'nombre' in data and not data.get('name'):
+                data['name'] = data['nombre']
+        return data
+
+
+class VarianteProductoCreate(VarianteProductoBase):
     pass
 
-class ProductVariantResponse(ProductVariantBase):
+class VarianteProductoResponse(VarianteProductoBase):
     id: int
-    product_id: int
-    sold: int
+    producto_id: int
+    vendido: int
 
     class Config:
         from_attributes = True
 
-# Product Schemas
-class ProductBase(BaseModel):
-    name: str
-    barcode: Optional[str] = None
-    price: float
-    cost_price: float = 0.0
-    quantity: int
-    min_stock: int = 3
-    entry_date: Optional[str] = None
-    image: Optional[str] = None
-    sat_key: Optional[str] = "01010101"
-    sat_unit_key: Optional[str] = "H87"
+# Esquemas de Producto
+class ProductoBase(BaseModel):
+    nombre: Optional[str] = None
+    name: Optional[str] = None
+    codigo_barras: Optional[str] = None
+    precio: float
+    precio_costo: float = 0.0
+    cantidad: int
+    inventario_minimo: int = 3
+    fecha_entrada: Optional[str] = None
+    imagen: Optional[str] = None
+    clave_sat: Optional[str] = "01010101"
+    clave_unidad_sat: Optional[str] = "H87"
 
-class ProductCreate(ProductBase):
-    variants: Optional[List[ProductVariantCreate]] = []
+    @model_validator(mode='before')
+    @classmethod
+    def sync_names(cls, data):
+        if isinstance(data, dict):
+            if 'name' in data and not data.get('nombre'):
+                data['nombre'] = data['name']
+            elif 'nombre' in data and not data.get('name'):
+                data['name'] = data['nombre']
+        return data
 
-class ProductSell(BaseModel):
-    quantity: int = 1
 
-class ProductResponse(ProductBase):
+class ProductoCreate(ProductoBase):
+    variantes: Optional[List[VarianteProductoCreate]] = []
+
+class ProductoVenta(BaseModel):
+    cantidad: int = 1
+
+class ProductoResponse(ProductoBase):
     id: int
-    sold: int
-    variants: List[ProductVariantResponse] = []
+    vendido: int
+    variantes: List[VarianteProductoResponse] = []
 
     class Config:
         from_attributes = True
 
-# Token Schemas
+# Esquemas de Token
 class Token(BaseModel):
     access_token: str
     token_type: str
-    user: UserResponse
+    usuario: UsuarioResponse
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
+    nombre_usuario: Optional[str] = None
 
-# Cancel/Return Schemas
-class CancelSaleRequest(BaseModel):
-    reason: str
-    auth_username: Optional[str] = None
-    auth_password: Optional[str] = None
-    quantity: Optional[int] = None
+# Esquemas de Cancelación/Devolución
+class CancelarVentaRequest(BaseModel):
+    motivo: str
+    usuario_autorizacion: Optional[str] = None
+    contrasena_autorizacion: Optional[str] = None
+    cantidad: Optional[int] = None
 
-class ReturnResponse(BaseModel):
+class DevolucionResponse(BaseModel):
     id: int
-    sale_id: int
-    product_id: int
-    product_name: str
-    quantity: int
-    price: float
-    reason: str
-    authorized_by: Optional[str] = None
-    created_at: str
+    venta_id: int
+    producto_id: int
+    nombre_producto: str
+    cantidad: int
+    precio: float
+    motivo: str
+    autorizado_por: Optional[str] = None
+    creado_en: str
 
     class Config:
         from_attributes = True
 
-# Shift Schemas
-class ShiftCreate(BaseModel):
-    initial_cash: float
+# Esquemas de Turno de Caja
+class TurnoCreate(BaseModel):
+    efectivo_inicial: float
 
-class ShiftClose(BaseModel):
-    final_cash_real: float
+class TurnoClose(BaseModel):
+    efectivo_final_real: float
 
-class ShiftResponse(BaseModel):
+class TurnoResponse(BaseModel):
     id: int
-    user_id: int
-    start_time: str
-    end_time: Optional[str] = None
-    initial_cash: float
-    final_cash_real: Optional[float] = None
-    final_cash_expected: float
-    difference: Optional[float] = None
-    status: str
+    usuario_id: int
+    hora_inicio: str
+    hora_fin: Optional[str] = None
+    efectivo_inicial: float
+    efectivo_final_real: Optional[float] = None
+    efectivo_final_esperado: float
+    diferencia: Optional[float] = None
+    estado: str
 
     class Config:
         from_attributes = True
 
-# Cash Movement Schemas
-class CashMovementCreate(BaseModel):
-    type: str # 'entrada', 'salida', 'retiro_parcial'
-    amount: float
-    reason: str
+# Esquemas de Movimiento de Caja
+class MovimientoCajaCreate(BaseModel):
+    tipo: str # 'entrada', 'salida', 'retiro_parcial'
+    monto: float
+    motivo: str
 
-class CashMovementResponse(BaseModel):
+class MovimientoCajaResponse(BaseModel):
     id: int
-    shift_id: int
-    type: str
-    amount: float
-    reason: str
-    created_at: str
+    turno_id: int
+    tipo: str
+    monto: float
+    motivo: str
+    creado_en: str
 
     class Config:
         from_attributes = True
 
-# Checkout Schemas
-class CheckoutItem(BaseModel):
-    product_id: int
-    variant_id: Optional[int] = None
-    quantity: int
+# Esquemas de Checkout
+class ElementoCheckout(BaseModel):
+    producto_id: int
+    variante_id: Optional[int] = None
+    cantidad: int
 
-class CheckoutRequest(BaseModel):
-    items: List[CheckoutItem]
-    payment_method: str # 'efectivo', 'tarjeta', 'mixto', 'credito'
-    cash_amount: float = 0.0
-    card_amount: float = 0.0
-    discount: float = 0.0
-    shift_id: Optional[int] = None
-    customer_id: Optional[int] = None
+class PeticionCheckout(BaseModel):
+    elementos: List[ElementoCheckout]
+    metodo_pago: str # 'efectivo', 'tarjeta', 'mixto', 'credito'
+    monto_efectivo: float = 0.0
+    monto_tarjeta: float = 0.0
+    descuento: float = 0.0
+    turno_id: Optional[int] = None
+    cliente_id: Optional[int] = None
 
-
-# Billing & Invoice Schemas
-class BillingProfileBase(BaseModel):
+# Esquemas de Perfil de Facturación
+class PerfilFacturacionBase(BaseModel):
     rfc: str
     razon_social: str
     regimen_fiscal: str
     codigo_postal: str
     correo: str
 
-class BillingProfileCreate(BillingProfileBase):
+class PerfilFacturacionCreate(PerfilFacturacionBase):
     pass
 
-class BillingProfileResponse(BillingProfileBase):
+class PerfilFacturacionResponse(PerfilFacturacionBase):
     id: int
 
     class Config:
         from_attributes = True
 
-class InvoiceCreateRequest(BaseModel):
-    sale_id: Optional[int] = None
-    sale_ids: Optional[List[int]] = None
-    billing_profile_id: Optional[int] = None
-    new_billing_profile: Optional[BillingProfileCreate] = None
+class FacturaPeticionCreate(BaseModel):
+    venta_id: Optional[int] = None
+    venta_ids: Optional[List[int]] = None
+    perfil_facturacion_id: Optional[int] = None
+    nuevo_perfil_facturacion: Optional[PerfilFacturacionCreate] = None
 
-class InvoiceResponse(BaseModel):
+class FacturaResponse(BaseModel):
     id: int
     uuid: str
     monto_total: float
     xml_url: Optional[str] = None
     pdf_url: Optional[str] = None
-    created_at: str
-    status: str
+    creado_en: str
+    estado: str
 
     class Config:
         from_attributes = True
 
-
-# Supplier Schemas
-class SupplierBase(BaseModel):
-    name: str
+# Esquemas de Proveedor
+class ProveedorBase(BaseModel):
+    nombre: Optional[str] = None
+    name: Optional[str] = None
     rfc: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-    notes: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    direccion: Optional[str] = None
+    notas: Optional[str] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def sync_names(cls, data):
+        if isinstance(data, dict):
+            if 'name' in data and not data.get('nombre'):
+                data['nombre'] = data['name']
+            elif 'nombre' in data and not data.get('name'):
+                data['name'] = data['nombre']
+        return data
 
 
-class SupplierCreate(SupplierBase):
+class ProveedorCreate(ProveedorBase):
     pass
 
-
-class SupplierResponse(SupplierBase):
+class ProveedorResponse(ProveedorBase):
     id: int
 
     class Config:
         from_attributes = True
 
+# Esquemas de Elemento de Compra
+class ElementoCompraBase(BaseModel):
+    producto_id: int
+    variante_id: Optional[int] = None
+    cantidad: int
+    precio_costo: float
+    precio: Optional[float] = None
 
-# Purchase Item Schemas
-class PurchaseItemBase(BaseModel):
-    product_id: int
-    variant_id: Optional[int] = None
-    quantity: int
-    cost_price: float
-    price: Optional[float] = None
-
-
-class PurchaseItemCreate(PurchaseItemBase):
+class ElementoCompraCreate(ElementoCompraBase):
     pass
 
-
-class PurchaseItemResponse(PurchaseItemBase):
+class ElementoCompraResponse(ElementoCompraBase):
     id: int
-    purchase_id: int
-    product_name: Optional[str] = None
+    compra_id: int
+    nombre_producto: Optional[str] = None
 
     class Config:
         from_attributes = True
 
+# Esquemas de Compra
+class CompraCreate(BaseModel):
+    proveedor_id: Optional[int] = None
+    numero_factura: Optional[str] = None
+    notas: Optional[str] = None
+    elementos: List[ElementoCompraCreate]
 
-# Purchase Schemas
-class PurchaseCreate(BaseModel):
-    supplier_id: Optional[int] = None
-    invoice_number: Optional[str] = None
-    notes: Optional[str] = None
-    items: List[PurchaseItemCreate]
-
-
-class PurchaseResponse(BaseModel):
+class CompraResponse(BaseModel):
     id: int
-    supplier_id: Optional[int] = None
-    invoice_number: Optional[str] = None
-    total_cost: float
-    created_at: str
-    notes: Optional[str] = None
-    user_id: Optional[int] = None
-    items: List[PurchaseItemResponse] = []
-    supplier_name: Optional[str] = None
-    user_name: Optional[str] = None
-
+    proveedor_id: Optional[int] = None
+    numero_factura: Optional[str] = None
+    costo_total: float
+    creado_en: str
+    notas: Optional[str] = None
+    usuario_id: Optional[int] = None
+    elementos: List[ElementoCompraResponse] = []
+    nombre_proveedor: Optional[str] = None
+    nombre_usuario: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-# Store Settings Schemas
-class StoreSettingsBase(BaseModel):
-    store_name: str
+# Esquemas de Configuración de Tienda
+class ConfiguracionesTiendaBase(BaseModel):
+    nombre_tienda: str
     rfc: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    address: Optional[str] = None
-    tax_rate: float = 16.0
-    ticket_footer: Optional[str] = "¡Gracias por su compra!"
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    direccion: Optional[str] = None
+    tasa_impuesto: float = 16.0
+    pie_ticket: Optional[str] = "¡Gracias por su compra!"
     logo_url: Optional[str] = None
-    primary_color: Optional[str] = "#064E3B"
-    accent_color: Optional[str] = "#064E3B"
+    color_primario: Optional[str] = "#064E3B"
+    color_secundario: Optional[str] = "#064E3B"
 
-class StoreSettingsCreate(StoreSettingsBase):
+class ConfiguracionesTiendaCreate(ConfiguracionesTiendaBase):
     pass
 
-class StoreSettingsResponse(StoreSettingsBase):
+class ConfiguracionesTiendaResponse(ConfiguracionesTiendaBase):
     id: int
 
     class Config:
         from_attributes = True
 
-# Customer Schemas
-class CustomerBase(BaseModel):
-    name: str
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    credit_limit: float = 0.0
+# Esquemas de Cliente
+class ClienteBase(BaseModel):
+    nombre: Optional[str] = None
+    name: Optional[str] = None
+    telefono: Optional[str] = None
+    correo: Optional[str] = None
+    limite_credito: float = 0.0
 
-class CustomerCreate(CustomerBase):
+    @model_validator(mode='before')
+    @classmethod
+    def sync_names(cls, data):
+        if isinstance(data, dict):
+            if 'name' in data and not data.get('nombre'):
+                data['nombre'] = data['name']
+            elif 'nombre' in data and not data.get('name'):
+                data['name'] = data['nombre']
+        return data
+
+
+class ClienteCreate(ClienteBase):
     pass
 
-class CustomerResponse(CustomerBase):
+class ClienteResponse(ClienteBase):
     id: int
-    current_balance: float
+    saldo_actual: float
 
     class Config:
         from_attributes = True
 
-# Customer Payment Schemas
-class CustomerPaymentCreate(BaseModel):
-    amount: float
-    notes: Optional[str] = None
+# Esquemas de Pago de Cliente
+class PagoClienteCreate(BaseModel):
+    monto: float
+    notes: Optional[str] = None # Se mantiene como notes en el request o se traduce a notas
 
-class CustomerPaymentResponse(BaseModel):
+class PagoClienteResponse(BaseModel):
     id: int
-    customer_id: int
-    shift_id: Optional[int] = None
-    user_id: int
-    amount: float
-    created_at: str
-    notes: Optional[str] = None
+    cliente_id: int
+    turno_id: Optional[int] = None
+    usuario_id: int
+    monto: float
+    creado_en: str
+    notas: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-class WhatsAppSendRequest(BaseModel):
-    phone_number: str
+class WhatsAppPeticionEnvio(BaseModel):
+    numero_telefono: str
 
-# SuperAdmin Schemas
-class SuperAdminTenantResponse(BaseModel):
+# Esquemas de SuperAdmin
+class SuperAdminInquilinoResponse(BaseModel):
     id: int
-    name: str
-    subdomain: Optional[str] = None
-    subscription_status: str
-    plan_tier: str
-    created_at: str
-    admin_username: Optional[str] = None
-    admin_name: Optional[str] = None
-    product_count: int
-    sale_count: int
-    last_payment_date: Optional[str] = None
-    subscription_end: Optional[str] = None
+    nombre: str
+    subdominio: Optional[str] = None
+    estado_suscripcion: str
+    nivel_plan: str
+    creado_en: str
+    usuario_admin: Optional[str] = None
+    nombre_admin: Optional[str] = None
+    cantidad_productos: int
+    cantidad_ventas: int
+    fecha_ultimo_pago: Optional[str] = None
+    fin_suscripcion: Optional[str] = None
 
     class Config:
         from_attributes = True
 
-class SuperAdminTenantUpdate(BaseModel):
-    plan_tier: str
-    subscription_status: str
+class SuperAdminInquilinoUpdate(BaseModel):
+    nivel_plan: str
+    estado_suscripcion: str
+
+class SuperAdminInquilinoResetPassword(BaseModel):
+    nueva_contrasena: str
+
+class BitacoraUsuarioResponse(BaseModel):
+    id: int
+    inquilino_id: Optional[int] = None
+    usuario: str
+    nombre_completo: str
+    rol: str
+    accion: str
+    detalles: str
+    fecha_hora: str
+
+    class Config:
+        from_attributes = True

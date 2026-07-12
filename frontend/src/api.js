@@ -28,6 +28,17 @@ axios.interceptors.response.use((response) => {
 }, (error) => {
     if (error.response && error.response.status === 401) {
         // Automatically logout on 401 Unauthorized
+        const userStr = sessionStorage.getItem('user');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                if (user && user.inquilino_id === 1) {
+                    localStorage.removeItem('last_tenant_subdomain');
+                }
+            } catch (e) {
+                console.error("Error parsing user on 401 logout", e);
+            }
+        }
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('token');
         window.location.href = '/login';
@@ -35,12 +46,12 @@ axios.interceptors.response.use((response) => {
     return Promise.reject(error);
 });
 
-export const fetchTenantBranding = async (subdomain) => {
+export const fetchTenantBranding = async (subdominio) => {
     try {
-        const response = await axios.get(`${API_URL}/auth/tenant-branding/${subdomain}`);
+        const response = await axios.get(`${API_URL}/auth/inquilino-branding/${subdominio}`);
         return response.data;
     } catch (error) {
-        console.error("Error fetching tenant branding:", error);
+        console.error("Error fetching inquilino branding:", error);
         throw error;
     }
 };
@@ -70,7 +81,7 @@ export const createProduct = async (productData) => {
         const response = await axios.post(`${API_URL}/inventory/`, productData);
         return response.data;
     } catch (error) {
-        console.error("Error creating product:", error);
+        console.error("Error creating producto:", error);
         throw error;
     }
 };
@@ -80,7 +91,7 @@ export const updateProduct = async (id, productData) => {
         const response = await axios.put(`${API_URL}/inventory/${id}`, productData);
         return response.data;
     } catch (error) {
-        console.error(`Error updating product ${id}:`, error);
+        console.error(`Error updating producto ${id}:`, error);
         throw error;
     }
 };
@@ -90,29 +101,29 @@ export const deleteProduct = async (id) => {
         const response = await axios.delete(`${API_URL}/inventory/${id}`);
         return response.data;
     } catch (error) {
-        console.error(`Error deleting product ${id}:`, error);
+        console.error(`Error deleting producto ${id}:`, error);
         throw error;
     }
 };
 
 export const searchProductImage = async (query) => {
     try {
-        const response = await axios.get(`${API_URL}/inventory/search-image`, {
+        const response = await axios.get(`${API_URL}/inventory/search-imagen`, {
             params: { q: query }
         });
         return response.data;
     } catch (error) {
-        console.error("Error searching product image:", error);
+        console.error("Error searching producto imagen:", error);
         throw error;
     }
 };
 
-export const sellProduct = async (id, quantity = 1) => {
+export const sellProduct = async (id, cantidad = 1) => {
     try {
-        const response = await axios.post(`${API_URL}/inventory/${id}/sell`, { quantity });
+        const response = await axios.post(`${API_URL}/inventory/${id}/sell`, { cantidad });
         return response.data;
     } catch (error) {
-        console.error(`Error selling product ${id}:`, error);
+        console.error(`Error selling producto ${id}:`, error);
         throw error;
     }
 };
@@ -137,15 +148,15 @@ export const fetchRecentSales = async () => {
     }
 };
 
-export const cancelSale = async (saleId, reason, auth_username = null, auth_password = null, quantity = null) => {
+export const cancelSale = async (saleId, motivo, auth_username = null, auth_password = null, cantidad = null) => {
     try {
-        const payload = { reason };
+        const payload = { motivo };
         if (auth_username && auth_password) {
             payload.auth_username = auth_username;
             payload.auth_password = auth_password;
         }
-        if (quantity !== null) {
-            payload.quantity = quantity;
+        if (cantidad !== null) {
+            payload.cantidad = cantidad;
         }
         const response = await axios.post(`${API_URL}/sales/${saleId}/cancel`, payload);
         return response.data;
@@ -179,7 +190,7 @@ export const fetchActiveShift = async () => {
 
 export const openShift = async (initialCash) => {
     try {
-        const response = await axios.post(`${API_URL}/shifts/open`, { initial_cash: initialCash });
+        const response = await axios.post(`${API_URL}/shifts/open`, { efectivo_inicial: initialCash });
         return response.data;
     } catch (error) {
         console.error("Error opening shift:", error);
@@ -189,7 +200,7 @@ export const openShift = async (initialCash) => {
 
 export const closeShift = async (finalCashReal) => {
     try {
-        const response = await axios.post(`${API_URL}/shifts/close`, { final_cash_real: finalCashReal });
+        const response = await axios.post(`${API_URL}/shifts/close`, { efectivo_final_real: finalCashReal });
         return response.data;
     } catch (error) {
         console.error("Error closing shift:", error);
@@ -197,9 +208,9 @@ export const closeShift = async (finalCashReal) => {
     }
 };
 
-export const addCashMovement = async (type, amount, reason) => {
+export const addCashMovement = async (tipo, monto, motivo) => {
     try {
-        const response = await axios.post(`${API_URL}/shifts/movement`, { type, amount, reason });
+        const response = await axios.post(`${API_URL}/shifts/movement`, { tipo, monto, motivo });
         return response.data;
     } catch (error) {
         console.error("Error adding cash movement:", error);
@@ -229,7 +240,7 @@ export const fetchActiveShiftsAdmin = async () => {
 
 export const closeShiftAdmin = async (shiftId, finalCashReal) => {
     try {
-        const response = await axios.post(`${API_URL}/shifts/${shiftId}/close`, { final_cash_real: finalCashReal });
+        const response = await axios.post(`${API_URL}/shifts/${shiftId}/close`, { efectivo_final_real: finalCashReal });
         return response.data;
     } catch (error) {
         console.error(`Error closing shift ${shiftId} for admin:`, error);
@@ -395,7 +406,7 @@ export const createSupplier = async (supplierData) => {
         const response = await axios.post(`${API_URL}/suppliers/`, supplierData);
         return response.data;
     } catch (error) {
-        console.error("Error creating supplier:", error);
+        console.error("Error creating proveedor:", error);
         throw error;
     }
 };
@@ -405,7 +416,7 @@ export const updateSupplier = async (id, supplierData) => {
         const response = await axios.put(`${API_URL}/suppliers/${id}`, supplierData);
         return response.data;
     } catch (error) {
-        console.error(`Error updating supplier ${id}:`, error);
+        console.error(`Error updating proveedor ${id}:`, error);
         throw error;
     }
 };
@@ -415,7 +426,7 @@ export const deleteSupplier = async (id) => {
         const response = await axios.delete(`${API_URL}/suppliers/${id}`);
         return response.data;
     } catch (error) {
-        console.error(`Error deleting supplier ${id}:`, error);
+        console.error(`Error deleting proveedor ${id}:`, error);
         throw error;
     }
 };
@@ -437,7 +448,7 @@ export const fetchPurchaseDetails = async (id) => {
         const response = await axios.get(`${API_URL}/purchases/${id}`);
         return response.data;
     } catch (error) {
-        console.error(`Error fetching purchase details ${id}:`, error);
+        console.error(`Error fetching compra details ${id}:`, error);
         throw error;
     }
 };
@@ -447,7 +458,7 @@ export const createPurchase = async (purchaseData) => {
         const response = await axios.post(`${API_URL}/purchases/`, purchaseData);
         return response.data;
     } catch (error) {
-        console.error("Error creating purchase:", error);
+        console.error("Error creating compra:", error);
         throw error;
     }
 };
@@ -561,20 +572,20 @@ export const sendInvoiceWhatsApp = async (invoiceId, phoneNumber) => {
 
 export const fetchTenant = async () => {
     try {
-        const response = await axios.get(`${API_URL}/auth/tenant`);
+        const response = await axios.get(`${API_URL}/auth/inquilino`);
         return response.data;
     } catch (error) {
-        console.error("Error fetching tenant info:", error);
+        console.error("Error fetching inquilino info:", error);
         throw error;
     }
 };
 
 export const changeTenantPlan = async (planTier) => {
     try {
-        const response = await axios.post(`${API_URL}/auth/tenant/change-plan`, { plan_tier: planTier });
+        const response = await axios.post(`${API_URL}/auth/inquilino/change-plan`, { nivel_plan: planTier });
         return response.data;
     } catch (error) {
-        console.error("Error changing tenant plan:", error);
+        console.error("Error changing inquilino plan:", error);
         throw error;
     }
 };
@@ -594,7 +605,7 @@ export const updateSuperAdminTenantPlan = async (tenantId, updateData) => {
         const response = await axios.put(`${API_URL}/superadmin/tenants/${tenantId}/plan`, updateData);
         return response.data;
     } catch (error) {
-        console.error(`Error updating superadmin tenant plan for ${tenantId}:`, error);
+        console.error(`Error updating superadmin inquilino plan for ${tenantId}:`, error);
         throw error;
     }
 };
@@ -604,7 +615,17 @@ export const deleteSuperAdminTenant = async (tenantId) => {
         const response = await axios.delete(`${API_URL}/superadmin/tenants/${tenantId}`);
         return response.data;
     } catch (error) {
-        console.error(`Error deleting tenant ${tenantId}:`, error);
+        console.error(`Error deleting inquilino ${tenantId}:`, error);
+        throw error;
+    }
+};
+
+export const resetSuperAdminTenantPassword = async (tenantId, newPassword) => {
+    try {
+        const response = await axios.put(`${API_URL}/superadmin/tenants/${tenantId}/reset-password`, { new_password: newPassword });
+        return response.data;
+    } catch (error) {
+        console.error(`Error resetting password for inquilino ${tenantId}:`, error);
         throw error;
     }
 };
@@ -625,6 +646,16 @@ export const simulatePaymentSuccess = async () => {
         return response.data;
     } catch (error) {
         console.error("Error simulating payment success:", error);
+        throw error;
+    }
+};
+
+export const fetchUserLogs = async () => {
+    try {
+        const response = await axios.get(`${API_URL}/auth/users/logs`);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching user logs:", error);
         throw error;
     }
 };

@@ -61,9 +61,9 @@ const Invoices = () => {
   const [whatsAppPhoneNumber, setWhatsAppPhoneNumber] = useState('');
   const [sendingInvoiceWhatsApp, setSendingInvoiceWhatsApp] = useState(false);
 
-  // User session role verification
+  // User session rol verification
   const userStr = sessionStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { role: 'cajero' };
+  const user = userStr ? JSON.parse(userStr) : { rol: 'cajero' };
 
   // Load profiles on mount
   useEffect(() => {
@@ -183,7 +183,7 @@ const Invoices = () => {
     setProcessingInvoice(true);
     try {
       const payload = {
-        sale_id: ticketDetails.ticket_id,
+        venta_id: ticketDetails.ticket_id,
         billing_profile_id: selectedProfileId ? parseInt(selectedProfileId) : null
       };
 
@@ -229,7 +229,7 @@ const Invoices = () => {
         if (details.invoice) {
           throw new Error(`El ticket #${tid} ya ha sido facturado individualmente.`);
         }
-        if (details.is_cancelled) {
+        if (details.cancelado) {
           throw new Error(`El ticket #${tid} está cancelado y no se puede facturar.`);
         }
         totalSum += details.total;
@@ -238,9 +238,9 @@ const Invoices = () => {
         discountSum += details.discount;
         
         // Agregar identificadores de venta individuales
-        details.items.forEach(itm => {
+        details.elementos.forEach(itm => {
           combinedItems.push(itm);
-          checkedTicketIds.push(itm.sale_id);
+          checkedTicketIds.push(itm.venta_id);
         });
       }
 
@@ -250,7 +250,7 @@ const Invoices = () => {
         discount: discountSum,
         taxes: taxesSum,
         total: totalSum,
-        items: combinedItems
+        elementos: combinedItems
       });
 
     } catch (err) {
@@ -392,7 +392,7 @@ const Invoices = () => {
                   <button
                     type="button"
                     onClick={() => setShowBillingHelp(true)}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-[#064e3b]/10 text-[#064e3b] hover:bg-[#064e3b]/20 rounded-full text-[10px] font-black transition-all uppercase tracking-wider border border-[#064e3b]/20"
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black transition-all uppercase tracking-wider border border-emerald-200/20"
                   >
                     <HelpCircle size={13} className="animate-bounce" />
                     <span>Guía de Facturación</span>
@@ -404,10 +404,10 @@ const Invoices = () => {
                       
                       <div className="bg-white/95 backdrop-blur-2xl rounded-[2.2rem] shadow-glass w-full max-w-md p-6 md:p-8 relative z-10 border border-white/55 animate-slide-up space-y-6">
                         <div className="flex items-center justify-between pb-3 border-b border-stone-200">
-                          <div className="flex items-center gap-2 text-[#064e3b]">
-                            <FileText size={20} className="animate-pulse" />
-                            <span className="text-sm font-black uppercase tracking-wider">Guía de Facturación</span>
-                          </div>
+                        <div className="flex items-center gap-2 text-emerald-800">
+                          <FileText size={20} className="animate-pulse" />
+                          <span className="text-sm font-black uppercase tracking-wider">Guía de Facturación</span>
+                        </div>
                           <button 
                             type="button"
                             onClick={() => setShowBillingHelp(false)} 
@@ -424,10 +424,10 @@ const Invoices = () => {
                           
                           <div className="p-4 bg-[#064e3b]/5 border border-[#064e3b]/10 rounded-2xl">
                             <p className="text-[12px] font-semibold text-stone-655 space-y-3">
-                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">1.</strong> Localiza el número de ticket impreso en el comprobante de venta.</span>
-                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">2.</strong> Ingrésalo en el buscador y presiona "Buscar".</span>
-                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">3.</strong> Selecciona el perfil fiscal del cliente o regístralo si es nuevo.</span>
-                              <span className="block"><strong className="text-[#064e3b] font-black mr-1.5">4.</strong> Presiona "Generar Factura" para timbrar con el SAT.</span>
+                              <span className="block"><strong className="text-emerald-700 font-black mr-1.5">1.</strong> Localiza el número de ticket impreso en el comprobante de venta.</span>
+                              <span className="block"><strong className="text-emerald-700 font-black mr-1.5">2.</strong> Ingrésalo en el buscador y presiona "Buscar".</span>
+                              <span className="block"><strong className="text-emerald-700 font-black mr-1.5">3.</strong> Selecciona el perfil fiscal del cliente o regístralo si es nuevo.</span>
+                              <span className="block"><strong className="text-emerald-700 font-black mr-1.5">4.</strong> Presiona "Generar Factura" para timbrar con el SAT.</span>
                             </p>
                           </div>
                         </div>
@@ -435,7 +435,7 @@ const Invoices = () => {
                         <button
                           type="button"
                           onClick={() => setShowBillingHelp(false)}
-                          className="w-full bg-[#064e3b] hover:bg-[#043327] text-white py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-md"
+                          className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-md"
                         >
                           Entendido
                         </button>
@@ -474,17 +474,17 @@ const Invoices = () => {
                   <div>
                     <h4 className="text-sm font-black text-brand-900 uppercase">Detalles de Ticket #{ticketDetails.ticket_id}</h4>
                     <p className="text-[10px] text-stone-400 font-bold uppercase mt-1 flex items-center gap-1.5">
-                      <Calendar size={11} /> {new Date(ticketDetails.created_at).toLocaleString()}
+                      <Calendar size={11} /> {new Date(ticketDetails.creado_en).toLocaleString()}
                     </p>
                   </div>
                   <span className={`px-3 py-1 inline-flex items-center text-[9px] font-black rounded-full border uppercase tracking-wider ${
-                    ticketDetails.is_cancelled
+                    ticketDetails.cancelado
                       ? 'bg-red-550/10 text-red-700 border-red-500/20'
                       : ticketDetails.invoice
                         ? 'bg-blue-500/10 text-blue-800 border-blue-500/20'
                         : 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20'
                   }`}>
-                    {ticketDetails.is_cancelled ? 'Cancelado' : ticketDetails.invoice ? 'Ya Facturado' : 'Pendiente de Factura'}
+                    {ticketDetails.cancelado ? 'Cancelado' : ticketDetails.invoice ? 'Ya Facturado' : 'Pendiente de Factura'}
                   </span>
                 </div>
 
@@ -501,14 +501,14 @@ const Invoices = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
-                      {ticketDetails.items.map((itm) => (
-                        <tr key={itm.sale_id} className="hover:bg-stone-50/50">
+                      {ticketDetails.elementos.map((itm) => (
+                        <tr key={itm.venta_id} className="hover:bg-stone-50/50">
                           <td className="py-3 px-3">
-                            <div className="font-bold text-stone-800">{itm.product_name}</div>
-                            <div className="text-[9px] text-stone-400 font-semibold mt-0.5">SAT: {itm.sat_key || '01010101'} / {itm.sat_unit_key || 'H87'}</div>
+                            <div className="font-bold text-stone-800">{itm.nombre_producto}</div>
+                            <div className="text-[9px] text-stone-400 font-semibold mt-0.5">SAT: {itm.clave_sat || '01010101'} / {itm.clave_unidad_sat || 'H87'}</div>
                           </td>
-                          <td className="py-3 px-3 text-center font-bold text-stone-700">{itm.quantity}</td>
-                          <td className="py-3 px-3 text-right font-medium text-stone-600">${itm.price.toFixed(2)}</td>
+                          <td className="py-3 px-3 text-center font-bold text-stone-700">{itm.cantidad}</td>
+                          <td className="py-3 px-3 text-right font-medium text-stone-600">${itm.precio.toFixed(2)}</td>
                           <td className="py-3 px-3 text-right text-red-500 font-medium">-${itm.discount.toFixed(2)}</td>
                           <td className="py-3 px-3 text-right font-bold text-stone-850">${itm.total.toFixed(2)}</td>
                         </tr>
@@ -551,7 +551,7 @@ const Invoices = () => {
 
           {/* Columna derecha: Datos fiscales y Botón Facturar */}
           <div className="lg:col-span-1 space-y-6">
-            {ticketDetails && !ticketDetails.invoice && !ticketDetails.is_cancelled && (
+            {ticketDetails && !ticketDetails.invoice && !ticketDetails.cancelado && (
               <div className="bg-white/10 backdrop-blur-[3px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-5 animate-slide-up">
                 <h3 className="text-sm font-black text-brand-900 tracking-wider uppercase">Receptor (Datos Fiscales)</h3>
 
@@ -734,7 +734,7 @@ const Invoices = () => {
               <div className="bg-white/10 backdrop-blur-[3px] border border-white/40 rounded-3xl p-6 shadow-soft space-y-5 animate-slide-up">
                 <h4 className="text-sm font-black text-brand-900 uppercase border-b border-stone-100 pb-3">Vista Previa de Factura Global</h4>
                 
-                {/* Consolidated items */}
+                {/* Consolidated elementos */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-stone-50 text-stone-500 uppercase font-black text-[9px] tracking-wider border-b border-stone-150">
@@ -746,14 +746,14 @@ const Invoices = () => {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
-                      {globalTicketDetails.items.map((itm, index) => (
+                      {globalTicketDetails.elementos.map((itm, index) => (
                         <tr key={index} className="hover:bg-stone-50/50">
                           <td className="py-3 px-3">
-                            <div className="font-bold text-stone-850">{itm.product_name}</div>
-                            <div className="text-[9px] text-stone-400 mt-0.5">Venta ID #{itm.sale_id}</div>
+                            <div className="font-bold text-stone-850">{itm.nombre_producto}</div>
+                            <div className="text-[9px] text-stone-400 mt-0.5">Venta ID #{itm.venta_id}</div>
                           </td>
-                          <td className="py-3 px-3 text-center font-bold text-stone-700">{itm.quantity}</td>
-                          <td className="py-3 px-3 text-right text-stone-600">${itm.price.toFixed(2)}</td>
+                          <td className="py-3 px-3 text-center font-bold text-stone-700">{itm.cantidad}</td>
+                          <td className="py-3 px-3 text-right text-stone-600">${itm.precio.toFixed(2)}</td>
                           <td className="py-3 px-3 text-right font-bold text-stone-850">${itm.total.toFixed(2)}</td>
                         </tr>
                       ))}
@@ -857,7 +857,7 @@ const Invoices = () => {
                 ) : invoices.map((inv) => (
                   <tr key={inv.id} className="hover:bg-stone-50/50 transition-all">
                     <td className="px-4 py-3.5 font-semibold text-stone-600 text-center">
-                      {new Date(inv.created_at).toLocaleString()}
+                      {new Date(inv.creado_en).toLocaleString()}
                     </td>
                     <td className="px-4 py-3.5 font-mono text-[10px] md:text-xs text-stone-700 tracking-wider text-center">
                       {inv.uuid}
@@ -867,11 +867,11 @@ const Invoices = () => {
                     </td>
                     <td className="px-4 py-3.5 text-center">
                       <span className={`px-3 py-1 inline-flex text-[9px] font-black rounded-full border uppercase tracking-wider ${
-                        inv.status === 'cancelled'
+                        inv.estado === 'cancelled'
                           ? 'bg-red-500/10 text-red-800 border-red-500/20'
                           : 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20'
                       }`}>
-                        {inv.status === 'cancelled' ? 'Cancelado SAT' : 'Vigente'}
+                        {inv.estado === 'cancelled' ? 'Cancelado SAT' : 'Vigente'}
                       </span>
                     </td>
                     <td className="px-4 py-3.5 text-center whitespace-nowrap">
@@ -923,7 +923,7 @@ const Invoices = () => {
                         </button>
 
                         {/* Cancelar Factura */}
-                        {inv.status !== 'cancelled' && (user.role === 'admin' || user.role === 'supervisor') && (
+                        {inv.estado !== 'cancelled' && (user.rol === 'admin' || user.rol === 'supervisor') && (
                           <button
                             onClick={() => handleCancelInvoice(inv.id)}
                             className="p-1.5 text-stone-400 hover:text-red-600 rounded-lg hover:bg-stone-50"
@@ -979,7 +979,7 @@ const Invoices = () => {
                 </div>
                 <div className="flex flex-col md:flex-row justify-between md:items-center border-t border-stone-200/50 pt-2">
                   <span className="font-sans font-black text-stone-400 uppercase tracking-widest text-[9px]">Fecha Certificación:</span>
-                  <span className="text-stone-600 font-sans font-bold">{new Date(successInvoice.created_at).toLocaleString()}</span>
+                  <span className="text-stone-600 font-sans font-bold">{new Date(successInvoice.creado_en).toLocaleString()}</span>
                 </div>
               </div>
 

@@ -1,22 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL, fetchTenantBranding } from '../api';
 import FloatingStoreIconsBg from '../components/FloatingStoreIconsBg';
 
 const Login = () => {
   const navigate = useNavigate();
-  const [username, setUsername] = useState('');
+  const [nombre_usuario, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Branding states (defaulting to Abarrotes ED & E branding)
-  const [storeName, setStoreName] = useState('ED & E');
-  const [logoUrl, setLogoUrl] = useState('');
-  const [primaryColor, setPrimaryColor] = useState('#064E3B');
-  const [accentColor, setAccentColor] = useState('#064E3B');
-  const [isBranded, setIsBranded] = useState(false); // Control theme mode
+  // Branding states loaded synchronously from localStorage cache to prevent color flashing
+  const getCachedBranding = () => {
+    try {
+      const cached = localStorage.getItem('cached_tenant_branding');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return {
+      storeName: 'ED & E',
+      logoUrl: '',
+      primaryColor: '#064E3B',
+      accentColor: '#064E3B',
+      isBranded: false
+    };
+  };
+
+  const initialBranding = getCachedBranding();
+
+  const [storeName, setStoreName] = useState(initialBranding.storeName);
+  const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl);
+  const [primaryColor, setPrimaryColor] = useState(initialBranding.primaryColor);
+  const [accentColor, setAccentColor] = useState(initialBranding.accentColor);
+  const [isBranded, setIsBranded] = useState(initialBranding.isBranded);
   
-  // Custom subdomain selector for local testing/multi-tenant access
+  // Custom subdominio selector for local testing/multi-inquilino access
   const [showSubdomainInput, setShowSubdomainInput] = useState(false);
   const [tempSubdomain, setTempSubdomain] = useState('');
 
@@ -24,28 +42,58 @@ const Login = () => {
     try {
       const data = await fetchTenantBranding(sub);
       if (data) {
-        setStoreName(data.store_name);
-        setLogoUrl(data.logo_url);
-        setPrimaryColor(data.primary_color || '#064E3B');
-        setAccentColor(data.accent_color || '#064E3B');
-        setIsBranded(true);
+        const newBranding = {
+          storeName: data.nombre_tienda,
+          logoUrl: data.logo_url,
+          primaryColor: data.color_primario || '#064E3B',
+          accentColor: data.color_secundario || '#064E3B',
+          isBranded: sub !== 'principal'
+        };
+        setStoreName(newBranding.storeName);
+        setLogoUrl(newBranding.logoUrl);
+        setPrimaryColor(newBranding.primaryColor);
+        setAccentColor(newBranding.accentColor);
+        setIsBranded(newBranding.isBranded);
+        
+        // Cache the values
+        localStorage.setItem('cached_tenant_branding', JSON.stringify(newBranding));
         localStorage.setItem('last_tenant_subdomain', sub);
         setError('');
       }
     } catch (err) {
-      console.error("Could not load tenant branding:", err);
-      // Reset to default settings on error (deleted tenant)
-      setStoreName('ED & E');
-      setLogoUrl('');
-      setPrimaryColor('#064E3B');
-      setAccentColor('#064E3B');
-      setIsBranded(false);
+      console.error("Could not load inquilino branding:", err);
+      // Reset to default settings on error (deleted inquilino)
+      const defaults = {
+        storeName: 'ED & E',
+        logoUrl: '',
+        primaryColor: '#064E3B',
+        accentColor: '#064E3B',
+        isBranded: false
+      };
+      setStoreName(defaults.storeName);
+      setLogoUrl(defaults.logoUrl);
+      setPrimaryColor(defaults.primaryColor);
+      setAccentColor(defaults.accentColor);
+      setIsBranded(defaults.isBranded);
+      localStorage.removeItem('cached_tenant_branding');
       localStorage.removeItem('last_tenant_subdomain');
     }
   };
 
   useEffect(() => {
-    // 1. Detect subdomain from query parameter ?store=...
+    // Clean up subdominio cache if the current user session is Superadmin (inquilino 1)
+    const userStr = sessionStorage.getItem('user');
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u && u.inquilino_id === 1) {
+          localStorage.removeItem('last_tenant_subdomain');
+          localStorage.removeItem('cached_tenant_branding');
+        }
+      } catch (e) {}
+    }
+
+    // 1. Detect subdominio from query parameter ?store=...
     const params = new URLSearchParams(window.location.search);
     const storeParam = params.get('store');
     
@@ -54,7 +102,7 @@ const Login = () => {
       return;
     }
 
-    // 2. Detect subdomain from window.location.hostname
+    // 2. Detect subdominio from window.location.hostname
     const hostname = window.location.hostname;
     const isDeploymentDomain = hostname.endsWith('vercel.app') || hostname.endsWith('onrender.com');
     if (!isDeploymentDomain) {
@@ -68,12 +116,56 @@ const Login = () => {
       }
     }
 
-    // 3. Fallback to last logged in tenant in localStorage
+    // 3. Fallback to last logged in inquilino in localStorage
     const lastSub = localStorage.getItem('last_tenant_subdomain');
     if (lastSub) {
       loadBranding(lastSub);
     }
   }, []);
+
+  // useLayoutEffect runs synchronously before browser paints to prevent flashes of unstyled colors
+  useLayoutEffect(() => {
+    if (!isBranded) {
+      document.body.classList.remove('branded-dark-theme');
+      document.documentElement.style.setProperty('--primary-color', '#064E3B');
+      document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+      document.documentElement.style.setProperty('--body-bg-color', '#f3f6f4');
+      document.documentElement.style.setProperty('--accent-color', '#064E3B');
+      document.documentElement.style.setProperty('--accent-color-hover', '#059669');
+      document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+    } else {
+      document.body.classList.add('branded-dark-theme');
+      
+      const hexToRgb = (hex) => {
+        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
+      };
+
+      const pRgb = hexToRgb(primaryColor);
+      const aRgb = hexToRgb(accentColor);
+
+      document.documentElement.style.setProperty('--primary-color', primaryColor);
+      if (pRgb) {
+        document.documentElement.style.setProperty('--primary-color-light', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+      } else {
+        document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+      }
+
+      document.documentElement.style.setProperty('--accent-color', accentColor);
+      document.documentElement.style.setProperty('--accent-color-hover', accentColor);
+      if (aRgb) {
+        document.documentElement.style.setProperty('--accent-color-light', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.08)`);
+      } else {
+        document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+      }
+    }
+  }, [isBranded, primaryColor, accentColor]);
 
   const handleCustomStoreSubmit = (e) => {
     e.preventDefault();
@@ -90,6 +182,7 @@ const Login = () => {
     setAccentColor('#064E3B');
     setIsBranded(false);
     localStorage.removeItem('last_tenant_subdomain');
+    localStorage.removeItem('cached_tenant_branding');
     setShowSubdomainInput(false);
     setError('');
   };
@@ -102,17 +195,20 @@ const Login = () => {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ nombre_usuario, contrasena: password }),
       });
       
       if (response.ok) {
         const data = await response.json();
-        sessionStorage.setItem('user', JSON.stringify(data.user));
+        sessionStorage.setItem('user', JSON.stringify(data.usuario));
         sessionStorage.setItem('token', data.access_token);
-        if (data.user.subdomain) {
-          localStorage.setItem('last_tenant_subdomain', data.user.subdomain);
+        if (data.usuario.subdominio) {
+          localStorage.setItem('last_tenant_subdomain', data.usuario.subdominio);
+        } else if (data.usuario.inquilino_id === 1) {
+          localStorage.removeItem('last_tenant_subdomain');
+          localStorage.removeItem('cached_tenant_branding');
         }
-        if (data.user.role === 'admin') {
+        if (data.usuario.rol === 'admin') {
           navigate('/dashboard');
         } else {
           navigate('/sales');
@@ -125,6 +221,7 @@ const Login = () => {
       setError('Error de conexión con el servidor');
     }
   };
+
 
   // --- BRANDED CUSTOM DARK THEME ---
   if (isBranded) {
@@ -171,7 +268,7 @@ const Login = () => {
                   <input
                     type="text"
                     required
-                    value={username}
+                    value={nombre_usuario}
                     onChange={(e) => setUsername(e.target.value)}
                     className="appearance-none block w-full px-4 py-3 bg-white/5 border border-white/15 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-white/20 focus:bg-white/15 text-sm font-semibold text-white transition-all duration-300"
                     placeholder="Ej. carlos_admin"
@@ -244,7 +341,7 @@ const Login = () => {
 
               <button
                 type="button"
-                onClick={() => navigate('/register-tenant')}
+                onClick={() => navigate('/register-inquilino')}
                 className="text-xs text-gray-300 hover:text-white font-bold transition-colors uppercase tracking-wider"
               >
                 ¿Registrar nueva tienda? Regístrate aquí
@@ -258,7 +355,7 @@ const Login = () => {
 
   // --- DEFAULT LIGHT POS THEME (ED & E ORIGINAL LOOK) ---
   return (
-    <div className="min-h-screen bg-brand-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
+    <div className="min-h-screen bg-transparent flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
       {/* Original light green icons */}
       <FloatingStoreIconsBg />
 
@@ -275,7 +372,7 @@ const Login = () => {
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-slide-up">
-        <div className="bg-white/5 backdrop-blur-[2px] py-10 px-6 shadow-glass sm:rounded-[2rem] sm:px-12 border border-white/40">
+        <div className="glass py-10 px-6 sm:rounded-[2rem] sm:px-12">
           {error && (
             <div className="mb-6 p-3.5 text-xs font-bold text-center rounded-xl border bg-rose-50 border-rose-100 text-chiluda-red animate-shake">
               {error}
@@ -291,7 +388,7 @@ const Login = () => {
                 <input
                   type="text"
                   required
-                  value={username}
+                  value={nombre_usuario}
                   onChange={(e) => setUsername(e.target.value)}
                   className="appearance-none block w-full px-4 py-3 bg-white/50 border border-stone-200 rounded-xl shadow-sm placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white transition-all duration-300 sm:text-sm font-semibold text-stone-850"
                   placeholder="Ej. carlos_admin"
@@ -363,7 +460,7 @@ const Login = () => {
 
             <button
               type="button"
-              onClick={() => navigate('/register-tenant')}
+              onClick={() => navigate('/register-inquilino')}
               className="text-xs text-stone-500 hover:text-stone-700 font-black transition-colors uppercase tracking-wider"
             >
               ¿Registrar nueva tienda? Regístrate aquí

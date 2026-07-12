@@ -62,18 +62,18 @@ def format_ticket_message(sale_data: dict, store_settings: dict) -> str:
     """
     ticket_lines = [
         "📝 *TICKET DE COMPRA*",
-        f"🏢 *{store_settings.get('store_name', 'ABARROTES ED & E')}*",
+        f"🏢 *{store_settings.get('nombre_tienda', 'ABARROTES ED & E')}*",
     ]
 
-    if store_settings.get('address'):
-        ticket_lines.append(f"📍 {store_settings.get('address')}")
-    if store_settings.get('phone'):
-        ticket_lines.append(f"📞 Tel: {store_settings.get('phone')}")
+    if store_settings.get('direccion'):
+        ticket_lines.append(f"📍 {store_settings.get('direccion')}")
+    if store_settings.get('telefono'):
+        ticket_lines.append(f"📞 Tel: {store_settings.get('telefono')}")
         
     ticket_lines.extend([
         "-----------------------------------------",
         f"🆔 *Ticket:* #{sale_data.get('id', 'N/A')}",
-        f"📅 *Fecha:* {sale_data.get('created_at', '')}",
+        f"📅 *Fecha:* {sale_data.get('creado_en', '')}",
         f"👤 *Atendido por:* {sale_data.get('cashier', 'N/A')}",
     ])
     
@@ -83,14 +83,14 @@ def format_ticket_message(sale_data: dict, store_settings: dict) -> str:
     ticket_lines.append("-----------------------------------------")
     ticket_lines.append("*DETALLE DE ARTÍCULOS:*")
     
-    for item in sale_data.get('items', []):
-        qty = item.get('quantity', 1)
-        name = item.get('product_name', 'Producto')
-        price = item.get('price', 0.0)
+    for item in sale_data.get('elementos', []):
+        qty = item.get('cantidad', 1)
+        name = item.get('nombre_producto', 'Producto')
+        precio = item.get('precio', 0.0)
         item_discount = item.get('discount', 0.0)
-        total = (qty * price) - item_discount
+        total = (qty * precio) - item_discount
         
-        item_line = f"• {qty}x {name} @ ${price:,.2f}"
+        item_line = f"• {qty}x {name} @ ${precio:,.2f}"
         if item_discount > 0:
             item_line += f" (Desc: -${item_discount:,.2f})"
         item_line += f" = *${total:,.2f}*"
@@ -112,6 +112,6 @@ def format_ticket_message(sale_data: dict, store_settings: dict) -> str:
         ticket_lines.append(f"🪙 *Cambio:* ${change:,.2f}")
         
     ticket_lines.append("-----------------------------------------")
-    ticket_lines.append(f"💡 _{store_settings.get('ticket_footer', '¡Gracias por su compra!')}_")
+    ticket_lines.append(f"💡 _{store_settings.get('pie_ticket', '¡Gracias por su compra!')}_")
     
     return "\n".join(ticket_lines)

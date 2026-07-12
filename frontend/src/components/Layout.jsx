@@ -56,14 +56,14 @@ const Layout = () => {
   const [lowStockItems, setLowStockItems] = useState([]);
   const [activeShift, setActiveShift] = useState(null);
   const [storeSettings, setStoreSettings] = useState({
-    store_name: 'ABARROTES ED & E'
+    nombre_tienda: 'ABARROTES ED & E'
   });
   
   const userStr = sessionStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { role: 'cajero', username: '', full_name: '', tenant_id: 1, subscription_status: 'active' };
+  const user = userStr ? JSON.parse(userStr) : { rol: 'cajero', nombre_usuario: '', nombre_completo: '', inquilino_id: 1, estado_suscripcion: 'active' };
   
-  const isAdmin = user.role === 'admin';
-  const isStaff = user.role === 'admin' || user.role === 'supervisor';
+  const isAdmin = user.rol === 'admin';
+  const isStaff = user.rol === 'admin' || user.rol === 'supervisor';
 
   const [paying, setPaying] = useState(false);
   const [payError, setPayError] = useState('');
@@ -86,13 +86,13 @@ const Layout = () => {
     }
   };
 
-  const isSuspended = (user.subscription_status === 'suspended' || user.subscription_status === 'canceled') && user.tenant_id !== 1;
-  const isBranded = user.tenant_id && user.tenant_id !== 1;
+  const isSuspended = (user.estado_suscripcion === 'suspended' || user.estado_suscripcion === 'canceled') && user.inquilino_id !== 1;
+  const isBranded = user.inquilino_id && user.inquilino_id !== 1;
 
   const checkStock = async () => {
     try {
       const inventory = await fetchInventory();
-      const lowStock = inventory.filter(item => item.quantity <= (item.min_stock ?? 3));
+      const lowStock = inventory.filter(item => item.cantidad <= (item.inventario_minimo ?? 3));
       setLowStockItems(lowStock);
     } catch (err) {
       console.error("Error fetching inventory for notifications", err);
@@ -111,7 +111,7 @@ const Layout = () => {
   const checkStoreSettings = async () => {
     try {
       const data = await fetchStoreSettings();
-      if (data && data.store_name) {
+      if (data && data.nombre_tienda) {
         setStoreSettings(data);
       }
     } catch (err) {
@@ -154,8 +154,8 @@ const Layout = () => {
     if (isBranded) {
       document.body.classList.add('branded-dark-theme');
       
-      const pColor = storeSettings.primary_color || '#064E3B';
-      const aColor = storeSettings.accent_color || '#064E3B';
+      const pColor = storeSettings.color_primario || '#064E3B';
+      const aColor = storeSettings.color_secundario || '#064E3B';
       const pRgb = hexToRgb(pColor);
       const aRgb = hexToRgb(aColor);
 
@@ -184,7 +184,7 @@ const Layout = () => {
       document.documentElement.style.setProperty('--accent-color-hover', '#059669');
       document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
     }
-  }, [storeSettings, user.tenant_id]);
+  }, [storeSettings, user.inquilino_id]);
 
   const navItems = [
     { name: 'Panel', path: '/dashboard', icon: LayoutDashboard, allowedRoles: ['admin', 'supervisor'] },
@@ -198,7 +198,7 @@ const Layout = () => {
     { name: 'Ajustes', path: '/settings', icon: SettingsIcon, allowedRoles: ['admin', 'supervisor'] },
   ];
 
-  if (user.tenant_id === 1) {
+  if (user.inquilino_id === 1) {
     navItems.push({ name: 'Consola SaaS', path: '/superadmin', icon: Shield, allowedRoles: ['admin'] });
   }
 
@@ -235,7 +235,7 @@ const Layout = () => {
       return (
         <div className="hidden sm:flex items-center gap-2 bg-emerald-500/10 text-emerald-800 px-4 py-2 rounded-full text-xs font-black border border-emerald-500/20 mr-4 shadow-[0_2px_12px_rgba(16,185,129,0.06)] backdrop-blur-sm">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span>Caja Abierta (Fondo: ${activeShift.initial_cash.toFixed(2)})</span>
+          <span>Caja Abierta (Fondo: ${activeShift.efectivo_inicial.toFixed(2)})</span>
         </div>
       );
     } else if (isAdmin) {
@@ -259,7 +259,7 @@ const Layout = () => {
     return (
       <div className="min-h-screen bg-stone-100 flex items-center justify-center p-4 font-sans select-none relative overflow-hidden">
         {/* Background animation or leaf decoration */}
-        <FloatingStoreIconsBg color={isBranded && storeSettings.accent_color ? storeSettings.accent_color + '15' : undefined} />
+        <FloatingStoreIconsBg color={isBranded && storeSettings.color_secundario ? storeSettings.color_secundario + '15' : undefined} />
         
         <div className="w-full max-w-lg bg-white/90 backdrop-blur-2xl rounded-[2.5rem] border border-stone-200/60 shadow-xl p-10 text-center space-y-6 relative z-10 animate-scale-up">
           <div className="flex justify-center">
@@ -275,7 +275,7 @@ const Layout = () => {
 
           <div className="text-xs font-semibold text-stone-500 leading-relaxed max-w-md mx-auto space-y-3">
             <p>
-              Estimado administrador de <span className="font-extrabold text-brand-900 uppercase">{storeSettings.store_name}</span>:
+              Estimado administrador de <span className="font-extrabold text-brand-900 uppercase">{storeSettings.nombre_tienda}</span>:
             </p>
             <p>
               Queremos informarte cordialmente que el periodo de facturación de tu Punto de Venta mensual ha finalizado. 
@@ -292,6 +292,10 @@ const Layout = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
             <button
               onClick={() => {
+                if (user && user.inquilino_id === 1) {
+                  localStorage.removeItem('last_tenant_subdomain');
+                  localStorage.removeItem('cached_tenant_branding');
+                }
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token');
                 window.location.href = '/login';
@@ -322,13 +326,13 @@ const Layout = () => {
     return (
       <div className="flex flex-col h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-[#d1fae5] selection:text-[#064e3b] relative">
         {/* Background floating store icons animation */}
-        <FloatingStoreIconsBg color={isBranded && storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined} />
+        <FloatingStoreIconsBg color={isBranded && storeSettings.color_secundario ? storeSettings.color_secundario + '20' : undefined} />
 
         <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100 relative">
           <div className="flex items-center space-x-3 shrink-0 select-none">
-            <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.store_name} Logo`} className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm rounded-lg" />
+            <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.nombre_tienda} Logo`} className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm rounded-lg" />
             <div className="hidden sm:flex flex-col items-start max-w-[180px]">
-              <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
+              <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.nombre_tienda}</span>
             </div>
           </div>
           
@@ -337,21 +341,25 @@ const Layout = () => {
             {renderShiftBadge()}
             
             <div className="hidden sm:flex flex-col items-end mr-4 text-right">
-              <span className="text-xs font-extrabold text-brand-900 leading-none">{user.full_name}</span>
+              <span className="text-xs font-semibold text-stone-700 truncate max-w-[160px] block leading-tight">{user.nombre_completo}</span>
               <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">Cajero</span>
             </div>
 
-            <Link
-              to="/login"
+            <button
               onClick={() => {
+                if (user && user.inquilino_id === 1) {
+                  localStorage.removeItem('last_tenant_subdomain');
+                  localStorage.removeItem('cached_tenant_branding');
+                }
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token');
+                window.location.href = '/login';
               }}
-              className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-5 sm:py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0"
+              className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-5 sm:py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0 cursor-pointer"
             >
               <LogOut size={20} className="shrink-0" />
               <span className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden sm:inline">Cerrar Sesión</span>
-            </Link>
+            </button>
           </div>
         </header>
         <main className="flex-1 overflow-auto p-4 md:p-8 relative z-10">
@@ -367,7 +375,7 @@ const Layout = () => {
   return (
     <div className="flex h-screen w-screen max-w-full overflow-hidden bg-transparent font-sans selection:bg-chiluda-lightred selection:text-chiluda-red relative">
       {/* Background floating store icons animation */}
-      <FloatingStoreIconsBg color={isBranded && storeSettings.accent_color ? storeSettings.accent_color + '20' : undefined} />
+      <FloatingStoreIconsBg color={isBranded && storeSettings.color_secundario ? storeSettings.color_secundario + '20' : undefined} />
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
@@ -381,7 +389,7 @@ const Layout = () => {
       <aside 
         className={`fixed inset-y-0 left-0 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 w-72 shadow-2xl flex flex-col z-50 lg:z-10 transition-all duration-300`}
         style={{
-          backgroundColor: storeSettings.primary_color || '#064e3b'
+          backgroundColor: storeSettings.color_primario || '#064e3b'
         }}
       >
         {/* Mobile Sidebar Close Button */}
@@ -394,15 +402,15 @@ const Layout = () => {
         </button>
 
         <div className="h-20 flex items-center space-x-3 px-6 border-b border-stone-200 select-none bg-white flex-shrink-0">
-          <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.store_name} Logo`} className="h-16 w-auto object-contain animate-fade-in rounded-lg" />
+          <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.nombre_tienda} Logo`} className="h-16 w-auto object-contain animate-fade-in rounded-lg" />
           <div className="flex flex-col items-start max-w-[180px]">
-            <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
+            <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.nombre_tienda}</span>
           </div>
         </div>
         
         <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
           {navItems.map((item) => {
-            if (!item.allowedRoles.includes(user.role)) return null;
+            if (!item.allowedRoles.includes(user.rol)) return null;
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
             return (
@@ -428,20 +436,24 @@ const Layout = () => {
 
         <div className="p-6 border-t border-white/10 flex flex-col gap-2 flex-shrink-0">
           <div className="px-4 py-3 bg-white/5 rounded-xl text-xs text-gray-300 flex flex-col border border-white/10">
-            <span className="font-black text-white text-sm">{user.full_name}</span>
-            <span className="uppercase text-[9px] font-black text-[#4ade80] mt-1 tracking-wider">{user.role === 'admin' ? 'Administrador' : 'Supervisor'}</span>
+            <span className="font-black text-white text-sm">{user.nombre_completo}</span>
+            <span className="uppercase text-[9px] font-black text-[#4ade80] mt-1 tracking-wider">{user.rol === 'admin' ? 'Administrador' : 'Supervisor'}</span>
           </div>
-          <Link
-            to="/login"
+          <button
             onClick={() => {
+              if (user && user.inquilino_id === 1) {
+                localStorage.removeItem('last_tenant_subdomain');
+                localStorage.removeItem('cached_tenant_branding');
+              }
               sessionStorage.removeItem('user');
               sessionStorage.removeItem('token');
+              window.location.href = '/login';
             }}
-            className="group flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-white/10 hover:text-white rounded-xl transition-all duration-300 w-full font-bold text-sm"
+            className="group flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-white/10 hover:text-white rounded-xl transition-all duration-300 w-full font-bold text-sm text-left cursor-pointer"
           >
             <LogOut size={18} className="group-hover:translate-x-0.5 transition-transform" />
             <span>Cerrar Sesión</span>
-          </Link>
+          </button>
         </div>
       </aside>
 
@@ -457,9 +469,9 @@ const Layout = () => {
               <Menu size={24} />
             </button>
             <div className="flex items-center space-x-2 lg:hidden select-none">
-              <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.store_name} Logo`} className="h-12 w-auto object-contain animate-fade-in rounded-lg" />
+              <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.nombre_tienda} Logo`} className="h-12 w-auto object-contain animate-fade-in rounded-lg" />
               <div className="hidden sm:flex flex-col items-start max-w-[140px]">
-                <span className="text-xs font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.store_name}</span>
+                <span className="text-xs font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.nombre_tienda}</span>
               </div>
             </div>
           </div>
@@ -479,23 +491,26 @@ const Layout = () => {
             </button>
 
             <div className="hidden sm:flex flex-col items-end mr-4 text-right select-none ml-4">
-              <span className="text-xs font-extrabold text-brand-900 leading-none">{user.full_name}</span>
+              <span className="text-xs font-semibold text-stone-700 truncate max-w-[160px] block leading-tight">{user.nombre_completo}</span>
               <span className="text-[10px] font-bold text-gray-400 mt-1 uppercase">
-                {user.role === 'admin' ? 'Administrador' : 'Supervisor'}
+                {user.rol === 'admin' ? 'Administrador' : 'Supervisor'}
               </span>
             </div>
 
-            <Link
-              to="/login"
+            <button
               onClick={() => {
+                if (user && user.inquilino_id === 1) {
+                  localStorage.removeItem('last_tenant_subdomain');
+                }
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token');
+                window.location.href = '/login';
               }}
-              className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0"
+              className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0 cursor-pointer"
             >
               <LogOut size={18} className="shrink-0" />
               <span className="font-semibold text-xs sm:text-sm whitespace-nowrap hidden lg:inline">Cerrar Sesión</span>
-            </Link>
+            </button>
 
             {/* Notifications Dropdown */}
             {showNotifications && (
@@ -524,7 +539,7 @@ const Layout = () => {
                             Stock bajo en: <span className="font-extrabold text-chiluda-red">{item.name}</span>
                           </p>
                           <p className="text-[10px] font-bold text-stone-500 mt-1">
-                            Quedan: <span className={item.quantity === 0 ? 'text-chiluda-red font-black' : 'text-amber-600 font-black'}>{item.quantity} unidades</span> (Min: {item.min_stock ?? 3})
+                            Quedan: <span className={item.cantidad === 0 ? 'text-chiluda-red font-black' : 'text-amber-600 font-black'}>{item.cantidad} unidades</span> (Min: {item.inventario_minimo ?? 3})
                           </p>
                         </div>
                       ))

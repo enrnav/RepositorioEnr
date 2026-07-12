@@ -1,24 +1,25 @@
 import { useState, useEffect } from 'react';
+import AlertModal from '../components/AlertModal';
 import { createPortal } from 'react-dom';
 import { Settings as SettingsIcon, Save, Store, Receipt, AlertCircle, CheckCircle, Database, Download, UploadCloud, HelpCircle, FileText, CreditCard } from 'lucide-react';
 import { fetchStoreSettings, updateStoreSettings, exportBackupDatabase, importBackupDatabase, fetchTenant, changeTenantPlan } from '../api';
 
 const Settings = () => {
   const userStr = sessionStorage.getItem('user');
-  const user = userStr ? JSON.parse(userStr) : { tenant_id: 1, role: '' };
-  const isBranded = user.tenant_id && user.tenant_id !== 1;
+  const user = userStr ? JSON.parse(userStr) : { inquilino_id: 1, rol: '' };
+  const isBranded = user.inquilino_id && user.inquilino_id !== 1;
 
   const [formData, setFormData] = useState({
-    store_name: '',
+    nombre_tienda: '',
     rfc: '',
-    phone: '',
-    email: '',
-    address: '',
-    tax_rate: '16.0',
-    ticket_footer: '',
+    telefono: '',
+    correo: '',
+    direccion: '',
+    tasa_impuesto: '16.0',
+    pie_ticket: '',
     logo_url: '',
-    primary_color: '#064E3B',
-    accent_color: '#DC2626'
+    color_primario: '#064E3B',
+    color_secundario: '#DC2626'
   });
 
   const [loading, setLoading] = useState(true);
@@ -27,7 +28,7 @@ const Settings = () => {
   const [success, setSuccess] = useState('');
   
   // Tenant subscription state
-  const [tenant, setTenant] = useState(null);
+  const [inquilino, setTenant] = useState(null);
   const [changingPlan, setChangingPlan] = useState(false);
 
   // Backup states
@@ -37,6 +38,10 @@ const Settings = () => {
   const [backupError, setBackupError] = useState('');
   const [backupSuccess, setBackupSuccess] = useState('');
   const [showBackupHelp, setShowBackupHelp] = useState(false);
+  
+  // Custom confirm restore modal states
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [restoreFile, setRestoreFile] = useState(null);
 
   const handleExportBackup = async () => {
     setBackupError('');
@@ -66,17 +71,17 @@ const Settings = () => {
     }
   };
 
-  const handleImportBackup = async (e) => {
+  const handleImportBackup = (e) => {
     const file = e.target.files[0];
     if (!file) return;
     
+    setRestoreFile(file);
+    setShowRestoreModal(true);
     e.target.value = null;
-    
-    const confirmRestore = window.confirm(
-      "¡ATENCIÓN! Restaurar un respaldo eliminará todos los registros actuales (ventas, productos, clientes) y los reemplazará con los datos del archivo. Esta acción es IRREVERSIBLE. ¿Está completamente seguro de continuar?"
-    );
-    if (!confirmRestore) return;
-    
+  };
+
+  const performRestore = async (file) => {
+    if (!file) return;
     setBackupError('');
     setBackupSuccess('');
     setImportingBackup(true);
@@ -97,24 +102,24 @@ const Settings = () => {
     try {
       const data = await fetchStoreSettings();
       setFormData({
-        store_name: data.store_name || '',
+        nombre_tienda: data.nombre_tienda || '',
         rfc: data.rfc || '',
-        phone: data.phone || '',
-        email: data.email || '',
-        address: data.address || '',
-        tax_rate: data.tax_rate !== undefined ? data.tax_rate.toString() : '16.0',
-        ticket_footer: data.ticket_footer || '',
+        telefono: data.telefono || '',
+        correo: data.correo || '',
+        direccion: data.direccion || '',
+        tasa_impuesto: data.tasa_impuesto !== undefined ? data.tasa_impuesto.toString() : '16.0',
+        pie_ticket: data.pie_ticket || '',
         logo_url: data.logo_url || '',
-        primary_color: data.primary_color || '#064E3B',
-        accent_color: data.accent_color || '#DC2626'
+        color_primario: data.color_primario || '#064E3B',
+        color_secundario: data.color_secundario || '#DC2626'
       });
 
-      // Load tenant subscription info
+      // Load inquilino subscription info
       try {
         const tenantData = await fetchTenant();
         setTenant(tenantData);
       } catch (tErr) {
-        console.error('Error loading tenant details', tErr);
+        console.error('Error loading inquilino details', tErr);
       }
     } catch (err) {
       console.error('Error loading settings', err);
@@ -184,10 +189,10 @@ const Settings = () => {
     setSuccess('');
     setSaving(true);
 
-    const parsedTax = parseFloat(formData.tax_rate);
+    const parsedTax = parseFloat(formData.tasa_impuesto);
 
     // Validation
-    if (!formData.store_name.trim()) {
+    if (!formData.nombre_tienda.trim()) {
       setError('El nombre de la tienda es requerido.');
       setSaving(false);
       return;
@@ -202,7 +207,7 @@ const Settings = () => {
     try {
       const payload = {
         ...formData,
-        tax_rate: parsedTax
+        tasa_impuesto: parsedTax
       };
       await updateStoreSettings(payload);
       setSuccess('Configuración guardada exitosamente.');
@@ -238,19 +243,12 @@ const Settings = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="flex items-center space-x-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="flex items-center space-x-2 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl">
-          <CheckCircle className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm">{success}</span>
-        </div>
-      )}
+      <AlertModal 
+        isOpen={!!success || !!error}
+        tipo={success ? 'success' : 'error'}
+        mensaje={success || error}
+        onClose={() => { setSuccess(''); setError(''); }}
+      />
 
       <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-[3px] rounded-[2.2rem] border border-white/40 shadow-lg p-6 md:p-8 space-y-8">
         {/* Sección: Datos de la Tienda */}
@@ -262,12 +260,12 @@ const Settings = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex flex-col space-y-1.5">
-              <label htmlFor="store_name" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre de la Tienda</label>
+              <label htmlFor="nombre_tienda" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre de la Tienda</label>
               <input
                 type="text"
-                id="store_name"
-                name="store_name"
-                value={formData.store_name}
+                id="nombre_tienda"
+                name="nombre_tienda"
+                value={formData.nombre_tienda}
                 onChange={handleChange}
                 placeholder="Ej. Abarrotes La Esquina"
                 className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -276,12 +274,12 @@ const Settings = () => {
             </div>
 
             <div className="flex flex-col space-y-1.5">
-              <label htmlFor="phone" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono de Contacto</label>
+              <label htmlFor="telefono" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Teléfono de Contacto</label>
               <input
                 type="text"
-                id="phone"
-                name="phone"
-                value={formData.phone}
+                id="telefono"
+                name="telefono"
+                value={formData.telefono}
                 onChange={handleChange}
                 placeholder="Ej. 8112345678"
                 className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -289,12 +287,12 @@ const Settings = () => {
             </div>
 
             <div className="flex flex-col space-y-1.5">
-              <label htmlFor="email" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Correo Electrónico</label>
+              <label htmlFor="correo" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Correo Electrónico</label>
               <input
                 type="email"
-                id="email"
-                name="email"
-                value={formData.email}
+                id="correo"
+                name="correo"
+                value={formData.correo}
                 onChange={handleChange}
                 placeholder="contacto@mitienda.com"
                 className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -315,11 +313,11 @@ const Settings = () => {
             </div>
 
             <div className="flex flex-col space-y-1.5 md:col-span-2">
-              <label htmlFor="address" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Dirección Física Completa</label>
+              <label htmlFor="direccion" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Dirección Física Completa</label>
               <textarea
-                id="address"
-                name="address"
-                value={formData.address}
+                id="direccion"
+                name="direccion"
+                value={formData.direccion}
                 onChange={handleChange}
                 placeholder="Calle, Número, Colonia, Municipio, Estado, C.P. (Código Postal de 5 dígitos al final es recomendado para CFDI)"
                 rows={2}
@@ -343,7 +341,7 @@ const Settings = () => {
                         <span>Cargar Logo</span>
                         <input
                           type="file"
-                          accept="image/*"
+                          accept="imagen/*"
                           onChange={handleLogoChange}
                           className="hidden"
                         />
@@ -353,33 +351,33 @@ const Settings = () => {
 
                   {/* Primary Color */}
                   <div className="flex flex-col space-y-1.5">
-                    <label htmlFor="primary_color" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Color del Menú (Fondo Principal)</label>
+                    <label htmlFor="color_primario" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Color del Menú (Fondo Principal)</label>
                     <div className="flex items-center space-x-2">
                       <input
                         type="color"
-                        id="primary_color"
-                        name="primary_color"
-                        value={formData.primary_color}
+                        id="color_primario"
+                        name="color_primario"
+                        value={formData.color_primario}
                         onChange={handleChange}
                         className="w-10 h-10 rounded-xl border border-slate-200 bg-transparent cursor-pointer"
                       />
-                      <span className="text-xs font-mono text-slate-500 uppercase">{formData.primary_color}</span>
+                      <span className="text-xs font-mono text-slate-500 uppercase">{formData.color_primario}</span>
                     </div>
                   </div>
 
                   {/* Accent Color */}
                   <div className="flex flex-col space-y-1.5">
-                    <label htmlFor="accent_color" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Color de Iconos y Destacados</label>
+                    <label htmlFor="color_secundario" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Color de Iconos y Destacados</label>
                     <div className="flex items-center space-x-2">
                       <input
                         type="color"
-                        id="accent_color"
-                        name="accent_color"
-                        value={formData.accent_color}
+                        id="color_secundario"
+                        name="color_secundario"
+                        value={formData.color_secundario}
                         onChange={handleChange}
                         className="w-10 h-10 rounded-xl border border-slate-200 bg-transparent cursor-pointer"
                       />
-                      <span className="text-xs font-mono text-slate-500 uppercase">{formData.accent_color}</span>
+                      <span className="text-xs font-mono text-slate-500 uppercase">{formData.color_secundario}</span>
                     </div>
                   </div>
                 </div>
@@ -397,14 +395,14 @@ const Settings = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="flex flex-col space-y-1.5">
-              <label htmlFor="tax_rate" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tasa de IVA General (%)</label>
+              <label htmlFor="tasa_impuesto" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Tasa de IVA General (%)</label>
               <div className="relative">
                 <input
                   type="number"
                   step="0.01"
-                  id="tax_rate"
-                  name="tax_rate"
-                  value={formData.tax_rate}
+                  id="tasa_impuesto"
+                  name="tasa_impuesto"
+                  value={formData.tasa_impuesto}
                   onChange={handleChange}
                   placeholder="16.0"
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -415,12 +413,12 @@ const Settings = () => {
             </div>
 
             <div className="flex flex-col space-y-1.5 md:col-span-2">
-              <label htmlFor="ticket_footer" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mensaje al Pie del Ticket</label>
+              <label htmlFor="pie_ticket" className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Mensaje al Pie del Ticket</label>
               <input
                 type="text"
-                id="ticket_footer"
-                name="ticket_footer"
-                value={formData.ticket_footer}
+                id="pie_ticket"
+                name="pie_ticket"
+                value={formData.pie_ticket}
                 onChange={handleChange}
                 placeholder="Ej. ¡Gracias por su preferencia! Vuelva pronto"
                 className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
@@ -452,7 +450,7 @@ const Settings = () => {
       </form>
 
       {/* Sección: Plan y Suscripción */}
-      {tenant && (
+      {inquilino && (
         <div className="bg-white/10 backdrop-blur-[3px] rounded-[2.2rem] border border-white/40 shadow-lg p-6 md:p-8 space-y-6 mt-6">
           <div className="flex items-center space-x-2 pb-2 border-b border-slate-100">
             <CreditCard className="w-5 h-5 text-emerald-600 animate-pulse" />
@@ -467,18 +465,18 @@ const Settings = () => {
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <span className={`px-4 py-2 inline-flex text-sm font-black rounded-full border ${
-                  tenant.plan_tier === 'premium' 
+                  inquilino.nivel_plan === 'premium' 
                     ? 'bg-purple-500/10 text-purple-800 border-purple-500/20 shadow-inner animate-pulse' 
                     : 'bg-stone-500/10 text-stone-800 border-stone-500/20'
                 }`}>
-                  {tenant.plan_tier === 'premium' ? 'PLAN PREMIUM (ILIMITADO)' : 'PLAN GRATIS (LÍMITE 50 PROD.)'}
+                  {inquilino.nivel_plan === 'premium' ? 'PLAN PREMIUM (ILIMITADO)' : 'PLAN GRATIS (LÍMITE 50 PROD.)'}
                 </span>
                 <span className="text-xs text-emerald-600 font-bold bg-emerald-50 border border-emerald-200/20 px-3 py-1 rounded-full uppercase tracking-wider">
-                  {tenant.subscription_status === 'active' ? 'Activa' : tenant.subscription_status}
+                  {inquilino.estado_suscripcion === 'active' ? 'Activa' : inquilino.estado_suscripcion}
                 </span>
               </div>
               <p className="text-[11px] text-stone-400 mt-2 font-medium">
-                Registrado desde: {new Date(tenant.created_at).toLocaleDateString()}
+                Registrado desde: {new Date(inquilino.creado_en).toLocaleDateString()}
               </p>
             </div>
 
@@ -494,7 +492,7 @@ const Settings = () => {
                 <button
                   type="button"
                   onClick={() => handlePlanChange('free')}
-                  disabled={tenant.plan_tier === 'free' || changingPlan}
+                  disabled={inquilino.nivel_plan === 'free' || changingPlan}
                   className="flex-1 bg-white border border-stone-250 text-stone-700 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-stone-50 transition-colors disabled:opacity-50"
                 >
                   Plan Gratis
@@ -502,7 +500,7 @@ const Settings = () => {
                 <button
                   type="button"
                   onClick={() => handlePlanChange('premium')}
-                  disabled={tenant.plan_tier === 'premium' || changingPlan}
+                  disabled={inquilino.nivel_plan === 'premium' || changingPlan}
                   className="flex-1 bg-purple-600 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-purple-750 transition-colors shadow-md disabled:opacity-50 hover:shadow-float active:scale-[0.98]"
                 >
                   Plan Premium
@@ -696,6 +694,47 @@ const Settings = () => {
           </div>
         </div>
       </div>
+      {/* Venta Emergente de Restauración */}
+      {showRestoreModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] p-8 max-w-md w-full border border-stone-200 shadow-2xl animate-scale-up space-y-6">
+            <div>
+              <h3 className="text-sm font-black text-red-600 uppercase tracking-widest mb-2">¡ATENCIÓN CRÍTICA!</h3>
+              <p className="text-xs font-bold text-stone-600 leading-relaxed">
+                Restaurar un respaldo eliminará todos los registros actuales (ventas, productos, clientes, configuración) de tu tienda y los reemplazará con los datos del archivo.
+              </p>
+              <p className="text-xs font-semibold text-red-500 mt-2 leading-relaxed">
+                Esta acción es completamente IRREVERSIBLE. ¿Estás completamente seguro de continuar con la restauración?
+              </p>
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRestoreModal(false);
+                  setRestoreFile(null);
+                }}
+                className="flex-1 py-3 px-4 border border-stone-200 hover:bg-stone-50 text-stone-600 rounded-xl text-xs font-bold transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRestoreModal(false);
+                  performRestore(restoreFile);
+                  setRestoreFile(null);
+                }}
+                className="flex-1 py-3 px-4 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg transition-all"
+              >
+                Restaurar Datos
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 };

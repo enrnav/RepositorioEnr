@@ -10,8 +10,8 @@ const PaymentSimulation = () => {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  const tenantId = searchParams.get('tenant_id') || 'N/A';
-  const storeName = searchParams.get('store_name') || 'Tu Tienda';
+  const tenantId = searchParams.get('inquilino_id') || 'N/A';
+  const storeName = searchParams.get('nombre_tienda') || 'Tu Tienda';
 
   const handleSimulatePayment = async () => {
     setLoading(true);
@@ -24,7 +24,7 @@ const PaymentSimulation = () => {
       const userStr = sessionStorage.getItem('user');
       if (userStr) {
         const userObj = JSON.parse(userStr);
-        userObj.subscription_status = 'active';
+        userObj.estado_suscripcion = 'active';
         sessionStorage.setItem('user', JSON.stringify(userObj));
       }
 

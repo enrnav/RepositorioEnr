@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import AlertModal from '../components/AlertModal';
 import { createPortal } from 'react-dom';
 import { Download, Plus, Search, Edit2, Trash2, X, Package, ChevronDown, TrendingUp, History } from 'lucide-react';
 import * as XLSX from 'xlsx-js-style';
@@ -21,11 +22,11 @@ const Inventory = () => {
   const [isReturnsExportModalOpen, setIsReturnsExportModalOpen] = useState(false);
   const [returnsExportFormat, setReturnsExportFormat] = useState('xlsx');
   const [returnsExportPeriod, setReturnsExportPeriod] = useState('all');
-  const [newProduct, setNewProduct] = useState({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '', image: '' });
+  const [newProduct, setNewProduct] = useState({ name: '', codigo_barras: '', precio: '', precio_costo: '0', cantidad: '', inventario_minimo: '3', fecha_entrada: '', imagen: '' });
   const [editingProduct, setEditingProduct] = useState(null);
   const [isSearchingImage, setIsSearchingImage] = useState(false);
   const [productVariants, setProductVariants] = useState([]);
-  const [newVariant, setNewVariant] = useState({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
+  const [newVariant, setNewVariant] = useState({ name: '', codigo_barras: '', precio_costo: '', precio: '', cantidad: '0' });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -57,13 +58,13 @@ const Inventory = () => {
     }
   }, [error]);
 
-  // Debounced auto-search for product image when name is typed
+  // Debounced auto-search for producto imagen when name is typed
   useEffect(() => {
     if (!newProduct.name || newProduct.name.trim().length < 3) return;
-    if (newProduct.image && newProduct.image.trim() !== '') return;
+    if (newProduct.imagen && newProduct.imagen.trim() !== '') return;
 
     const delayDebounceFn = setTimeout(() => {
-      if (!newProduct.image || newProduct.image.trim() === '') {
+      if (!newProduct.imagen || newProduct.imagen.trim() === '') {
         handleAutoSearchImage(newProduct.name);
       }
     }, 1000);
@@ -80,7 +81,7 @@ const Inventory = () => {
       }
       const reader = new FileReader();
       reader.onloadend = () => {
-        setNewProduct(prev => ({ ...prev, image: reader.result }));
+        setNewProduct(prev => ({ ...prev, imagen: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -92,10 +93,10 @@ const Inventory = () => {
     try {
       const data = await searchProductImage(name.trim());
       if (data && data.image_url) {
-        setNewProduct(prev => ({ ...prev, image: data.image_url }));
+        setNewProduct(prev => ({ ...prev, imagen: data.image_url }));
       }
     } catch (err) {
-      console.error("Failed to auto-search product image:", err);
+      console.error("Failed to auto-search producto imagen:", err);
     } finally {
       setIsSearchingImage(false);
     }
@@ -106,19 +107,19 @@ const Inventory = () => {
     try {
       const productData = {
         name: newProduct.name,
-        barcode: newProduct.barcode || null,
-        price: parseFloat(newProduct.price),
-        cost_price: parseFloat(newProduct.cost_price) || 0.0,
-        quantity: parseInt(newProduct.quantity),
-        min_stock: parseInt(newProduct.min_stock) || 3,
-        entry_date: newProduct.entry_date || new Date().toISOString().split('T')[0],
-        image: newProduct.image || null,
-        variants: productVariants.map(v => ({
+        codigo_barras: newProduct.codigo_barras || null,
+        precio: parseFloat(newProduct.precio),
+        precio_costo: parseFloat(newProduct.precio_costo) || 0.0,
+        cantidad: parseInt(newProduct.cantidad),
+        inventario_minimo: parseInt(newProduct.inventario_minimo) || 3,
+        fecha_entrada: newProduct.fecha_entrada || new Date().toISOString().split('T')[0],
+        imagen: newProduct.imagen || null,
+        variantes: productVariants.map(v => ({
           name: v.name,
-          barcode: v.barcode || null,
-          cost_price: v.cost_price ? parseFloat(v.cost_price) : null,
-          price: v.price ? parseFloat(v.price) : null,
-          quantity: parseInt(v.quantity) || 0
+          codigo_barras: v.codigo_barras || null,
+          precio_costo: v.precio_costo ? parseFloat(v.precio_costo) : null,
+          precio: v.precio ? parseFloat(v.precio) : null,
+          cantidad: parseInt(v.cantidad) || 0
         }))
       };
 
@@ -131,29 +132,29 @@ const Inventory = () => {
       }
 
       setIsModalOpen(false);
-      setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '', image: '' });
+      setNewProduct({ name: '', codigo_barras: '', precio: '', precio_costo: '0', cantidad: '', inventario_minimo: '3', fecha_entrada: '', imagen: '' });
       setProductVariants([]);
       setEditingProduct(null);
       loadData();
     } catch (err) {
-      console.error("Error saving product", err);
+      console.error("Error saving producto", err);
       setError("Hubo un error al guardar el producto");
     }
   };
 
-  const handleEdit = (product) => {
-    setEditingProduct(product);
+  const handleEdit = (producto) => {
+    setEditingProduct(producto);
     setNewProduct({
-      name: product.name,
-      barcode: product.barcode || '',
-      price: product.price,
-      cost_price: product.cost_price || 0,
-      quantity: product.quantity,
-      min_stock: product.min_stock || 3,
-      entry_date: product.entry_date || '',
-      image: product.image || ''
+      name: producto.name,
+      codigo_barras: producto.codigo_barras || '',
+      precio: producto.precio,
+      precio_costo: producto.precio_costo || 0,
+      cantidad: producto.cantidad,
+      inventario_minimo: producto.inventario_minimo || 3,
+      fecha_entrada: producto.fecha_entrada || '',
+      imagen: producto.imagen || ''
     });
-    setProductVariants(product.variants || []);
+    setProductVariants(producto.variantes || []);
     setIsModalOpen(true);
   };
 
@@ -168,7 +169,7 @@ const Inventory = () => {
       setSuccess('Producto eliminado exitosamente');
       loadData();
     } catch (err) {
-      console.error("Error deleting product", err);
+      console.error("Error deleting producto", err);
       setError("Hubo un error al eliminar el producto");
     }
   };
@@ -190,8 +191,8 @@ const Inventory = () => {
       if (exportPeriod === 'daily') {
           exportData = sortedReport.map(item => ({
               'Producto': item.name || '',
-              'Stock Actual': item.quantity,
-              'Precio Unitario ($)': item.price,
+              'Stock Actual': item.cantidad,
+              'Precio Unitario ($)': item.precio,
               'Vendidos Hoy': item.sales_today,
               'Monto Vendido ($)': item.revenue_today
           }));
@@ -199,8 +200,8 @@ const Inventory = () => {
       } else if (exportPeriod === 'weekly') {
           exportData = sortedReport.map(item => ({
               'Producto': item.name || '',
-              'Stock Actual': item.quantity,
-              'Precio Unitario ($)': item.price,
+              'Stock Actual': item.cantidad,
+              'Precio Unitario ($)': item.precio,
               'Vendidos Semana': item.sales_week,
               'Total Ventas ($)': item.revenue_week
           }));
@@ -208,15 +209,15 @@ const Inventory = () => {
       } else if (exportPeriod === 'monthly') {
           exportData = sortedReport.map(item => ({
               'Producto': item.name || '',
-              'Stock Actual': item.quantity,
-              'Precio Unitario ($)': item.price,
+              'Stock Actual': item.cantidad,
+              'Precio Unitario ($)': item.precio,
               'Vendidos Mes': item.sales_month,
               'Total Ventas ($)': item.revenue_month
           }));
           baseFilename = 'ventas_por_mes';
       }
 
-      // Calculate total amount
+      // Calculate total monto
       const totalAmount = exportData.reduce((sum, item) => {
           const val = item['Monto Vendido ($)'] || item['Total Ventas ($)'] || 0;
           return sum + val;
@@ -380,7 +381,7 @@ const Inventory = () => {
           ctx.font = 'bold 14px Arial';
           ctx.fillText('TU MERCADO DE CONFIANZA', 10, 62);
 
-          const logoData = canvas.toDataURL('image/png');
+          const logoData = canvas.toDataURL('imagen/png');
           
           // Insertar logo
           doc.addImage(logoData, 'PNG', 14, 10, 87.5, 20);
@@ -453,11 +454,11 @@ const Inventory = () => {
       
       let filteredReport = [...report];
       if (returnsExportPeriod === 'daily') {
-          filteredReport = report.filter(item => new Date(item.created_at) >= todayStart);
+          filteredReport = report.filter(item => new Date(item.creado_en) >= todayStart);
       } else if (returnsExportPeriod === 'weekly') {
-          filteredReport = report.filter(item => new Date(item.created_at) >= weekStart);
+          filteredReport = report.filter(item => new Date(item.creado_en) >= weekStart);
       } else if (returnsExportPeriod === 'monthly') {
-          filteredReport = report.filter(item => new Date(item.created_at) >= monthStart);
+          filteredReport = report.filter(item => new Date(item.creado_en) >= monthStart);
       }
 
       if (filteredReport.length === 0) {
@@ -468,19 +469,19 @@ const Inventory = () => {
       const sortedReport = [...filteredReport].sort((a, b) => a.id - b.id);
       
       let exportData = sortedReport.map(item => {
-          const date = new Date(item.created_at);
+          const date = new Date(item.creado_en);
           const formattedDate = isNaN(date.getTime()) 
-            ? item.created_at.replace("T", " ").split(".")[0] 
+            ? item.creado_en.replace("T", " ").split(".")[0] 
             : date.toLocaleString('es-MX', { hour12: false });
           return {
               'ID Devolución': item.id,
-              'ID Venta': item.sale_id,
+              'ID Venta': item.venta_id,
               'Fecha / Hora': formattedDate,
-              'Producto': item.product_name,
-              'Cantidad Devuelta': item.quantity,
-              'Precio Unitario ($)': item.price,
-              'Monto Devuelto ($)': item.quantity * item.price,
-              'Motivo': item.reason || 'Sin especificar'
+              'Producto': item.nombre_producto,
+              'Cantidad Devuelta': item.cantidad,
+              'Precio Unitario ($)': item.precio,
+              'Monto Devuelto ($)': item.cantidad * item.precio,
+              'Motivo': item.motivo || 'Sin especificar'
           };
       });
 
@@ -630,7 +631,7 @@ const Inventory = () => {
           ctx.font = 'bold 14px Arial';
           ctx.fillText('TU MERCADO DE CONFIANZA', 10, 62);
 
-          const logoData = canvas.toDataURL('image/png');
+          const logoData = canvas.toDataURL('imagen/png');
           doc.addImage(logoData, 'PNG', 14, 10, 87.5, 20);
           
           doc.setFontSize(22);
@@ -687,9 +688,9 @@ const Inventory = () => {
       const exportData = inventory.map(item => ({
           'ID': item.id,
           'Producto': item.name || '',
-          'Precio ($)': item.price,
-          'Stock Actual': item.quantity,
-          'Fecha Ingreso': item.entry_date || 'N/A'
+          'Precio ($)': item.precio,
+          'Stock Actual': item.cantidad,
+          'Fecha Ingreso': item.fecha_entrada || 'N/A'
       }));
       
       const dateStr = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -753,7 +754,7 @@ const Inventory = () => {
           const ctx = canvas.getContext('2d');
           ctx.fillStyle = '#0f172a'; ctx.font = 'bold 28px Arial'; ctx.fillText('ABARROTES ED & E', 10, 40);
           ctx.fillStyle = '#ef4444'; ctx.font = 'bold 14px Arial'; ctx.fillText('TU MERCADO DE CONFIANZA', 10, 62);
-          const logoData = canvas.toDataURL('image/png');
+          const logoData = canvas.toDataURL('imagen/png');
           
           doc.addImage(logoData, 'PNG', 14, 10, 87.5, 20);
           doc.setFontSize(22); doc.setTextColor(31, 41, 55); doc.text('Inventario Actual', 14, 45);
@@ -774,11 +775,11 @@ const Inventory = () => {
       } else if (stockExportFormat === 'sql') {
           let sqlOutput = "-- Reporte de Inventario Abarrotes ED & E\n";
           sqlOutput += `-- Fecha de Emisión: ${dateStr}\n\n`;
-          sqlOutput += "CREATE TABLE IF NOT EXISTS products (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(255),\n  price DECIMAL(10,2),\n  quantity INTEGER\n);\n\n";
+          sqlOutput += "CREATE TABLE IF NOT EXISTS products (\n  id INTEGER PRIMARY KEY,\n  name VARCHAR(255),\n  precio DECIMAL(10,2),\n  cantidad INTEGER\n);\n\n";
           
           inventory.forEach(item => {
              const safeName = (item.name || '').replace(/'/g, "''");
-             sqlOutput += `INSERT INTO products (id, name, price, quantity) VALUES (${item.id}, '${safeName}', ${item.price}, ${item.quantity});\n`;
+             sqlOutput += `INSERT INTO products (id, name, precio, cantidad) VALUES (${item.id}, '${safeName}', ${item.precio}, ${item.cantidad});\n`;
           });
           
           const dataStr = "data:text/plain;charset=utf-8," + encodeURIComponent(sqlOutput);
@@ -888,7 +889,7 @@ const Inventory = () => {
           <button
             onClick={() => {
               setEditingProduct(null);
-              setNewProduct({ name: '', barcode: '', price: '', cost_price: '0', quantity: '', min_stock: '3', entry_date: '', image: '' });
+              setNewProduct({ name: '', codigo_barras: '', precio: '', precio_costo: '0', cantidad: '', inventario_minimo: '3', fecha_entrada: '', imagen: '' });
               setProductVariants([]);
               setIsModalOpen(true);
             }}
@@ -979,29 +980,29 @@ const Inventory = () => {
                       <div className="flex items-center justify-center space-x-3">
                         <div className="truncate">
                           <span className="font-bold text-gray-950 text-sm md:text-base block truncate">{item.name}</span>
-                          {item.barcode && <span className="text-[10px] md:text-xs text-gray-400 mt-0.5 block truncate">Cód: {item.barcode}</span>}
+                          {item.codigo_barras && <span className="text-[10px] md:text-xs text-gray-400 mt-0.5 block truncate">Cód: {item.codigo_barras}</span>}
                         </div>
                       </div>
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
-                      ${item.price.toFixed(2)}
+                      ${item.precio.toFixed(2)}
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
                       <span className={`inline-flex items-center justify-center px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium ${
-                        item.quantity <= (item.min_stock ?? 3) ? 'bg-red-105 text-red-800 animate-pulse border border-red-200' : 'bg-green-150 text-green-800'
+                        item.cantidad <= (item.inventario_minimo ?? 3) ? 'bg-red-105 text-red-800 animate-pulse border border-red-200' : 'bg-green-150 text-green-800'
                       }`}>
-                        {item.quantity} u. (Min: {item.min_stock ?? 3})
+                        {item.cantidad} u. (Min: {item.inventario_minimo ?? 3})
                       </span>
                     </td>
                     <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
-                      {item.entry_date || '-'}
+                      {item.fecha_entrada || '-'}
                     </td>
                     <td className="hidden md:table-cell px-3 md:px-6 py-3 md:py-4 text-center text-gray-600 text-sm md:text-base">
-                      {item.sold} u.
+                      {item.vendido} u.
                     </td>
                     <td className="hidden lg:table-cell px-3 md:px-6 py-3 md:py-4 text-center">
                       <span className="text-gray-500 text-sm">
-                        {Math.max(0, 50 - item.quantity)} u.
+                        {Math.max(0, 50 - item.cantidad)} u.
                       </span>
                     </td>
                     <td className="px-3 md:px-6 py-3 md:py-4 text-center">
@@ -1069,25 +1070,25 @@ const Inventory = () => {
                       <input
                         type="text"
                         className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
-                        value={newProduct.barcode}
+                        value={newProduct.codigo_barras}
                         onChange={(e) => {
                           const val = e.target.value;
-                          const existing = inventory.find(p => p.barcode && p.barcode === val);
+                          const existing = inventory.find(p => p.codigo_barras && p.codigo_barras === val);
                           
                           if (existing) {
                             setEditingProduct(existing);
                             setNewProduct({
                               name: existing.name,
-                              barcode: existing.barcode,
-                              price: existing.price,
-                              cost_price: existing.cost_price || 0,
-                              quantity: '',
-                              min_stock: existing.min_stock || 3,
-                              entry_date: existing.entry_date || '',
-                              image: existing.image || ''
+                              codigo_barras: existing.codigo_barras,
+                              precio: existing.precio,
+                              precio_costo: existing.precio_costo || 0,
+                              cantidad: '',
+                              inventario_minimo: existing.inventario_minimo || 3,
+                              fecha_entrada: existing.fecha_entrada || '',
+                              imagen: existing.imagen || ''
                             });
                           } else {
-                            setNewProduct({ ...newProduct, barcode: val });
+                            setNewProduct({ ...newProduct, codigo_barras: val });
                           }
                         }}
                         placeholder="Escanea o escribe el código"
@@ -1103,8 +1104,8 @@ const Inventory = () => {
                           min="0"
                           required
                           className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
-                          value={newProduct.cost_price}
-                          onChange={(e) => setNewProduct({ ...newProduct, cost_price: e.target.value })}
+                          value={newProduct.precio_costo}
+                          onChange={(e) => setNewProduct({ ...newProduct, precio_costo: e.target.value })}
                           placeholder="0.00"
                         />
                       </div>
@@ -1116,8 +1117,8 @@ const Inventory = () => {
                           min="0"
                           required
                           className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
-                          value={newProduct.price}
-                          onChange={(e) => setNewProduct({ ...newProduct, price: e.target.value })}
+                          value={newProduct.precio}
+                          onChange={(e) => setNewProduct({ ...newProduct, precio: e.target.value })}
                           placeholder="0.00"
                         />
                       </div>
@@ -1131,8 +1132,8 @@ const Inventory = () => {
                           min="0"
                           required
                           className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
-                          value={newProduct.quantity}
-                          onChange={(e) => setNewProduct({ ...newProduct, quantity: e.target.value })}
+                          value={newProduct.cantidad}
+                          onChange={(e) => setNewProduct({ ...newProduct, cantidad: e.target.value })}
                           placeholder="0"
                         />
                       </div>
@@ -1143,8 +1144,8 @@ const Inventory = () => {
                           min="1"
                           required
                           className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
-                          value={newProduct.min_stock}
-                          onChange={(e) => setNewProduct({ ...newProduct, min_stock: e.target.value })}
+                          value={newProduct.inventario_minimo}
+                          onChange={(e) => setNewProduct({ ...newProduct, inventario_minimo: e.target.value })}
                           placeholder="3"
                         />
                       </div>
@@ -1155,8 +1156,8 @@ const Inventory = () => {
                       <input
                         type="date"
                         className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
-                        value={newProduct.entry_date}
-                        onChange={(e) => setNewProduct({ ...newProduct, entry_date: e.target.value })}
+                        value={newProduct.fecha_entrada}
+                        onChange={(e) => setNewProduct({ ...newProduct, fecha_entrada: e.target.value })}
                       />
                       <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, se asignará la fecha actual.</p>
                     </div>
@@ -1179,8 +1180,8 @@ const Inventory = () => {
                             type="text"
                             placeholder="Cod. Barras"
                             className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
-                            value={newVariant.barcode}
-                            onChange={(e) => setNewVariant({ ...newVariant, barcode: e.target.value })}
+                            value={newVariant.codigo_barras}
+                            onChange={(e) => setNewVariant({ ...newVariant, codigo_barras: e.target.value })}
                           />
                         </div>
                         <div className="grid grid-cols-3 gap-2">
@@ -1188,22 +1189,22 @@ const Inventory = () => {
                             type="number"
                             placeholder="Costo"
                             className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
-                            value={newVariant.cost_price}
-                            onChange={(e) => setNewVariant({ ...newVariant, cost_price: e.target.value })}
+                            value={newVariant.precio_costo}
+                            onChange={(e) => setNewVariant({ ...newVariant, precio_costo: e.target.value })}
                           />
                           <input
                             type="number"
                             placeholder="Precio"
                             className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
-                            value={newVariant.price}
-                            onChange={(e) => setNewVariant({ ...newVariant, price: e.target.value })}
+                            value={newVariant.precio}
+                            onChange={(e) => setNewVariant({ ...newVariant, precio: e.target.value })}
                           />
                           <input
                             type="number"
                             placeholder="Stock"
                             className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
-                            value={newVariant.quantity}
-                            onChange={(e) => setNewVariant({ ...newVariant, quantity: e.target.value })}
+                            value={newVariant.cantidad}
+                            onChange={(e) => setNewVariant({ ...newVariant, cantidad: e.target.value })}
                           />
                         </div>
                         <button
@@ -1214,7 +1215,7 @@ const Inventory = () => {
                               return;
                             }
                             setProductVariants([...productVariants, { ...newVariant }]);
-                            setNewVariant({ name: '', barcode: '', cost_price: '', price: '', quantity: '0' });
+                            setNewVariant({ name: '', codigo_barras: '', precio_costo: '', precio: '', cantidad: '0' });
                           }}
                           className="w-full py-2 bg-brand-900 text-white text-xs font-bold rounded-xl hover:bg-brand-950 transition-colors shadow-sm"
                         >
@@ -1234,9 +1235,9 @@ const Inventory = () => {
                           <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2.5 rounded-2xl text-xs font-semibold shadow-sm hover:shadow transition-shadow">
                             <div className="overflow-hidden pr-2">
                               <span className="font-extrabold text-brand-900 block truncate">{v.name}</span>
-                              {v.barcode && <span className="text-[9px] text-gray-400 block truncate">@{v.barcode}</span>}
+                              {v.codigo_barras && <span className="text-[9px] text-gray-400 block truncate">@{v.codigo_barras}</span>}
                               <div className="text-[9px] text-gray-400 mt-0.5 font-medium">
-                                Costo: ${v.cost_price || 'Padre'} | Precio: ${v.price || 'Padre'} | Stock: {v.quantity}
+                                Costo: ${v.precio_costo || 'Padre'} | Precio: ${v.precio || 'Padre'} | Stock: {v.cantidad}
                               </div>
                             </div>
                             <button

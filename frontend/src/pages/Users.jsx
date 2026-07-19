@@ -278,118 +278,125 @@ const Users = () => {
       )}
 
       {showForm && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 flex-shrink-0">
-              <h3 className="text-lg font-semibold text-gray-800">
-                {editUser ? 'Editar Usuario' : 'Registrar Nuevo Usuario'}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <UserPlus className="text-emerald-600 w-5 h-5 shrink-0" />
+                <span>{editUser ? 'MODIFICAR USUARIO' : 'REGISTRAR USUARIO'}</span>
+              </h2>
               <button 
                 onClick={() => { setShowForm(false); setEditUser(null); }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
               >
-                <X size={20} />
+                <X className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="p-6 space-y-4 overflow-y-auto flex-1">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Nombre Completo</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nombre_completo}
-                    onChange={(e) => setFormData({...formData, nombre_completo: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                    placeholder="Ej. Juan Pérez"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Usuario</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.nombre_usuario}
-                    onChange={(e) => setFormData({...formData, nombre_usuario: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                    placeholder="Ej. juanp"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">
-                    Contraseña
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={formData.contrasena}
-                    onChange={(e) => setFormData({...formData, contrasena: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                    placeholder="••••••••"
-                  />
-                  
-                  {formData.contrasena && (
-                    <div className="mt-2 space-y-1 animate-fade-in">
-                      <div className="flex justify-between items-center text-xs">
-                        <span className="text-gray-500 font-medium">Fortaleza de contraseña:</span>
-                        <span className={`font-bold ${
-                          getPasswordStrength(formData.contrasena) === 1 ? 'text-red-500' :
-                          getPasswordStrength(formData.contrasena) === 2 ? 'text-orange-500' :
-                          getPasswordStrength(formData.contrasena) === 3 ? 'text-amber-500' :
-                          getPasswordStrength(formData.contrasena) === 4 ? 'text-green-600' :
-                          'text-gray-400'
-                        }`}>
-                          {getPasswordStrength(formData.contrasena) === 0 && 'Ninguna'}
-                          {getPasswordStrength(formData.contrasena) === 1 && 'Muy débil'}
-                          {getPasswordStrength(formData.contrasena) === 2 && 'Regular'}
-                          {getPasswordStrength(formData.contrasena) === 3 && 'Buena'}
-                          {getPasswordStrength(formData.contrasena) === 4 && 'Fuerte'}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                        <div 
-                          className={`h-full transition-all duration-300 ${
-                            getPasswordStrength(formData.contrasena) === 1 ? 'bg-red-500 w-1/4' :
-                            getPasswordStrength(formData.contrasena) === 2 ? 'bg-orange-500 w-2/4' :
-                            getPasswordStrength(formData.contrasena) === 3 ? 'bg-amber-400 w-3/4' :
-                            getPasswordStrength(formData.contrasena) === 4 ? 'bg-green-500 w-full' :
-                            'w-0'
-                          }`}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  <p className="text-[11px] text-gray-500 leading-normal mt-2">
-                    * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Rol</label>
-                  <select
-                    value={formData.rol}
-                    onChange={(e) => setFormData({...formData, rol: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                  >
-                    <option value="cajero">Cajero (Solo Punto de Venta)</option>
-                    <option value="supervisor">Supervisor (Ventas, Inventario y Cortes)</option>
-                    <option value="admin">Administrador (Acceso Total)</option>
-                  </select>
-                </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow">
+              {/* Nombre Completo */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre Completo</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.nombre_completo}
+                  onChange={(e) => setFormData({...formData, nombre_completo: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                  placeholder="Ej. Juan Pérez"
+                />
               </div>
-              <div className="p-6 bg-gray-50/80 border-t border-gray-100 flex justify-end space-x-3 flex-shrink-0">
+
+              {/* Usuario */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Usuario</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.nombre_usuario}
+                  onChange={(e) => setFormData({...formData, nombre_usuario: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                  placeholder="Ej. juanp"
+                />
+              </div>
+
+              {/* Contraseña */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Contraseña</label>
+                <input
+                  type="password"
+                  required
+                  value={formData.contrasena}
+                  onChange={(e) => setFormData({...formData, contrasena: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                  placeholder="••••••••"
+                />
+                
+                {formData.contrasena && (
+                  <div className="mt-2 space-y-1 animate-fade-in">
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-slate-500 font-medium">Fortaleza de contraseña:</span>
+                      <span className={`font-bold ${
+                        getPasswordStrength(formData.contrasena) === 1 ? 'text-red-500' :
+                        getPasswordStrength(formData.contrasena) === 2 ? 'text-orange-500' :
+                        getPasswordStrength(formData.contrasena) === 3 ? 'text-amber-500' :
+                        getPasswordStrength(formData.contrasena) === 4 ? 'text-green-600' :
+                        'text-slate-400'
+                      }`}>
+                        {getPasswordStrength(formData.contrasena) === 0 && 'Ninguna'}
+                        {getPasswordStrength(formData.contrasena) === 1 && 'Muy débil'}
+                        {getPasswordStrength(formData.contrasena) === 2 && 'Regular'}
+                        {getPasswordStrength(formData.contrasena) === 3 && 'Buena'}
+                        {getPasswordStrength(formData.contrasena) === 4 && 'Fuerte'}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 border border-slate-200/50 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-300 ${
+                          getPasswordStrength(formData.contrasena) === 1 ? 'bg-red-500 w-1/4' :
+                          getPasswordStrength(formData.contrasena) === 2 ? 'bg-orange-500 w-2/4' :
+                          getPasswordStrength(formData.contrasena) === 3 ? 'bg-amber-400 w-3/4' :
+                          getPasswordStrength(formData.contrasena) === 4 ? 'bg-green-500 w-full' :
+                          'w-0'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-[10px] text-slate-400 leading-normal mt-1">
+                  * La contraseña debe tener al menos <strong>12 caracteres</strong>, incluir letras <strong>mayúsculas</strong>, <strong>números</strong> y <strong>caracteres especiales</strong>.
+                </p>
+              </div>
+
+              {/* Rol */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rol</label>
+                <select
+                  value={formData.rol}
+                  onChange={(e) => setFormData({...formData, rol: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all bg-white"
+                >
+                  <option value="cajero">Cajero (Solo Punto de Venta)</option>
+                  <option value="supervisor">Supervisor (Ventas, Inventario y Cortes)</option>
+                  <option value="admin">Administrador (Acceso Total)</option>
+                </select>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); setEditUser(null); }}
-                  className="px-5 py-2.5 border border-gray-200 text-gray-700 rounded-full hover:bg-white hover:text-chiluda-red hover:border-chiluda-red/30 transition-all text-xs font-bold shadow-sm"
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-all text-sm uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-chiluda-red text-white rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all shadow-float text-xs font-black"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-sm uppercase shadow-sm shadow-emerald-600/10 active:scale-95"
                 >
-                  {editUser ? 'Actualizar Usuario' : 'Guardar Usuario'}
+                  {editUser ? 'Guardar' : 'Registrar'}
                 </button>
               </div>
             </form>
@@ -511,10 +518,10 @@ const Users = () => {
               <tbody className="divide-y divide-gray-100/50 text-xs text-stone-700">
                 {userLogs
                   .filter(l => 
-                    l.nombre_usuario.toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
-                    l.nombre_completo.toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
-                    l.details.toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
-                    l.action.toLowerCase().includes(logsSearchTerm.toLowerCase())
+                    (l.usuario || '').toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
+                    (l.nombre_completo || '').toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
+                    (l.detalles || '').toLowerCase().includes(logsSearchTerm.toLowerCase()) ||
+                    (l.accion || '').toLowerCase().includes(logsSearchTerm.toLowerCase())
                   )
                   .map((log) => (
                     <tr key={log.id} className="hover:bg-brand-50/50 transition-all duration-200">
@@ -523,23 +530,23 @@ const Users = () => {
                       </td>
                       <td className="px-4 md:px-6 py-3.5 text-center">
                         <span className={`px-2.5 py-1 inline-flex text-[10px] font-black uppercase rounded-full border ${
-                          log.action === 'creacion' ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20' :
-                          log.action === 'actualizacion' ? 'bg-blue-500/10 text-blue-800 border-blue-500/20' :
+                          log.accion === 'creacion' ? 'bg-emerald-500/10 text-emerald-800 border-emerald-500/20' :
+                          log.accion === 'actualizacion' ? 'bg-blue-500/10 text-blue-800 border-blue-500/20' :
                           'bg-red-500/10 text-red-800 border-red-500/20'
                         }`}>
-                          {log.action === 'creacion' ? 'Creación' :
-                           log.action === 'actualizacion' ? 'Edición' : 'Eliminación'}
+                          {log.accion === 'creacion' ? 'Creación' :
+                           log.accion === 'actualizacion' ? 'Edición' : 'Eliminación'}
                         </span>
                       </td>
                       <td className="px-4 md:px-6 py-3.5 text-center">
                         <div className="font-bold text-stone-900">{log.nombre_completo}</div>
-                        <div className="text-[10px] text-stone-400 font-mono">@{log.nombre_usuario}</div>
+                        <div className="text-[10px] text-stone-400 font-mono">@{log.usuario}</div>
                       </td>
                       <td className="px-4 md:px-6 py-3.5 text-center">
                         <span className="text-[11px] font-semibold text-stone-500 capitalize">{log.rol}</span>
                       </td>
-                      <td className="px-4 md:px-6 py-3.5 text-left max-w-xs md:max-w-sm truncate text-stone-600 font-medium" title={log.details}>
-                        {log.details}
+                      <td className="px-4 md:px-6 py-3.5 text-left max-w-xs md:max-w-sm truncate text-stone-600 font-medium" title={log.detalles}>
+                        {log.detalles}
                       </td>
                     </tr>
                   ))}

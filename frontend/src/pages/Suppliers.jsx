@@ -94,7 +94,6 @@ const Suppliers = () => {
         return;
       }
     }
-
     try {
       if (editSupplierId) {
         await updateSupplier(editSupplierId, formData);
@@ -199,110 +198,109 @@ const Suppliers = () => {
 
       {/* Form Dialog Modal */}
       {showForm && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden border border-white animate-scale-in">
-            <div className="px-6 py-4 border-b border-stone-100 flex justify-between items-center bg-stone-50 flex-shrink-0">
-              <h3 className="text-md font-bold text-stone-800">
-                {editSupplierId ? 'Editar Proveedor' : 'Registrar Nuevo Proveedor'}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <Truck className="text-emerald-600 w-5 h-5 shrink-0" />
+                <span>{editSupplierId ? 'MODIFICAR PROVEEDOR' : 'REGISTRAR PROVEEDOR'}</span>
+              </h2>
               <button 
                 onClick={() => { setShowForm(false); setEditSupplierId(null); }}
-                className="text-stone-400 hover:text-stone-600 transition-colors"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
               >
-                <X size={20} />
+                <X className="w-6 h-6" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="p-6 space-y-4 overflow-y-auto flex-1">
-                {/* Supplier Name */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Nombre o Razón Social *</label>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto flex-grow">
+              {/* Supplier Name */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre o Razón Social *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                  placeholder="Ej. Distribuidora Bimbo S.A."
+                />
+              </div>
+
+              {/* RFC */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">RFC (Opcional)</label>
+                <input
+                  type="text"
+                  value={formData.rfc}
+                  onChange={(e) => setFormData({...formData, rfc: e.target.value.toUpperCase()})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                  placeholder="Colocar de 12 a 13 caracteres"
+                />
+              </div>
+
+              {/* Phone & Email */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Teléfono</label>
                   <input
                     type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                    placeholder="Ej. Distribuidora Bimbo S.A."
+                    value={formData.telefono}
+                    onChange={(e) => setFormData({...formData, telefono: e.target.value})}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                    placeholder="Ej. 8112345678"
                   />
                 </div>
-
-                {/* RFC */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">RFC (Opcional)</label>
+                <div className="flex flex-col space-y-1">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Correo</label>
                   <input
-                    type="text"
-                    value={formData.rfc}
-                    onChange={(e) => setFormData({...formData, rfc: e.target.value.toUpperCase()})}
-                    className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                    placeholder="Ej. DBI120415XYZ"
-                  />
-                </div>
-
-                {/* Phone & Email */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Teléfono</label>
-                    <input
-                      type="text"
-                      value={formData.telefono}
-                      onChange={(e) => setFormData({...formData, telefono: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                      placeholder="Ej. 8112345678"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Correo</label>
-                    <input
-                      type="email"
-                      value={formData.correo}
-                      onChange={(e) => setFormData({...formData, correo: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                      placeholder="Ej. ventas@distribuidora.com"
-                    />
-                  </div>
-                </div>
-
-                {/* Address */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Dirección Física</label>
-                  <input
-                    type="text"
-                    value={formData.direccion}
-                    onChange={(e) => setFormData({...formData, direccion: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner"
-                    placeholder="Ej. Av. Constitución #450, Monterrey, N.L."
-                  />
-                </div>
-
-                {/* Notes */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-500 mb-1 uppercase tracking-wider">Notas o Comentarios</label>
-                  <textarea
-                    rows="3"
-                    value={formData.notas}
-                    onChange={(e) => setFormData({...formData, notas: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-white border border-stone-250 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-transparent text-sm font-semibold transition-all shadow-inner resize-none"
-                    placeholder="Ej. Entrega los martes por la mañana..."
+                    type="email"
+                    value={formData.correo}
+                    onChange={(e) => setFormData({...formData, correo: e.target.value})}
+                    className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                    placeholder="Ej. ventas@distribuidora.com"
                   />
                 </div>
               </div>
 
+              {/* Address */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Dirección Física</label>
+                <input
+                  type="text"
+                  value={formData.direccion}
+                  onChange={(e) => setFormData({...formData, direccion: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
+                  placeholder="Ej. Av. Constitución #450, Monterrey, N.L."
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notas o Comentarios</label>
+                <textarea
+                  rows="3"
+                  value={formData.notas}
+                  onChange={(e) => setFormData({...formData, notas: e.target.value})}
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all resize-none"
+                  placeholder="Ej. Entrega los martes por la mañana..."
+                />
+              </div>
+
               {/* Action Buttons */}
-              <div className="p-6 bg-stone-50/80 border-t border-stone-100 flex justify-end space-x-3 flex-shrink-0">
+              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => { setShowForm(false); setEditSupplierId(null); }}
-                  className="px-5 py-2.5 border border-stone-200 text-stone-600 rounded-full hover:bg-white hover:text-chiluda-red hover:border-chiluda-red/30 transition-all text-xs font-bold shadow-sm"
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-all text-sm uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-chiluda-red text-white rounded-full hover:bg-chiluda-darkred hover:shadow-float active:scale-[0.98] transition-all shadow-float text-xs font-black"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-sm uppercase shadow-sm shadow-emerald-600/10 active:scale-95"
                 >
-                  {editSupplierId ? 'Guardar Cambios' : 'Registrar'}
+                  {editSupplierId ? 'Guardar' : 'Registrar'}
                 </button>
               </div>
             </form>

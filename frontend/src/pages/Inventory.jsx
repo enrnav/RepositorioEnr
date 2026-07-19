@@ -901,8 +901,18 @@ const Inventory = () => {
         </div>
       </div>
 
-      {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg border border-red-200">{error}</div>}
-      {success && <div className="bg-green-100 text-green-700 p-3 rounded-lg border border-green-200">{success}</div>}
+      <AlertModal
+        isOpen={!!success}
+        tipo="success"
+        mensaje={success}
+        onClose={() => setSuccess('')}
+      />
+      <AlertModal
+        isOpen={!!error}
+        tipo="error"
+        mensaje={error}
+        onClose={() => setError('')}
+      />
 
       {deleteConfirm && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1035,41 +1045,40 @@ const Inventory = () => {
 
       {/* Modal Nuevo/Editar Producto */}
       {isModalOpen && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-2xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-2xl lg:max-w-4xl max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
-            <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-              <h3 className="text-base sm:text-lg font-black text-brand-900 flex items-center gap-2">
-                <Package className="text-chiluda-red" size={20} />
-                {editingProduct ? 'Modificar Producto' : 'Nuevo Producto'}
-              </h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600 transition-colors p-1">
-                <X size={20} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-2xl lg:max-w-4xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <Package className="text-emerald-600 w-5 h-5 shrink-0" />
+                <span>{editingProduct ? 'MODIFICAR PRODUCTO' : 'REGISTRAR PRODUCTO'}</span>
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                <X className="w-6 h-6" />
               </button>
             </div>
             
-            <form onSubmit={handleSaveProduct} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div className="p-4 sm:p-6 overflow-y-auto flex-1">
+            <form onSubmit={handleSaveProduct} className="p-6 space-y-6 overflow-y-auto flex-grow">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   
                   {/* Columna Izquierda: Datos del Producto */}
                   <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Nombre del Producto</label>
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Nombre del Producto *</label>
                       <input
                         type="text"
                         required
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                         value={newProduct.name}
                         onChange={(e) => setNewProduct({ ...newProduct, name: e.target.value })}
                         placeholder="Ej. Papas Fuego"
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Código de Barras (Opcional)</label>
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Código de Barras (Opcional)</label>
                       <input
                         type="text"
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                         value={newProduct.codigo_barras}
                         onChange={(e) => {
                           const val = e.target.value;
@@ -1096,27 +1105,27 @@ const Inventory = () => {
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Precio Costo ($)</label>
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Precio Costo ($) *</label>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           required
-                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                           value={newProduct.precio_costo}
                           onChange={(e) => setNewProduct({ ...newProduct, precio_costo: e.target.value })}
                           placeholder="0.00"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Precio Venta ($)</label>
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Precio Venta ($) *</label>
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           required
-                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                           value={newProduct.precio}
                           onChange={(e) => setNewProduct({ ...newProduct, precio: e.target.value })}
                           placeholder="0.00"
@@ -1125,25 +1134,25 @@ const Inventory = () => {
                     </div>
                     
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Stock Inicial</label>
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stock Inicial *</label>
                         <input
                           type="number"
                           min="0"
                           required
-                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                           value={newProduct.cantidad}
                           onChange={(e) => setNewProduct({ ...newProduct, cantidad: e.target.value })}
                           placeholder="0"
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Stock Mínimo</label>
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Stock Mínimo *</label>
                         <input
                           type="number"
                           min="1"
                           required
-                          className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                          className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                           value={newProduct.inventario_minimo}
                           onChange={(e) => setNewProduct({ ...newProduct, inventario_minimo: e.target.value })}
                           placeholder="3"
@@ -1151,35 +1160,35 @@ const Inventory = () => {
                       </div>
                     </div>
                     
-                    <div>
-                      <label className="block text-xs font-black text-stone-500 uppercase tracking-wider mb-1">Fecha de Ingreso</label>
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fecha de Ingreso</label>
                       <input
                         type="date"
-                        className="w-full px-3.5 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-sm font-semibold text-brand-900 transition-all"
+                        className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-semibold text-slate-800 transition-all"
                         value={newProduct.fecha_entrada}
                         onChange={(e) => setNewProduct({ ...newProduct, fecha_entrada: e.target.value })}
                       />
-                      <p className="text-[10px] text-gray-400 mt-1">Si se deja vacío, se asignará la fecha actual.</p>
+                      <p className="text-[10px] text-slate-400 mt-1">Si se deja vacío, se asignará la fecha actual.</p>
                     </div>
                   </div>
 
                   {/* Columna Derecha: Gestor de Variantes */}
-                  <div className="space-y-4 md:border-l md:border-t-0 border-t border-gray-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-start">
+                  <div className="space-y-4 md:border-l md:border-t-0 border-t border-slate-100 pt-4 md:pt-0 md:pl-6 flex flex-col justify-start">
                     <div>
-                      <h4 className="text-xs font-black uppercase text-brand-900 tracking-wider mb-2">Variantes (Opcional):</h4>
-                      <div className="bg-brand-50/50 p-3 rounded-2xl border border-gray-200/50 space-y-2">
+                      <h4 className="text-xs font-bold uppercase text-slate-500 tracking-wider mb-2">Variantes (Opcional):</h4>
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/60 space-y-3">
                         <div className="grid grid-cols-2 gap-2">
                           <input
                             type="text"
                             placeholder="Nombre (ej. M, Fresa)"
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             value={newVariant.name}
                             onChange={(e) => setNewVariant({ ...newVariant, name: e.target.value })}
                           />
                           <input
                             type="text"
                             placeholder="Cod. Barras"
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             value={newVariant.codigo_barras}
                             onChange={(e) => setNewVariant({ ...newVariant, codigo_barras: e.target.value })}
                           />
@@ -1188,21 +1197,21 @@ const Inventory = () => {
                           <input
                             type="number"
                             placeholder="Costo"
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             value={newVariant.precio_costo}
                             onChange={(e) => setNewVariant({ ...newVariant, precio_costo: e.target.value })}
                           />
                           <input
                             type="number"
                             placeholder="Precio"
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             value={newVariant.precio}
                             onChange={(e) => setNewVariant({ ...newVariant, precio: e.target.value })}
                           />
                           <input
                             type="number"
                             placeholder="Stock"
-                            className="px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-brand-900/30 transition-all"
+                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-bold w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                             value={newVariant.cantidad}
                             onChange={(e) => setNewVariant({ ...newVariant, cantidad: e.target.value })}
                           />
@@ -1217,7 +1226,7 @@ const Inventory = () => {
                             setProductVariants([...productVariants, { ...newVariant }]);
                             setNewVariant({ name: '', codigo_barras: '', precio_costo: '', precio: '', cantidad: '0' });
                           }}
-                          className="w-full py-2 bg-brand-900 text-white text-xs font-bold rounded-xl hover:bg-brand-950 transition-colors shadow-sm"
+                          className="w-full py-2.5 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-900 transition-colors shadow-sm uppercase tracking-wider"
                         >
                           + Agregar Variante
                         </button>
@@ -1227,16 +1236,16 @@ const Inventory = () => {
                     {/* Lista de Variantes Agregadas */}
                     <div className="space-y-1.5 flex-1 max-h-48 overflow-y-auto mt-2 pr-1">
                       {productVariants.length === 0 ? (
-                        <div className="text-[11px] text-gray-400 text-center py-6 border border-dashed border-gray-200 rounded-xl">
+                        <div className="text-[11px] text-slate-400 text-center py-6 border border-dashed border-slate-200 rounded-xl">
                           Sin variantes agregadas
                         </div>
                       ) : (
                         productVariants.map((v, idx) => (
-                          <div key={idx} className="flex justify-between items-center bg-white border border-gray-200 p-2.5 rounded-2xl text-xs font-semibold shadow-sm hover:shadow transition-shadow">
+                          <div key={idx} className="flex justify-between items-center bg-white border border-slate-200 p-3 rounded-2xl text-xs font-semibold shadow-sm hover:shadow transition-shadow">
                             <div className="overflow-hidden pr-2">
-                              <span className="font-extrabold text-brand-900 block truncate">{v.name}</span>
-                              {v.codigo_barras && <span className="text-[9px] text-gray-400 block truncate">@{v.codigo_barras}</span>}
-                              <div className="text-[9px] text-gray-400 mt-0.5 font-medium">
+                              <span className="font-extrabold text-slate-800 block truncate">{v.name}</span>
+                              {v.codigo_barras && <span className="text-[9px] text-slate-400 block truncate">@{v.codigo_barras}</span>}
+                              <div className="text-[9px] text-slate-400 mt-0.5 font-medium">
                                 Costo: ${v.precio_costo || 'Padre'} | Precio: ${v.precio || 'Padre'} | Stock: {v.cantidad}
                               </div>
                             </div>
@@ -1254,22 +1263,20 @@ const Inventory = () => {
                   </div>
 
                 </div>
-              </div>
-              
               {/* Botones de Acción */}
-              <div className="px-4 sm:px-6 py-4 bg-gray-50/80 border-t border-gray-150 flex justify-end space-x-3 flex-shrink-0">
+              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-100 transition-colors text-xs font-bold"
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-all text-sm uppercase"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-chiluda-red text-white rounded-xl hover:bg-chiluda-darkred transition-colors text-xs font-extrabold shadow-sm active:scale-95 transition-all"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all text-sm uppercase shadow-sm shadow-emerald-600/10 active:scale-95"
                 >
-                  {editingProduct ? 'Actualizar Producto' : 'Guardar Producto'}
+                  {editingProduct ? 'Guardar' : 'Registrar'}
                 </button>
               </div>
             </form>

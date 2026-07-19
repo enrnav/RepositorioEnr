@@ -77,10 +77,10 @@ const Customers = () => {
     }
   }, [success]);
 
-  const loadCustomers = async (query = '') => {
+  const loadCustomers = async () => {
     setLoading(true);
     try {
-      const data = await fetchCustomers(query);
+      const data = await fetchCustomers('');
       setCustomers(data);
     } catch (err) {
       console.error('Error loading customers:', err);
@@ -92,7 +92,6 @@ const Customers = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    loadCustomers(searchQuery);
   };
 
   const handleAddClick = () => {
@@ -134,7 +133,7 @@ const Customers = () => {
       await deleteCustomer(deleteConfirm.id);
       setSuccess('Cliente eliminado exitosamente.');
       setDeleteConfirm(null);
-      loadCustomers(searchQuery);
+      loadCustomers();
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || 'Error al eliminar el cliente.');
@@ -164,7 +163,7 @@ const Customers = () => {
         setSuccess('Cliente registrado exitosamente.');
       }
       setShowFormModal(false);
-      loadCustomers(searchQuery);
+      loadCustomers();
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || 'Error al guardar el cliente.');
@@ -198,7 +197,7 @@ const Customers = () => {
       });
       setSuccess(`Abono de $${amt.toFixed(2)} registrado para ${selectedCustomer.name}.`);
       setShowPaymentModal(false);
-      loadCustomers(searchQuery);
+      loadCustomers();
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.detail || 'Error al registrar el abono.');
@@ -219,6 +218,18 @@ const Customers = () => {
       setLoadingHistory(false);
     }
   };
+
+  const filteredCustomers = customers.filter((c) => {
+    const name = c.name || '';
+    const phone = c.telefono || '';
+    const email = c.correo || '';
+    const query = searchQuery.toLowerCase();
+    return (
+      name.toLowerCase().includes(query) ||
+      phone.toLowerCase().includes(query) ||
+      email.toLowerCase().includes(query)
+    );
+  });
 
   return (
     <div className="p-4 space-y-6 max-w-7xl mx-auto">
@@ -278,7 +289,7 @@ const Customers = () => {
           <div className="flex items-center justify-center p-12">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
           </div>
-        ) : customers.length === 0 ? (
+        ) : filteredCustomers.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
             No se encontraron clientes registrados.
           </div>
@@ -295,7 +306,7 @@ const Customers = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {customers.map((c) => (
+                {filteredCustomers.map((c) => (
                   <tr key={c.id} className="hover:bg-slate-50/50 transition-colors">
                     <td className="p-4 text-center">
                       <div className="font-semibold text-slate-800">{c.name}</div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -55,9 +55,21 @@ const Layout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [lowStockItems, setLowStockItems] = useState([]);
   const [activeShift, setActiveShift] = useState(null);
-  const [storeSettings, setStoreSettings] = useState({
-    nombre_tienda: 'ABARROTES ED & E'
-  });
+  const getCachedSettings = () => {
+    try {
+      const cached = localStorage.getItem('cached_store_settings');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return {
+      nombre_tienda: 'ABARROTES ED & E',
+      color_primario: '#064E3B',
+      color_secundario: '#064E3B'
+    };
+  };
+
+  const [storeSettings, setStoreSettings] = useState(getCachedSettings());
   
   const userStr = sessionStorage.getItem('user');
   const user = userStr ? JSON.parse(userStr) : { rol: 'cajero', nombre_usuario: '', nombre_completo: '', inquilino_id: 1, estado_suscripcion: 'active' };
@@ -113,6 +125,7 @@ const Layout = () => {
       const data = await fetchStoreSettings();
       if (data && data.nombre_tienda) {
         setStoreSettings(data);
+        localStorage.setItem('cached_store_settings', JSON.stringify(data));
       }
     } catch (err) {
       console.error("Error fetching settings in layout:", err);
@@ -138,7 +151,7 @@ const Layout = () => {
     };
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     // Hex to RGB Helper
     const hexToRgb = (hex) => {
       const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
@@ -439,21 +452,7 @@ const Layout = () => {
             <span className="font-black text-white text-sm">{user.nombre_completo}</span>
             <span className="uppercase text-[9px] font-black text-[#4ade80] mt-1 tracking-wider">{user.rol === 'admin' ? 'Administrador' : 'Supervisor'}</span>
           </div>
-          <button
-            onClick={() => {
-              if (user && user.inquilino_id === 1) {
-                localStorage.removeItem('last_tenant_subdomain');
-                localStorage.removeItem('cached_tenant_branding');
-              }
-              sessionStorage.removeItem('user');
-              sessionStorage.removeItem('token');
-              window.location.href = '/login';
-            }}
-            className="group flex items-center space-x-3 px-4 py-3 text-gray-300 hover:bg-white/10 hover:text-white rounded-xl transition-all duration-300 w-full font-bold text-sm text-left cursor-pointer"
-          >
-            <LogOut size={18} className="group-hover:translate-x-0.5 transition-transform" />
-            <span>Cerrar Sesión</span>
-          </button>
+
         </div>
       </aside>
 

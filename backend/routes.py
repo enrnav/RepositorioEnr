@@ -885,7 +885,7 @@ def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_
         
     # Validar cliente si es pago a crédito
     customer = None
-    if checkout_data.payment_method == "credito":
+    if checkout_data.metodo_pago == "credito":
         if not checkout_data.cliente_id:
             raise HTTPException(status_code=400, detail="Debe seleccionar un cliente para realizar una venta a crédito.")
         customer = db.query(models.Cliente).filter(
@@ -905,7 +905,7 @@ def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_
         subtotal = 0.0
         items_to_process = []
         
-        for item in checkout_data.items:
+        for item in checkout_data.elementos:
             if item.variante_id:
                 var = db.query(models.VarianteProducto).filter(
                     models.VarianteProducto.id == item.variante_id,
@@ -942,10 +942,10 @@ def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_
         if subtotal <= 0:
             raise HTTPException(status_code=400, detail="El total de la venta debe ser mayor a 0.")
 
-        sale_total = subtotal - checkout_data.discount
+        sale_total = subtotal - checkout_data.descuento
 
         # Validar límite de crédito del cliente si aplica
-        if checkout_data.payment_method == "credito" and customer:
+        if checkout_data.metodo_pago == "credito" and customer:
             if customer.saldo_actual + sale_total > customer.limite_credito:
                 raise HTTPException(
                     status_code=400, 
@@ -953,7 +953,7 @@ def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_
                 )
             customer.saldo_actual += sale_total
 
-        discount_ratio = checkout_data.discount / subtotal if checkout_data.discount > 0 else 0.0
+        discount_ratio = checkout_data.descuento / subtotal if checkout_data.descuento > 0 else 0.0
         
         for item_data in items_to_process:
             item, var, prod, precio, cost = item_data
@@ -981,9 +981,9 @@ def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_
                 price_sold=precio,
                 cost_price_sold=cost,
                 discount=item_discount,
-                payment_method=checkout_data.payment_method,
-                cash_amount=checkout_data.cash_amount * (item_subtotal / subtotal) if checkout_data.payment_method == "mixto" else (sale_total if checkout_data.payment_method == "efectivo" else 0.0),
-                card_amount=checkout_data.card_amount * (item_subtotal / subtotal) if checkout_data.payment_method == "mixto" else (sale_total if checkout_data.payment_method == "tarjeta" else 0.0),
+                payment_method=checkout_data.metodo_pago,
+                cash_amount=checkout_data.monto_efectivo * (item_subtotal / subtotal) if checkout_data.metodo_pago == "mixto" else (sale_total if checkout_data.metodo_pago == "efectivo" else 0.0),
+                card_amount=checkout_data.monto_tarjeta * (item_subtotal / subtotal) if checkout_data.metodo_pago == "mixto" else (sale_total if checkout_data.metodo_pago == "tarjeta" else 0.0),
                 creado_en=now_str,
                 cliente_id=checkout_data.cliente_id
             )
@@ -991,10 +991,10 @@ def checkout(checkout_data: schemas.PeticionCheckout, db: Session = Depends(get_
             
         if shift:
             cash_sale_total = 0.0
-            if checkout_data.payment_method == "efectivo":
+            if checkout_data.metodo_pago == "efectivo":
                 cash_sale_total = sale_total
-            elif checkout_data.payment_method == "mixto":
-                cash_sale_total = checkout_data.cash_amount
+            elif checkout_data.metodo_pago == "mixto":
+                cash_sale_total = checkout_data.monto_efectivo
                 
             shift.efectivo_final_esperado += cash_sale_total
         
@@ -3026,22 +3026,23 @@ def superadmin_delete_tenant(inquilino_id: int, db: Session = Depends(get_db), c
         
     # We clean up child tables first
     tables_to_clean = [
-        ("purchase_items", "compra_id IN (SELECT id FROM purchases WHERE inquilino_id = :tid)"),
-        ("purchases", "inquilino_id = :tid"),
-        ("cash_movements", "inquilino_id = :tid"),
-        ("customer_payments", "inquilino_id = :tid"),
-        ("sales_history", "inquilino_id = :tid"),
-        ("product_returns", "inquilino_id = :tid"),
-        ("product_variants", "inquilino_id = :tid"),
-        ("products", "inquilino_id = :tid"),
-        ("billing_profiles", "inquilino_id = :tid"),
-        ("invoices", "inquilino_id = :tid"),
-        ("suppliers", "inquilino_id = :tid"),
-        ("customers", "inquilino_id = :tid"),
-        ("notifications", "inquilino_id = :tid"),
-        ("shifts", "inquilino_id = :tid"),
-        ("store_settings", "inquilino_id = :tid"),
-        ("users", "inquilino_id = :tid"),
+        ("elementos_compra", "compra_id IN (SELECT id FROM compras WHERE inquilino_id = :tid)"),
+        ("compras", "inquilino_id = :tid"),
+        ("movimientos_caja", "inquilino_id = :tid"),
+        ("pagos_cliente", "inquilino_id = :tid"),
+        ("historial_ventas", "inquilino_id = :tid"),
+        ("devoluciones_producto", "inquilino_id = :tid"),
+        ("variantes_producto", "inquilino_id = :tid"),
+        ("productos", "inquilino_id = :tid"),
+        ("perfiles_facturacion", "inquilino_id = :tid"),
+        ("facturas", "inquilino_id = :tid"),
+        ("proveedores", "inquilino_id = :tid"),
+        ("clientes", "inquilino_id = :tid"),
+        ("notificaciones", "inquilino_id = :tid"),
+        ("turnos", "inquilino_id = :tid"),
+        ("configuraciones_tienda", "inquilino_id = :tid"),
+        ("usuarios", "inquilino_id = :tid"),
+        ("bitacora_usuarios", "inquilino_id = :tid"),
     ]
     
     try:

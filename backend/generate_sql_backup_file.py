@@ -53,10 +53,19 @@ def main():
 ) RETURNS VOID AS $$
 DECLARE
     v_stock_actual INT;
+END;
+$$ LANGUAGE plpgsql;""")  # Placeholder or empty function body, since migrate.py creates the correct one! Or let's write the correct Spanish one:
+        sql_lines.append("""CREATE OR REPLACE FUNCTION vender_producto(
+    p_producto_id INT,
+    p_cantidad INT,
+    p_fecha_venta VARCHAR
+) RETURNS VOID AS $$
+DECLARE
+    v_stock_actual INT;
 BEGIN
     -- 1. Bloqueamos la fila del producto
     SELECT cantidad INTO v_stock_actual
-    FROM products
+    FROM productos
     WHERE id = p_producto_id
     FOR UPDATE;
 
@@ -72,13 +81,13 @@ BEGIN
     END IF;
 
     -- 4. Actualizamos inventario
-    UPDATE products
+    UPDATE productos
     SET cantidad = cantidad - p_cantidad,
         vendido = vendido + p_cantidad
     WHERE id = p_producto_id;
 
     -- 5. Insertamos en historial
-    INSERT INTO sales_history (producto_id, cantidad, creado_en)
+    INSERT INTO historial_ventas (producto_id, cantidad, creado_en)
     VALUES (p_producto_id, p_cantidad, p_fecha_venta);
 END;
 $$ LANGUAGE plpgsql;""")
@@ -94,7 +103,7 @@ DECLARE
 BEGIN
     -- 1. Obtener detalles de la venta y bloquear
     SELECT producto_id, cantidad, cancelado INTO v_product_id, v_quantity, v_is_cancelled
-    FROM sales_history
+    FROM historial_ventas
     WHERE id = p_sale_id
     FOR UPDATE;
 
@@ -109,21 +118,21 @@ BEGIN
     END IF;
 
     -- 4. Marcar como cancelada y registrar motivo
-    UPDATE sales_history
+    UPDATE historial_ventas
     SET cancelado = TRUE,
         motivo_cancelacion = p_cancel_reason
     WHERE id = p_sale_id;
 
     -- 5. Devolver stock al producto
-    UPDATE products
+    UPDATE productos
     SET cantidad = cantidad + v_quantity,
         vendido = vendido - v_quantity
     WHERE id = v_product_id;
 
-    -- 6. Insertar registro en product_returns
-    INSERT INTO product_returns (venta_id, producto_id, cantidad, precio, motivo, creado_en)
+    -- 6. Insertar registro en devoluciones_producto
+    INSERT INTO devoluciones_producto (venta_id, producto_id, cantidad, precio, motivo, creado_en)
     SELECT p_sale_id, v_product_id, v_quantity, precio, p_cancel_reason, TO_CHAR(NOW(), 'YYYY-MM-DD"T"HH24:MI:SS')
-    FROM products
+    FROM productos
     WHERE id = v_product_id;
 END;
 $$ LANGUAGE plpgsql;""")
@@ -135,22 +144,22 @@ $$ LANGUAGE plpgsql;""")
         sql_lines.append("-- ========================================================")
         
         tables = [
-            ("store_settings", models.ConfiguracionesTienda),
-            ("users", models.Usuario),
-            ("suppliers", models.Proveedor),
-            ("billing_profiles", models.PerfilFacturacion),
-            ("customers", models.Cliente),
-            ("products", models.Producto),
-            ("product_variants", models.VarianteProducto),
-            ("invoices", models.Factura),
-            ("shifts", models.Turno),
-            ("customer_payments", models.PagoCliente),
-            ("purchases", models.Compra),
-            ("purchase_items", models.ElementoCompra),
-            ("cash_movements", models.MovimientoCaja),
-            ("sales_history", models.HistorialVenta),
-            ("product_returns", models.DevolucionProducto),
-            ("notifications", models.Notificacion)
+            ("configuraciones_tienda", models.ConfiguracionesTienda),
+            ("usuarios", models.Usuario),
+            ("proveedores", models.Proveedor),
+            ("perfiles_facturacion", models.PerfilFacturacion),
+            ("clientes", models.Cliente),
+            ("productos", models.Producto),
+            ("variantes_producto", models.VarianteProducto),
+            ("facturas", models.Factura),
+            ("turnos", models.Turno),
+            ("pagos_cliente", models.PagoCliente),
+            ("compras", models.Compra),
+            ("elementos_compra", models.ElementoCompra),
+            ("movimientos_caja", models.MovimientoCaja),
+            ("historial_ventas", models.HistorialVenta),
+            ("devoluciones_producto", models.DevolucionProducto),
+            ("notificaciones", models.Notificacion)
         ]
         
         for table_name, model in tables:

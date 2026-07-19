@@ -217,9 +217,21 @@ body.branded-dark-theme .bg-white\/80,
 body.branded-dark-theme .bg-white\/95,
 body.branded-dark-theme .bg-white\/40,
 body.branded-dark-theme .bg-slate-50\/50,
+body.branded-dark-theme .bg-slate-50\/30,
+body.branded-dark-theme .bg-slate-50,
+body.branded-dark-theme .bg-gray-50\/50,
+body.branded-dark-theme .bg-gray-50\/80,
+body.branded-dark-theme .bg-gray-50,
+body.branded-dark-theme .bg-gray-100,
 body.branded-dark-theme .bg-stone-50,
+body.branded-dark-theme .bg-stone-50\/50,
+body.branded-dark-theme .bg-stone-50\/80,
 body.branded-dark-theme .bg-stone-100,
 body.branded-dark-theme .bg-brand-50\/50,
+body.branded-dark-theme .bg-brand-50\/20,
+body.branded-dark-theme .bg-brand-50,
+body.branded-dark-theme .bg-slate-100,
+body.branded-dark-theme .bg-slate-200,
 body.branded-dark-theme .glass {
   background-color: rgba(255, 255, 255, 0.08) !important;
   background-image: none !important;
@@ -295,17 +307,27 @@ body.branded-dark-theme textarea:focus {
 
 /* Text color overrides inside branded dark theme */
 body.branded-dark-theme .text-brand-900,
+body.branded-dark-theme .text-stone-950,
+body.branded-dark-theme .text-stone-900,
 body.branded-dark-theme .text-stone-850,
+body.branded-dark-theme .text-stone-800,
+body.branded-dark-theme .text-stone-750,
 body.branded-dark-theme .text-stone-700,
 body.branded-dark-theme .text-stone-655,
 body.branded-dark-theme .text-stone-650,
 body.branded-dark-theme .text-stone-605,
 body.branded-dark-theme .text-stone-600,
 body.branded-dark-theme .text-stone-500,
+body.branded-dark-theme .text-slate-950,
+body.branded-dark-theme .text-slate-900,
+body.branded-dark-theme .text-slate-850,
+body.branded-dark-theme .text-slate-800,
 body.branded-dark-theme .text-slate-700,
 body.branded-dark-theme .text-slate-600,
 body.branded-dark-theme .text-slate-500,
+body.branded-dark-theme .text-gray-950,
 body.branded-dark-theme .text-gray-900,
+body.branded-dark-theme .text-gray-850,
 body.branded-dark-theme .text-gray-800,
 body.branded-dark-theme .text-gray-700,
 body.branded-dark-theme .text-gray-600,
@@ -374,13 +396,24 @@ body.branded-dark-theme .text-emerald-500 {
 body.branded-dark-theme .border-emerald-100,
 body.branded-dark-theme .border-emerald-200\/20,
 body.branded-dark-theme .border-stone-200,
-body.branded-dark-theme .border-stone-150 {
+body.branded-dark-theme .border-stone-150,
+body.branded-dark-theme .border-slate-100,
+body.branded-dark-theme .border-slate-150,
+body.branded-dark-theme .border-slate-200,
+body.branded-dark-theme .border-slate-300,
+body.branded-dark-theme .border-gray-100,
+body.branded-dark-theme .border-gray-150,
+body.branded-dark-theme .border-gray-200,
+body.branded-dark-theme .border-gray-300,
+body.branded-dark-theme .border-stone-250,
+body.branded-dark-theme .border-white\/20,
+body.branded-dark-theme .border-white\/45,
+body.branded-dark-theme .border-white {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 /* Custom translucent accent backgrounds and borders for branded dark theme */
-body.branded-dark-theme .bg-\[\#064e3b\]\/10,
-body.branded-dark-theme .bg-emerald-50 {
+body.branded-dark-theme .bg-\[\#064e3b\]\/10 {
   background-color: rgba(255, 255, 255, 0.05) !important;
 }
 body.branded-dark-theme .bg-\[\#064e3b\]\/5 {
@@ -406,20 +439,78 @@ body.branded-dark-theme .text-purple-800 {
   color: #c084fc !important; /* Brighter purple: purple-400 */
 }
 
-body.branded-dark-theme .text-amber-800 {
+body.branded-dark-theme .text-amber-800,
+body.branded-dark-theme .text-amber-700,
+body.branded-dark-theme .text-amber-600 {
   color: #fbbf24 !important; /* Brighter amber: amber-400 */
 }
 body.branded-dark-theme .bg-amber-500\/10 {
   background-color: rgba(245, 158, 11, 0.25) !important; 
   border-color: rgba(245, 158, 11, 0.3) !important;
 }
+body.branded-dark-theme .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+body.branded-dark-theme .bg-blue-50,
+body.branded-dark-theme .bg-blue-50\/50,
+body.branded-dark-theme .bg-blue-50\/30 {
+  background-color: rgba(59, 130, 246, 0.15) !important;
+  border-color: rgba(59, 130, 246, 0.25) !important;
+  color: #60a5fa !important;
+}
+body.branded-dark-theme .text-blue-800,
+body.branded-dark-theme .text-blue-700 {
+  color: #60a5fa !important;
+}
+body.branded-dark-theme .bg-teal-50 {
+  background-color: rgba(20, 184, 166, 0.15) !important;
+  border-color: rgba(20, 184, 166, 0.25) !important;
+}
+body.branded-dark-theme .text-teal-800,
+body.branded-dark-theme .text-teal-700,
+body.branded-dark-theme .text-teal-600 {
+  color: #2dd4bf !important; /* Brighter teal: teal-400 */
+}
+body.branded-dark-theme .bg-emerald-50,
+body.branded-dark-theme .bg-emerald-50\/50,
+body.branded-dark-theme .bg-emerald-50\/30,
+body.branded-dark-theme .bg-emerald-100 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.25) !important;
+  color: #34d399 !important;
+}
+body.branded-dark-theme .bg-red-50,
+body.branded-dark-theme .bg-red-50\/50,
+body.branded-dark-theme .bg-red-50\/30,
+body.branded-dark-theme .bg-rose-50,
+body.branded-dark-theme .bg-rose-50\/50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  color: #f87171 !important;
+}
+body.branded-dark-theme .text-red-800,
+body.branded-dark-theme .text-red-700 {
+  color: #f87171 !important;
+}
+
 
 body.branded-dark-theme .hover\:bg-stone-50:hover,
+body.branded-dark-theme .hover\:bg-stone-50\/50:hover,
 body.branded-dark-theme .hover\:bg-stone-100:hover,
 body.branded-dark-theme .hover\:bg-stone-250:hover,
 body.branded-dark-theme .hover\:bg-slate-50:hover,
-body.branded-dark-theme .hover\:bg-slate-100:hover {
-  background-color: rgba(255, 255, 255, 0.08) !important;
+body.branded-dark-theme .hover\:bg-slate-50\/50:hover,
+body.branded-dark-theme .hover\:bg-slate-100:hover,
+body.branded-dark-theme .hover\:bg-gray-50:hover,
+body.branded-dark-theme .hover\:bg-gray-50\/50:hover,
+body.branded-dark-theme .hover\:bg-gray-100:hover,
+body.branded-dark-theme .hover\:bg-brand-50:hover,
+body.branded-dark-theme .hover\:bg-brand-50\/50:hover,
+body.branded-dark-theme .hover\:bg-emerald-50:hover,
+body.branded-dark-theme .hover\:bg-emerald-100:hover,
+body.branded-dark-theme .hover\:bg-slate-200:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
 }
 
 body.branded-dark-theme .text-gray-500 {

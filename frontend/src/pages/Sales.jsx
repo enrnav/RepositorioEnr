@@ -2062,25 +2062,30 @@ const Sales = () => {
 
       {/* Sales History and Return Modal */}
       {showHistoryModal && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-1.5 sm:p-6">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-3xl sm:rounded-[2.5rem] shadow-2xl w-full max-w-5xl overflow-hidden border border-white flex flex-col max-h-[88vh] max-h-[88dvh] sm:max-h-[90vh]">
-            <div className="p-4 sm:p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h3 className="text-lg sm:text-xl font-bold text-brand-900 flex items-center gap-2">
-                <History className="text-chiluda-red" size={24} />
-                Historial de Ventas e Incidencias
-              </h3>
-              <button onClick={() => setShowHistoryModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
-                <X size={24} />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-5xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <History className="text-emerald-600 w-5 h-5 shrink-0" />
+                <span>HISTORIAL DE VENTAS E INCIDENCIAS</span>
+              </h2>
+              <button 
+                onClick={() => setShowHistoryModal(false)} 
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="p-3 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
-              <div className="flex bg-brand-50/60 p-1 rounded-2xl border border-gray-100 max-w-md">
+            <div className="p-6 space-y-6 overflow-y-auto flex-grow">
+              <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200/50 max-w-md">
                 <button
                   type="button"
                   onClick={() => setHistoryTab('sales')}
-                  className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
-                    historyTab === 'sales' ? 'bg-chiluda-red text-white shadow-sm' : 'text-gray-500 hover:text-chiluda-red'
+                  className={`flex-1 py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                    historyTab === 'sales' 
+                      ? 'bg-emerald-600 text-white shadow-sm hover:text-white' 
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Ventas Completadas ({activeSales.length})
@@ -2088,8 +2093,10 @@ const Sales = () => {
                 <button
                   type="button"
                   onClick={() => setHistoryTab('cancellations')}
-                  className={`flex-1 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center justify-center gap-2 ${
-                    historyTab === 'cancellations' ? 'bg-chiluda-red text-white shadow-sm' : 'text-gray-500 hover:text-chiluda-red'
+                  className={`flex-1 py-2.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2 ${
+                    historyTab === 'cancellations' 
+                      ? 'bg-emerald-600 text-white shadow-sm hover:text-white' 
+                      : 'text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Canceladas / Reembolsos ({cancelledSales.length})
@@ -2097,32 +2104,32 @@ const Sales = () => {
               </div>
 
               {historyLoading ? (
-                <div className="py-12 text-center text-gray-500 animate-pulse font-medium">Cargando...</div>
+                <div className="py-12 text-center text-slate-500 animate-pulse font-medium text-xs">Cargando...</div>
               ) : displayedSales.length === 0 ? (
-                <div className="py-12 text-center text-gray-400 font-medium">No se encontraron registros.</div>
+                <div className="py-12 text-center text-slate-400 font-medium text-xs">No se encontraron registros.</div>
               ) : (
-                <div className="overflow-x-auto w-full border border-gray-100 rounded-2xl">
+                <div className="overflow-x-auto w-full border border-slate-150 rounded-xl">
                   <table className="w-full min-w-[800px] text-left border-collapse">
-                    <thead className="bg-brand-50/50 text-brand-900 text-xs uppercase tracking-wider">
+                    <thead className="bg-slate-50 text-slate-700 font-bold text-[11px] uppercase tracking-wider border-b border-slate-100">
                       <tr>
-                        <th className="px-4 py-3 font-bold">Fecha / Hora</th>
-                        <th className="px-4 py-3 font-bold">Vendedor</th>
-                        <th className="px-4 py-3 font-bold">Producto</th>
-                        <th className="px-4 py-3 font-bold text-center">Cant.</th>
-                        <th className="px-4 py-3 font-bold text-right">Precio Unit.</th>
-                        <th className="px-4 py-3 font-bold text-right">Total</th>
-                        <th className="px-4 py-3 font-bold text-center">Estado</th>
+                        <th className="px-4 py-3">Fecha / Hora</th>
+                        <th className="px-4 py-3">Vendedor</th>
+                        <th className="px-4 py-3">Producto</th>
+                        <th className="px-4 py-3 text-center">Cant.</th>
+                        <th className="px-4 py-3 text-right">Precio Unit.</th>
+                        <th className="px-4 py-3 text-right">Total</th>
+                        <th className="px-4 py-3 text-center">Estado</th>
                         {historyTab === 'sales' ? (
-                          <th className="px-4 py-3 font-bold text-center">Acción</th>
+                          <th className="px-4 py-3 text-center">Acción</th>
                         ) : (
                           <>
-                            <th className="px-4 py-3 font-bold">Autorizó</th>
-                            <th className="px-4 py-3 font-bold">Razón / Bitácora</th>
+                            <th className="px-4 py-3">Autorizó</th>
+                            <th className="px-4 py-3">Razón / Bitácora</th>
                           </>
                         )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100 text-xs">
+                    <tbody className="divide-y divide-slate-100 text-xs">
                       {displayedSales.map((sale) => {
                         const date = new Date(sale.creado_en);
                         const formattedDate = isNaN(date.getTime()) 
@@ -2133,16 +2140,16 @@ const Sales = () => {
                         const total = (unitPrice * sale.cantidad);
                         
                         return (
-                          <tr key={sale.id} className="hover:bg-brand-50/30">
-                            <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{formattedDate}</td>
-                            <td className="px-4 py-3 text-gray-600 font-semibold">{sale.cashier_name || "Desconocido"}</td>
-                            <td className="px-4 py-3 font-medium text-gray-800">{sale.nombre_producto}</td>
-                            <td className="px-4 py-3 text-center font-bold text-gray-700">{sale.cantidad}</td>
-                            <td className="px-4 py-3 text-right font-semibold text-gray-600">${unitPrice.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-right font-black text-gray-900">${total.toFixed(2)}</td>
+                          <tr key={sale.id} className="hover:bg-slate-50/50">
+                            <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formattedDate}</td>
+                            <td className="px-4 py-3 text-slate-600 font-semibold">{sale.cashier_name || "Desconocido"}</td>
+                            <td className="px-4 py-3 font-medium text-slate-800">{sale.nombre_producto}</td>
+                            <td className="px-4 py-3 text-center font-bold text-slate-700">{sale.cantidad}</td>
+                            <td className="px-4 py-3 text-right font-semibold text-slate-600">${unitPrice.toFixed(2)}</td>
+                            <td className="px-4 py-3 text-right font-black text-slate-900">${total.toFixed(2)}</td>
                             <td className="px-4 py-3 text-center">
                               <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                sale.cancelado ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+                                sale.cancelado ? 'bg-red-50 text-red-700 animate-pulse' : 'bg-green-50 text-green-700'
                               }`}>
                                 {sale.cancelado ? 'Cancelada' : 'Completada'}
                               </span>
@@ -2152,15 +2159,15 @@ const Sales = () => {
                                 <button
                                   type="button"
                                   onClick={() => triggerCancelSale(sale.id)}
-                                  className="px-2.5 py-1.5 rounded-lg text-xs font-bold bg-red-500 hover:bg-red-600 text-white active:scale-95 transition-all"
+                                  className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 active:scale-95 transition-all"
                                 >
                                   Cancelar/Devolver
                                 </button>
                               </td>
                             ) : (
                               <>
-                                <td className="px-4 py-3 text-gray-600 font-bold">{getAuthorizedBy(sale.motivo_cancelacion)}</td>
-                                <td className="px-4 py-3 text-gray-700 font-medium italic">{getCleanReason(sale.motivo_cancelacion)}</td>
+                                <td className="px-4 py-3 text-slate-600 font-bold">{getAuthorizedBy(sale.motivo_cancelacion)}</td>
+                                <td className="px-4 py-3 text-slate-500 font-medium italic">{getCleanReason(sale.motivo_cancelacion)}</td>
                               </>
                             )}
                           </tr>
@@ -2176,54 +2183,53 @@ const Sales = () => {
         document.body
       )}
 
-      {/* Supervisor Credentials Modal overlay */}
       {cancelConfirm.show && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[250] p-4">
-          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white p-6 animate-scale-in">
-            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3 flex-shrink-0">
-              <h3 className="text-md font-extrabold text-brand-900 flex items-center gap-2">
-                <Lock className="text-red-500 w-5 h-5" />
-                Autorización del Supervisor
-              </h3>
+        <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+              <h2 className="text-base font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <Lock className="text-red-500 w-5 h-5 shrink-0" />
+                <span>AUTORIZACIÓN DEL SUPERVISOR</span>
+              </h2>
               <button 
                 onClick={() => setCancelConfirm({ show: false, saleId: null, motivo: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, cantidad: 1 })}
-                className="text-gray-400 hover:text-gray-600"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
               >
-                <X size={20} />
+                <X className="w-6 h-6" />
               </button>
             </div>
             
-            <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-              <div className="p-3 bg-red-50/50 border border-red-100 rounded-2xl">
-                <span className="text-[9px] font-black text-red-500 uppercase tracking-wider block">Producto a Cancelar:</span>
-                <span className="text-xs font-bold text-brand-900 block mt-0.5">{cancelConfirm.productName}</span>
-                <span className="text-[10px] text-gray-400 block mt-1">Vendidas originalmente: <strong>{cancelConfirm.maxQuantity}</strong></span>
+            <div className="p-6 space-y-5 overflow-y-auto flex-grow">
+              <div className="p-4 bg-red-50/50 border border-red-100 rounded-xl">
+                <span className="text-[10px] font-black text-red-500 uppercase tracking-wider block">Producto a Cancelar:</span>
+                <span className="text-sm font-bold text-slate-800 block mt-1">{cancelConfirm.productName}</span>
+                <span className="text-[10px] text-slate-500 block mt-1">Vendidas originalmente: <strong>{cancelConfirm.maxQuantity}</strong></span>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Cantidad a Cancelar/Devolver:</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cantidad a Cancelar/Devolver:</label>
                 <input
                   type="number"
                   min="1"
                   max={cancelConfirm.maxQuantity}
-                  className="w-full px-4 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-center font-bold text-lg text-brand-900"
+                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-center font-bold text-lg text-slate-800"
                   value={cancelConfirm.cantidad}
                   onChange={(e) => setCancelConfirm(prev => ({ ...prev, cantidad: e.target.value }))}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Motivo de la cancelación:</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Motivo de la cancelación:</label>
                 <textarea
                   placeholder="Ej. Error de cobro, devolución física de cliente..."
                   rows={2}
-                  className="w-full px-3 py-2 bg-brand-50/50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-xs font-semibold resize-none"
+                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs font-semibold resize-none text-slate-850"
                   value={cancelConfirm.motivo}
                   onChange={(e) => setCancelConfirm(prev => ({ ...prev, motivo: e.target.value }))}
                 />
               </div>
 
-              <p className="text-[10px] text-gray-400 leading-normal">
+              <p className="text-[10px] text-slate-500 leading-normal">
                 Esta acción requiere la clave de autorización de un <strong>Supervisor</strong> o <strong>Administrador</strong> para poder devolver el inventario e impactar el balance de caja.
               </p>
               
@@ -2231,19 +2237,19 @@ const Sales = () => {
               {!isAdmin && !isStaff && (
                 <div className="grid grid-cols-2 gap-3 pt-2">
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Usuario Supervisor o Administrador:</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Usuario Supervisor:</label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-xs font-bold"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs font-bold text-slate-800"
                       value={cancelConfirm.authUser}
                       onChange={(e) => setCancelConfirm(prev => ({ ...prev, authUser: e.target.value }))}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block">Contraseña:</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Contraseña:</label>
                     <input
                       type="password"
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/30 text-xs font-bold"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs font-bold text-slate-800"
                       value={cancelConfirm.authPass}
                       onChange={(e) => setCancelConfirm(prev => ({ ...prev, authPass: e.target.value }))}
                     />
@@ -2252,16 +2258,17 @@ const Sales = () => {
               )}
             </div>
 
-            <div className="flex gap-3 mt-6 pt-4 border-t border-gray-100 flex-shrink-0">
+            <div className="p-5 border-t border-slate-100 flex gap-3 flex-shrink-0 bg-slate-50">
               <button
+                type="button"
                 onClick={() => setCancelConfirm({ show: false, saleId: null, motivo: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, cantidad: 1 })}
-                className="w-1/3 py-2.5 rounded-xl font-bold text-xs text-gray-500 bg-gray-100 hover:bg-gray-200"
+                className="w-1/3 py-3 rounded-xl font-bold text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
               >
                 Volver
               </button>
               <button
                 onClick={processCancelSale}
-                className="flex-1 py-2.5 rounded-xl font-bold text-xs text-white bg-red-500 hover:bg-red-600 transition-all active:scale-95"
+                className="flex-1 py-3 rounded-xl font-bold text-xs text-white bg-red-600 hover:bg-red-700 transition-all active:scale-95 shadow-md"
               >
                 Confirmar Autorización
               </button>

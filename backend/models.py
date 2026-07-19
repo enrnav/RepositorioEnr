@@ -121,6 +121,14 @@ class HistorialVenta(Base):
     cliente_id = Column(Integer, ForeignKey("clientes.id"), index=True, nullable=True)
     inquilino = relationship("Inquilino")
 
+    price_sold = synonym('precio_vendido')
+    cost_price_sold = synonym('precio_costo_vendido')
+    discount = synonym('descuento')
+    payment_method = synonym('metodo_pago')
+    cash_amount = synonym('monto_efectivo')
+    card_amount = synonym('monto_tarjeta')
+
+
 class DevolucionProducto(Base):
     __tablename__ = "devoluciones_producto"
     id = Column(Integer, primary_key=True, index=True)

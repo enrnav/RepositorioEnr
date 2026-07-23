@@ -4,6 +4,37 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Abarrotes ED & E</title>
+    <script>
+      (function() {
+        try {
+          var bStr = localStorage.getItem('cached_tenant_branding');
+          if (bStr) {
+            var b = JSON.parse(bStr);
+            if (b && b.isBranded && b.primaryColor) {
+              document.documentElement.classList.add('branded-dark-theme');
+              document.documentElement.style.setProperty('--primary-color', b.primaryColor);
+              var pHex = b.primaryColor.replace('#', '');
+              if (pHex.length === 3) pHex = pHex[0]+pHex[0]+pHex[1]+pHex[1]+pHex[2]+pHex[2];
+              var pR = parseInt(pHex.substring(0, 2), 16) || 0;
+              var pG = parseInt(pHex.substring(2, 4), 16) || 0;
+              var pB = parseInt(pHex.substring(4, 6), 16) || 0;
+              document.documentElement.style.setProperty('--primary-color-surface', 'rgba(' + pR + ',' + pG + ',' + pB + ', 0.35)');
+
+              if (b.accentColor) {
+                document.documentElement.style.setProperty('--accent-color', b.accentColor);
+                var aHex = b.accentColor.replace('#', '');
+                if (aHex.length === 3) aHex = aHex[0]+aHex[0]+aHex[1]+aHex[1]+aHex[2]+aHex[2];
+                var aR = parseInt(aHex.substring(0, 2), 16) || 0;
+                var aG = parseInt(aHex.substring(2, 4), 16) || 0;
+                var aB = parseInt(aHex.substring(4, 6), 16) || 0;
+                var lum = (aR * 299 + aG * 587 + aB * 114) / 1000;
+                document.documentElement.style.setProperty('--accent-text-color', lum > 140 ? '#111827' : '#ffffff');
+              }
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">

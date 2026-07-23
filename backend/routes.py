@@ -203,7 +203,38 @@ def register(user: schemas.UsuarioCreate, db: Session = Depends(get_db), current
 
 @router.post("/auth/login", response_model=schemas.Token)
 def login(user: schemas.UsuarioLogin, db: Session = Depends(get_db)):
-    db_user = db.query(models.Usuario).filter(models.Usuario.nombre_usuario == user.nombre_usuario).first()
+    target_tenant = None
+    if user.subdominio and user.subdominio.strip().lower() not in ["principal", "www", "localhost"]:
+        target_tenant = db.query(models.Inquilino).filter(
+            models.Inquilino.subdominio == user.subdominio.strip().lower()
+        ).first()
+
+    if target_tenant:
+        # Buscar primero un usuario perteneciente exactamente a esta tienda
+        db_user = db.query(models.Usuario).filter(
+            models.Usuario.nombre_usuario == user.nombre_usuario.strip(),
+            models.Usuario.inquilino_id == target_tenant.id
+        ).first()
+
+        # Si no existe en la tienda, permitir únicamente a administradores globales (Inquilino 1 con rol admin)
+        if not db_user and target_tenant.id != 1:
+            db_user = db.query(models.Usuario).filter(
+                models.Usuario.nombre_usuario == user.nombre_usuario.strip(),
+                models.Usuario.inquilino_id == 1,
+                models.Usuario.rol == 'admin'
+            ).first()
+
+        if not db_user:
+            raise HTTPException(
+                status_code=estado.HTTP_401_UNAUTHORIZED,
+                detail="Usuario o contraseña incorrectos",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+    else:
+        db_user = db.query(models.Usuario).filter(
+            models.Usuario.nombre_usuario == user.nombre_usuario.strip()
+        ).first()
+
     if not db_user or not auth.verify_password(user.contrasena, db_user.contrasena_encriptada):
         raise HTTPException(
             status_code=estado.HTTP_401_UNAUTHORIZED,
@@ -705,16 +736,19 @@ def get_recent_sales(db: Session = Depends(get_db), current_user: models.Usuario
 @router.post("/sales/{venta_id}/cancel")
 def cancel_sale_endpoint(venta_id: int, cancel_data: schemas.CancelarVentaRequest, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     authorized_by_username = current_user.nombre_usuario
+    auth_user = cancel_data.auth_username or cancel_data.usuario_autorizacion
+    auth_pass = cancel_data.auth_password or cancel_data.contrasena_autorizacion
+
     if current_user.rol == "cajero" or current_user.rol == "user":
         # Requiere credenciales de admin o supervisor
-        if not cancel_data.auth_username or not cancel_data.auth_password:
+        if not auth_user or not auth_pass:
             raise HTTPException(status_code=403, detail="Las cancelaciones están restringidas para cajeros. Se requieren credenciales de Supervisor o Administrador.")
         
         supervisor_user = db.query(models.Usuario).filter(
-            models.Usuario.nombre_usuario == cancel_data.auth_username,
+            models.Usuario.nombre_usuario == auth_user,
             models.Usuario.inquilino_id == current_user.inquilino_id
         ).first()
-        if not supervisor_user or not auth.verify_password(cancel_data.auth_password, supervisor_user.contrasena_encriptada):
+        if not supervisor_user or not auth.verify_password(auth_pass, supervisor_user.contrasena_encriptada):
             raise HTTPException(status_code=403, detail="Usuario o contraseña del supervisor incorrectos.")
         
         if supervisor_user.rol not in ["admin", "supervisor"]:
@@ -825,6 +859,9 @@ def cancel_sale_endpoint(venta_id: int, cancel_data: schemas.CancelarVentaReques
         db.commit()
         return {"message": f"Devolución de {qty_to_cancel} piezas procesada exitosamente."}
         
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(e))
@@ -2066,6 +2103,9 @@ def get_customers(q: Optional[str] = None, db: Session = Depends(get_db), curren
 
 @router.post("/customers", response_model=schemas.ClienteResponse)
 def create_customer(customer_data: schemas.ClienteCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes para registrar clientes.")
+        
     existing = db.query(models.Cliente).filter(
         models.Cliente.nombre.ilike(customer_data.nombre.strip()),
         models.Cliente.inquilino_id == current_user.inquilino_id
@@ -2088,6 +2128,9 @@ def create_customer(customer_data: schemas.ClienteCreate, db: Session = Depends(
 
 @router.put("/customers/{cliente_id}", response_model=schemas.ClienteResponse)
 def update_customer(cliente_id: int, customer_data: schemas.ClienteCreate, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+    if current_user.rol not in ['admin', 'supervisor']:
+        raise HTTPException(status_code=403, detail="No tienes permisos suficientes para modificar clientes.")
+
     db_customer = db.query(models.Cliente).filter(
         models.Cliente.id == cliente_id,
         models.Cliente.inquilino_id == current_user.inquilino_id
@@ -2141,6 +2184,24 @@ def register_customer_payment(cliente_id: int, payment_data: schemas.PagoCliente
     if not shift and current_user.rol != 'admin':
         raise HTTPException(status_code=400, detail="Debe tener un turno de caja abierto para registrar un abono.")
         
+    if current_user.rol in ["cajero", "user"]:
+        auth_user = payment_data.auth_username or payment_data.usuario_autorizacion
+        auth_pass = payment_data.auth_password or payment_data.contrasena_autorizacion
+        
+        if not auth_user or not auth_pass:
+            raise HTTPException(status_code=403, detail="Para registrar abonos de clientes como cajero se requiere usuario y contraseña de Administrador o Supervisor.")
+            
+        sup = db.query(models.Usuario).filter(
+            models.Usuario.nombre_usuario == auth_user.strip(),
+            models.Usuario.inquilino_id == current_user.inquilino_id
+        ).first()
+        
+        if not sup or not auth.verify_password(auth_pass, sup.contrasena_encriptada):
+            raise HTTPException(status_code=403, detail="Usuario o contraseña del supervisor incorrectos.")
+            
+        if sup.rol not in ["admin", "supervisor"]:
+            raise HTTPException(status_code=403, detail="El usuario autorizador no tiene permisos de Supervisor o Administrador.")
+
     customer = db.query(models.Cliente).filter(
         models.Cliente.id == cliente_id,
         models.Cliente.inquilino_id == current_user.inquilino_id

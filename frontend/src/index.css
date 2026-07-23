@@ -198,6 +198,8 @@ button:not(:disabled):active,
 /* Prueba de subida a GitHub realizada por el usuario */
 
 /* Branded Dark Theme overrides for custom tenants */
+html.branded-dark-theme,
+html.branded-dark-theme body,
 body.branded-dark-theme {
   background-color: #111827 !important;
   background-image: linear-gradient(135deg, var(--primary-color, #064E3B) 0%, #111827 100%) !important;
@@ -211,7 +213,7 @@ body.branded-dark-theme .flex.h-screen {
   background-color: transparent !important;
 }
 
-/* Card overrides inside branded dark theme */
+/* Card & Modal overrides inside branded dark theme */
 body.branded-dark-theme .bg-white,
 body.branded-dark-theme .bg-white\/80,
 body.branded-dark-theme .bg-white\/95,
@@ -233,13 +235,13 @@ body.branded-dark-theme .bg-brand-50,
 body.branded-dark-theme .bg-slate-100,
 body.branded-dark-theme .bg-slate-200,
 body.branded-dark-theme .glass {
-  background-color: rgba(255, 255, 255, 0.08) !important;
-  background-image: none !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: var(--primary-color-surface, rgba(255, 255, 255, 0.08)) !important;
+  background-image: linear-gradient(145deg, var(--primary-color-surface, rgba(255, 255, 255, 0.15)) 0%, rgba(15, 23, 42, 0.5) 100%) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
   color: #ffffff !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.35) !important;
 }
 
 /* Custom primary background adaptation for dark theme */
@@ -254,6 +256,7 @@ body.branded-dark-theme .bg-\[\#064e3b\]:hover {
 body.branded-dark-theme .bg-chiluda-red,
 body.branded-dark-theme .bg-chiluda-darkred {
   background-color: var(--accent-color, #ef4444) !important;
+  color: var(--accent-text-color, #ffffff) !important;
 }
 body.branded-dark-theme .bg-chiluda-red:hover,
 body.branded-dark-theme .bg-chiluda-darkred:hover {
@@ -263,6 +266,7 @@ body.branded-dark-theme .bg-chiluda-red:disabled,
 body.branded-dark-theme .bg-chiluda-darkred:disabled,
 body.branded-dark-theme .bg-chiluda-lightred {
   background-color: var(--accent-color, #ef4444) !important;
+  color: var(--accent-text-color, #ffffff) !important;
   opacity: 0.5 !important;
 }
 body.branded-dark-theme .text-chiluda-red {
@@ -277,6 +281,7 @@ body.branded-dark-theme .bg-emerald-600,
 body.branded-dark-theme .bg-emerald-700,
 body.branded-dark-theme .bg-emerald-500 {
   background-color: var(--accent-color, #059669) !important;
+  color: var(--accent-text-color, #ffffff) !important;
 }
 body.branded-dark-theme .bg-emerald-600:hover,
 body.branded-dark-theme .bg-emerald-700:hover,
@@ -287,6 +292,7 @@ body.branded-dark-theme .bg-emerald-600:disabled,
 body.branded-dark-theme .bg-emerald-700:disabled,
 body.branded-dark-theme .disabled\:bg-emerald-400:disabled {
   background-color: var(--accent-color, #059669) !important;
+  color: var(--accent-text-color, #ffffff) !important;
   opacity: 0.5 !important;
 }
 
@@ -294,15 +300,21 @@ body.branded-dark-theme .disabled\:bg-emerald-400:disabled {
 body.branded-dark-theme input:not([type="submit"]):not([type="button"]):not([type="color"]):not([type="file"]),
 body.branded-dark-theme select,
 body.branded-dark-theme textarea {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  background-image: none !important; /* Prevent card gradients from applying to inputs */
+  border-color: rgba(255, 255, 255, 0.2) !important;
   color: #ffffff !important;
 }
 body.branded-dark-theme input:focus,
 body.branded-dark-theme select:focus,
 body.branded-dark-theme textarea:focus {
-  background-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  background-image: none !important;
   border-color: var(--accent-color) !important;
+}
+body.branded-dark-theme input::placeholder,
+body.branded-dark-theme textarea::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important; /* Brighter placeholder text for legibility */
 }
 
 /* Text color overrides inside branded dark theme */
@@ -324,7 +336,6 @@ body.branded-dark-theme .text-slate-850,
 body.branded-dark-theme .text-slate-800,
 body.branded-dark-theme .text-slate-700,
 body.branded-dark-theme .text-slate-600,
-body.branded-dark-theme .text-slate-500,
 body.branded-dark-theme .text-gray-950,
 body.branded-dark-theme .text-gray-900,
 body.branded-dark-theme .text-gray-850,
@@ -338,15 +349,17 @@ body.branded-dark-theme .text-\[\#064E3B\] {
 
 body.branded-dark-theme .text-stone-400,
 body.branded-dark-theme .text-slate-400,
+body.branded-dark-theme .text-slate-500,
 body.branded-dark-theme .text-gray-400 {
   color: #9ca3af !important; /* muted gray text */
 }
 
+body.branded-dark-theme .text-red-800,
 body.branded-dark-theme .text-red-700,
 body.branded-dark-theme .text-red-600,
 body.branded-dark-theme .text-red-505,
 body.branded-dark-theme .text-red-500 {
-  color: #f87171 !important; /* Brighter red: red-400 */
+  color: #fca5a5 !important; /* Brighter red: red-300 for premium contrast */
 }
 
 /* Table elements */
@@ -373,8 +386,8 @@ body.branded-dark-theme header {
 
 /* Settings and general page layouts */
 body.branded-dark-theme form {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
 }
 
 /* Badge and Header overrides for branded dark theme */
@@ -400,6 +413,7 @@ body.branded-dark-theme .border-stone-150,
 body.branded-dark-theme .border-slate-100,
 body.branded-dark-theme .border-slate-150,
 body.branded-dark-theme .border-slate-200,
+body.branded-dark-theme .border-slate-200\/50,
 body.branded-dark-theme .border-slate-300,
 body.branded-dark-theme .border-gray-100,
 body.branded-dark-theme .border-gray-150,
@@ -475,7 +489,11 @@ body.branded-dark-theme .text-teal-600 {
 body.branded-dark-theme .bg-emerald-50,
 body.branded-dark-theme .bg-emerald-50\/50,
 body.branded-dark-theme .bg-emerald-50\/30,
-body.branded-dark-theme .bg-emerald-100 {
+body.branded-dark-theme .bg-emerald-100,
+body.branded-dark-theme .bg-green-50,
+body.branded-dark-theme .bg-green-50\/50,
+body.branded-dark-theme .bg-green-50\/30,
+body.branded-dark-theme .bg-green-100 {
   background-color: rgba(16, 185, 129, 0.15) !important;
   border-color: rgba(16, 185, 129, 0.25) !important;
   color: #34d399 !important;
@@ -487,13 +505,14 @@ body.branded-dark-theme .bg-rose-50,
 body.branded-dark-theme .bg-rose-50\/50 {
   background-color: rgba(239, 68, 68, 0.15) !important;
   border-color: rgba(239, 68, 68, 0.25) !important;
-  color: #f87171 !important;
+  color: #fca5a5 !important;
 }
 body.branded-dark-theme .text-red-800,
-body.branded-dark-theme .text-red-700 {
-  color: #f87171 !important;
+body.branded-dark-theme .text-red-700,
+body.branded-dark-theme .text-green-800,
+body.branded-dark-theme .text-green-700 {
+  color: #fca5a5 !important;
 }
-
 
 body.branded-dark-theme .hover\:bg-stone-50:hover,
 body.branded-dark-theme .hover\:bg-stone-50\/50:hover,
@@ -516,7 +535,44 @@ body.branded-dark-theme .hover\:bg-slate-200:hover {
 body.branded-dark-theme .text-gray-500 {
   color: #9ca3af !important;
 }
-body.branded-dark-theme .hover\:bg-red-50:hover {
-  background-color: rgba(239, 68, 68, 0.2) !important;
-  color: #f87171 !important;
+
+/* Tabs container track inset overrides */
+body.branded-dark-theme .bg-slate-100\/80 {
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Custom green & orange color overrides for alerts/toasts */
+body.branded-dark-theme .text-green-500 {
+  color: #34d399 !important;
+}
+body.branded-dark-theme .bg-green-600 {
+  background-color: var(--accent-color, #059669) !important;
+}
+body.branded-dark-theme .bg-green-600:hover,
+body.branded-dark-theme .hover\:bg-green-700:hover {
+  filter: brightness(1.15) !important;
+}
+body.branded-dark-theme .bg-orange-50 {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(249, 115, 22, 0.25) !important;
+  color: #ffedd5 !important;
+}
+body.branded-dark-theme .text-orange-500 {
+  color: #fdba74 !important;
+}
+body.branded-dark-theme .bg-orange-500 {
+  background-color: #f97316 !important;
+}
+body.branded-dark-theme .bg-orange-500:hover,
+body.branded-dark-theme .hover\:bg-orange-600:hover {
+  background-color: #ea580c !important;
+}
+
+/* Improved cancel buttons and hover states */
+body.branded-dark-theme .hover\:bg-red-100:hover,
+body.branded-dark-theme .bg-red-50:hover {
+  background-color: rgba(239, 68, 68, 0.35) !important;
+  color: #ffffff !important;
+  border-color: rgba(239, 68, 68, 0.45) !important;
 }

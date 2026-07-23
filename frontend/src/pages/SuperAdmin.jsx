@@ -521,16 +521,15 @@ const SuperAdmin = () => {
                 </div>
 
                 {newPassword && (
-                  <div className="mt-2 space-y-1 animate-fade-in">
+                  <div className="mt-2 space-y-1.5 animate-fade-in">
                     <div className="flex justify-between items-center text-[10px]">
                       <span className="text-stone-500 font-bold">Fortaleza:</span>
-                      <span className={`font-black uppercase ${
-                        getPasswordStrength(newPassword) === 1 ? 'text-red-500' :
-                        getPasswordStrength(newPassword) === 2 ? 'text-orange-500' :
-                        getPasswordStrength(newPassword) === 3 ? 'text-amber-500' :
-                        getPasswordStrength(newPassword) === 4 ? 'text-emerald-700' :
-                        'text-stone-400'
-                      }`}>
+                      <span className="font-extrabold uppercase text-[10px]" style={{
+                        color: getPasswordStrength(newPassword) === 1 ? '#ef4444' :
+                               getPasswordStrength(newPassword) === 2 ? '#f97316' :
+                               getPasswordStrength(newPassword) === 3 ? '#d97706' :
+                               getPasswordStrength(newPassword) === 4 ? '#059669' : '#9ca3af'
+                      }}>
                         {getPasswordStrength(newPassword) === 0 && 'Ninguna'}
                         {getPasswordStrength(newPassword) === 1 && 'Muy débil'}
                         {getPasswordStrength(newPassword) === 2 && 'Regular'}
@@ -538,15 +537,19 @@ const SuperAdmin = () => {
                         {getPasswordStrength(newPassword) === 4 && 'Fuerte (Segura)'}
                       </span>
                     </div>
-                    <div className="w-full bg-stone-100 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-stone-200/60 rounded-full h-2 overflow-hidden">
                       <div 
-                        className={`h-full transition-all duration-300 ${
-                          getPasswordStrength(newPassword) === 1 ? 'bg-red-500 w-1/4' :
-                          getPasswordStrength(newPassword) === 2 ? 'bg-orange-500 w-2/4' :
-                          getPasswordStrength(newPassword) === 3 ? 'bg-amber-400 w-3/4' :
-                          getPasswordStrength(newPassword) === 4 ? 'bg-emerald-500 w-full' :
-                          'w-0'
-                        }`}
+                        className="h-full transition-all duration-300 rounded-full"
+                        style={{
+                          width: getPasswordStrength(newPassword) === 1 ? '25%' :
+                                 getPasswordStrength(newPassword) === 2 ? '50%' :
+                                 getPasswordStrength(newPassword) === 3 ? '75%' :
+                                 getPasswordStrength(newPassword) === 4 ? '100%' : '0%',
+                          backgroundColor: getPasswordStrength(newPassword) === 1 ? '#ef4444' :
+                                           getPasswordStrength(newPassword) === 2 ? '#f97316' :
+                                           getPasswordStrength(newPassword) === 3 ? '#d97706' :
+                                           getPasswordStrength(newPassword) === 4 ? '#059669' : 'transparent'
+                        }}
                       />
                     </div>
                   </div>

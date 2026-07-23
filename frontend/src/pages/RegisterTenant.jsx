@@ -32,8 +32,6 @@ const RegisterTenant = () => {
       document.documentElement.style.setProperty('--accent-color-hover', '#059669');
       document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
     } else {
-      document.body.classList.add('branded-dark-theme');
-      
       const hexToRgb = (hex) => {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -48,19 +46,36 @@ const RegisterTenant = () => {
       const pRgb = hexToRgb(primaryColor);
       const aRgb = hexToRgb(accentColor);
 
+      let isLight = false;
+      if (pRgb) {
+        const pLum = (pRgb.r * 299 + pRgb.g * 587 + pRgb.b * 114) / 1000;
+        isLight = pLum > 140;
+      }
+
+      if (isLight) {
+        document.body.classList.remove('branded-dark-theme');
+      } else {
+        document.body.classList.add('branded-dark-theme');
+      }
+
       document.documentElement.style.setProperty('--primary-color', primaryColor);
       if (pRgb) {
         document.documentElement.style.setProperty('--primary-color-light', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+        document.documentElement.style.setProperty('--primary-color-surface', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.35)`);
       } else {
         document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+        document.documentElement.style.setProperty('--primary-color-surface', 'rgba(255, 255, 255, 0.08)');
       }
 
       document.documentElement.style.setProperty('--accent-color', accentColor);
       document.documentElement.style.setProperty('--accent-color-hover', accentColor);
       if (aRgb) {
         document.documentElement.style.setProperty('--accent-color-light', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.08)`);
+        const lum = (aRgb.r * 299 + aRgb.g * 587 + aRgb.b * 114) / 1000;
+        document.documentElement.style.setProperty('--accent-text-color', lum > 140 ? '#111827' : '#ffffff');
       } else {
         document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+        document.documentElement.style.setProperty('--accent-text-color', '#ffffff');
       }
     }
   }, [isColorModified, primaryColor, accentColor]);
@@ -175,10 +190,25 @@ const RegisterTenant = () => {
     }
   };
 
+  const getRgbFromHex = (hex) => {
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+  const pRgbVal = getRgbFromHex(primaryColor);
+  const pLumVal = pRgbVal ? (pRgbVal.r * 299 + pRgbVal.g * 587 + pRgbVal.b * 114) / 1000 : 0;
+  const isLight = pLumVal > 140;
+  const showDarkBg = isColorModified && !isLight;
+
   return (
     <div 
-      className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans transition-all duration-700 ${isColorModified ? '' : 'bg-transparent'}`}
-      style={isColorModified ? {
+      className={`min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans transition-all duration-700 ${showDarkBg ? '' : 'bg-transparent'}`}
+      style={showDarkBg ? {
         background: `linear-gradient(135deg, ${primaryColor} 0%, #111827 100%)`
       } : undefined}
     >
@@ -188,21 +218,21 @@ const RegisterTenant = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-fade-in">
         <div className="flex justify-center mb-4">
           {logoUrl ? (
-            <img src={logoUrl} alt="Store Custom Logo" className={`h-24 w-auto object-contain rounded-2xl shadow-lg border animate-scale-in transition-all duration-700 ${isColorModified ? 'border-white/20' : 'border-stone-200'}`} />
+            <img src={logoUrl} alt="Store Custom Logo" className={`h-24 w-auto object-contain rounded-2xl shadow-lg border animate-scale-in transition-all duration-700 ${showDarkBg ? 'border-white/20' : 'border-stone-200'}`} />
           ) : (
             <img src="/logo.png?v=4" alt="SaaS POS Logo" className="h-24 w-auto object-contain" />
           )}
         </div>
-        <h2 className={`text-center text-3xl font-black tracking-tight uppercase transition-colors duration-700 ${isColorModified ? 'text-white drop-shadow-md' : 'text-brand-900'}`}>
+        <h2 className={`text-center text-3xl font-black tracking-tight uppercase transition-colors duration-700 ${showDarkBg ? 'text-white drop-shadow-md' : 'text-brand-900'}`}>
           Crea tu Tienda en <span style={{ color: accentColor }}>Abarrotes SaaS</span>
         </h2>
-        <p className={`mt-2 text-center text-sm font-bold transition-colors duration-700 ${isColorModified ? 'text-gray-300' : 'text-stone-500'}`}>
+        <p className={`mt-2 text-center text-sm font-bold transition-colors duration-700 ${showDarkBg ? 'text-gray-300' : 'text-stone-500'}`}>
           Personaliza tu marca, colores e identidad desde el primer momento.
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-lg relative z-10 animate-slide-up">
-        <div className={`py-10 px-6 sm:px-12 sm:rounded-[2rem] transition-all duration-700 ${isColorModified ? 'bg-white/10 backdrop-blur-md border border-white/10 shadow-2xl' : 'glass'}`}>
+        <div className={`py-10 px-6 sm:px-12 sm:rounded-[2rem] transition-all duration-700 ${showDarkBg ? 'bg-white/10 backdrop-blur-md border border-white/10 shadow-2xl' : 'glass'}`}>
           <AlertModal 
             isOpen={!!success || !!error}
             tipo={success ? 'success' : 'error'}
@@ -413,16 +443,15 @@ const RegisterTenant = () => {
                 </div>
 
                 {adminPassword && (
-                  <div className="mt-2 space-y-1 animate-fade-in">
+                  <div className="mt-2 space-y-1.5 animate-fade-in">
                     <div className="flex justify-between items-center text-[10px]">
                       <span className={`font-bold transition-colors duration-700 ${isColorModified ? 'text-gray-300' : 'text-stone-500'}`}>Fortaleza de contraseña:</span>
-                      <span className={`font-black transition-colors duration-700 ${
-                        getPasswordStrength(adminPassword) === 1 ? 'text-red-500' :
-                        getPasswordStrength(adminPassword) === 2 ? 'text-orange-500' :
-                        getPasswordStrength(adminPassword) === 3 ? 'text-amber-500' :
-                        getPasswordStrength(adminPassword) === 4 ? (isColorModified ? 'text-emerald-400' : 'text-emerald-600') :
-                        (isColorModified ? 'text-gray-400' : 'text-stone-400')
-                      }`}>
+                      <span className="font-extrabold uppercase text-[10px]" style={{
+                        color: getPasswordStrength(adminPassword) === 1 ? '#ef4444' :
+                               getPasswordStrength(adminPassword) === 2 ? '#f97316' :
+                               getPasswordStrength(adminPassword) === 3 ? '#d97706' :
+                               getPasswordStrength(adminPassword) === 4 ? '#059669' : '#9ca3af'
+                      }}>
                         {getPasswordStrength(adminPassword) === 0 && 'Ninguna'}
                         {getPasswordStrength(adminPassword) === 1 && 'Muy débil'}
                         {getPasswordStrength(adminPassword) === 2 && 'Regular'}
@@ -430,15 +459,19 @@ const RegisterTenant = () => {
                         {getPasswordStrength(adminPassword) === 4 && 'Fuerte'}
                       </span>
                     </div>
-                    <div className={`w-full rounded-full h-1.5 overflow-hidden transition-colors duration-700 ${isColorModified ? 'bg-white/10' : 'bg-stone-100'}`}>
+                    <div className={`w-full rounded-full h-2 overflow-hidden transition-colors duration-700 ${isColorModified ? 'bg-white/10' : 'bg-stone-200/60'}`}>
                       <div 
-                        className={`h-full transition-all duration-500 ${
-                          getPasswordStrength(adminPassword) === 1 ? 'bg-red-500 w-1/4' :
-                          getPasswordStrength(adminPassword) === 2 ? 'bg-orange-500 w-2/4' :
-                          getPasswordStrength(adminPassword) === 3 ? 'bg-amber-500 w-3/4' :
-                          getPasswordStrength(adminPassword) === 4 ? 'bg-emerald-500 w-full' :
-                          'w-0'
-                        }`}
+                        className="h-full transition-all duration-500 rounded-full"
+                        style={{
+                          width: getPasswordStrength(adminPassword) === 1 ? '25%' :
+                                 getPasswordStrength(adminPassword) === 2 ? '50%' :
+                                 getPasswordStrength(adminPassword) === 3 ? '75%' :
+                                 getPasswordStrength(adminPassword) === 4 ? '100%' : '0%',
+                          backgroundColor: getPasswordStrength(adminPassword) === 1 ? '#ef4444' :
+                                           getPasswordStrength(adminPassword) === 2 ? '#f97316' :
+                                           getPasswordStrength(adminPassword) === 3 ? '#d97706' :
+                                           getPasswordStrength(adminPassword) === 4 ? '#059669' : 'transparent'
+                        }}
                       />
                     </div>
                   </div>
@@ -450,8 +483,11 @@ const RegisterTenant = () => {
               <button
                 type="submit"
                 disabled={success}
-                className="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-black text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                style={{ backgroundColor: accentColor }}
+                className="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                style={{ 
+                  backgroundColor: accentColor,
+                  color: 'var(--accent-text-color, #ffffff)'
+                }}
               >
                 Crear mi tienda (Plan Gratis)
               </button>
@@ -471,55 +507,76 @@ const RegisterTenant = () => {
       </div>
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className={`backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 animate-scale-in text-center relative overflow-hidden transition-all duration-700 ${
-            isColorModified 
-              ? 'bg-neutral-900/90 border border-white/10 text-white shadow-emerald-950/20' 
-              : 'bg-white/95 border border-white/50 text-stone-800'
-          }`}>
+          <div 
+            className={`backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md p-8 animate-scale-in text-center relative overflow-hidden transition-all duration-700 ${
+              showDarkBg 
+                ? 'border border-white/20 text-white shadow-2xl' 
+                : 'bg-white/95 border border-white/50 text-stone-800'
+            }`}
+            style={showDarkBg ? {
+              background: `linear-gradient(145deg, ${primaryColor}66 0%, #111827 95%)`
+            } : undefined}
+          >
             {/* Background design elements */}
-            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-10" style={{ backgroundColor: accentColor }}></div>
+            <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full opacity-20" style={{ backgroundColor: accentColor }}></div>
             
-            <div className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-inner transition-colors duration-700 ${
-              isColorModified 
-                ? 'bg-emerald-500/20 border border-emerald-500/30 text-emerald-400' 
-                : 'bg-emerald-50 border border-emerald-200 text-emerald-650'
-            }`}>
+            <div 
+              className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center shadow-inner transition-colors duration-700 ${
+                showDarkBg 
+                  ? 'border' 
+                  : 'bg-emerald-50 border border-emerald-200 text-emerald-650'
+              }`}
+              style={showDarkBg ? {
+                backgroundColor: accentColor + '20',
+                borderColor: accentColor + '40',
+                color: accentColor
+              } : undefined}
+            >
               <CheckCircle size={40} className="animate-bounce" />
             </div>
             
-            <h3 className={`text-2xl font-black mb-2 uppercase tracking-tight transition-colors duration-700 ${isColorModified ? 'text-white' : 'text-brand-900'}`}>
+            <h3 className={`text-2xl font-black mb-2 uppercase tracking-tight transition-colors duration-700 ${showDarkBg ? 'text-white' : 'text-brand-900'}`}>
               ¡Tienda Registrada!
             </h3>
-            <p className={`text-sm font-semibold mb-6 transition-colors duration-700 ${isColorModified ? 'text-gray-400' : 'text-stone-500'}`}>
+            <p className={`text-sm font-semibold mb-6 transition-colors duration-700 ${showDarkBg ? 'text-gray-300' : 'text-stone-500'}`}>
               Tu tienda ha sido creada correctamente en Abarrotes SaaS.
             </p>
             
             <div className={`rounded-2xl p-4 text-left space-y-2.5 mb-8 text-xs font-bold transition-all duration-700 ${
-              isColorModified 
-                ? 'bg-white/5 border border-white/10 text-gray-200' 
+              showDarkBg 
+                ? 'bg-white/10 border border-white/15 text-gray-200' 
                 : 'bg-stone-50/80 border border-stone-200/50 text-stone-600'
             }`}>
               <div className="flex justify-between">
-                <span className={isColorModified ? 'text-gray-400 uppercase' : 'text-stone-400 uppercase'}>Tienda:</span>
-                <span className={`font-extrabold uppercase ${isColorModified ? 'text-white' : 'text-brand-900'}`}>{storeName}</span>
+                <span className={showDarkBg ? 'text-gray-300 uppercase' : 'text-stone-400 uppercase'}>Tienda:</span>
+                <span className={`font-extrabold uppercase ${showDarkBg ? 'text-white' : 'text-brand-900'}`}>{storeName}</span>
               </div>
               {subdominio && (
                 <div className="flex justify-between">
-                  <span className={isColorModified ? 'text-gray-400 uppercase' : 'text-stone-400 uppercase'}>Identificador (Slug):</span>
-                  <span className={`font-extrabold font-mono ${isColorModified ? 'text-white' : 'text-stone-700'}`}>{subdominio}</span>
+                  <span className={showDarkBg ? 'text-gray-300 uppercase' : 'text-stone-400 uppercase'}>Identificador (Slug):</span>
+                  <span className={`font-extrabold font-mono ${showDarkBg ? 'text-white' : 'text-stone-700'}`}>{subdominio}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className={isColorModified ? 'text-gray-400 uppercase' : 'text-stone-400 uppercase'}>Administrador:</span>
-                <span className={`font-extrabold ${isColorModified ? 'text-white' : 'text-stone-700'}`}>{adminUsername}</span>
+                <span className={showDarkBg ? 'text-gray-300 uppercase' : 'text-stone-400 uppercase'}>Administrador:</span>
+                <span className={`font-extrabold ${showDarkBg ? 'text-white' : 'text-stone-700'}`}>{adminUsername}</span>
               </div>
             </div>
 
             <button
               onClick={() => navigate('/login')}
-              className="w-full flex items-center justify-center space-x-2 text-white py-3.5 rounded-full font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-lg hover:shadow-float active:scale-[0.98]"
+              className="w-full flex items-center justify-center space-x-2 py-3.5 rounded-full font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-lg hover:shadow-float active:scale-[0.98]"
               style={{
                 backgroundColor: accentColor,
+                color: (function() {
+                  const hex = accentColor.replace('#', '');
+                  const fullHex = hex.length === 3 ? hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2] : hex;
+                  const r = parseInt(fullHex.substring(0, 2), 16) || 0;
+                  const g = parseInt(fullHex.substring(2, 4), 16) || 0;
+                  const b = parseInt(fullHex.substring(4, 6), 16) || 0;
+                  const lum = (r * 299 + g * 587 + b * 114) / 1000;
+                  return lum > 140 ? '#111827' : '#ffffff';
+                })(),
                 boxShadow: `0 10px 25px -5px ${accentColor}40`
               }}
             >

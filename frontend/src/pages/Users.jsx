@@ -333,16 +333,15 @@ const Users = () => {
                 />
                 
                 {formData.contrasena && (
-                  <div className="mt-2 space-y-1 animate-fade-in">
+                  <div className="mt-2 space-y-1.5 animate-fade-in">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500 font-medium">Fortaleza de contraseña:</span>
-                      <span className={`font-bold ${
-                        getPasswordStrength(formData.contrasena) === 1 ? 'text-red-500' :
-                        getPasswordStrength(formData.contrasena) === 2 ? 'text-orange-500' :
-                        getPasswordStrength(formData.contrasena) === 3 ? 'text-amber-500' :
-                        getPasswordStrength(formData.contrasena) === 4 ? 'text-green-600' :
-                        'text-slate-400'
-                      }`}>
+                      <span className="text-stone-500 font-bold">Fortaleza de contraseña:</span>
+                      <span className="font-extrabold uppercase text-[11px]" style={{
+                        color: getPasswordStrength(formData.contrasena) === 1 ? '#ef4444' :
+                               getPasswordStrength(formData.contrasena) === 2 ? '#f97316' :
+                               getPasswordStrength(formData.contrasena) === 3 ? '#d97706' :
+                               getPasswordStrength(formData.contrasena) === 4 ? '#059669' : '#9ca3af'
+                      }}>
                         {getPasswordStrength(formData.contrasena) === 0 && 'Ninguna'}
                         {getPasswordStrength(formData.contrasena) === 1 && 'Muy débil'}
                         {getPasswordStrength(formData.contrasena) === 2 && 'Regular'}
@@ -350,15 +349,19 @@ const Users = () => {
                         {getPasswordStrength(formData.contrasena) === 4 && 'Fuerte'}
                       </span>
                     </div>
-                    <div className="w-full bg-slate-100 border border-slate-200/50 rounded-full h-2 overflow-hidden">
+                    <div className="w-full bg-stone-200/60 rounded-full h-2 overflow-hidden">
                       <div 
-                        className={`h-full transition-all duration-300 ${
-                          getPasswordStrength(formData.contrasena) === 1 ? 'bg-red-500 w-1/4' :
-                          getPasswordStrength(formData.contrasena) === 2 ? 'bg-orange-500 w-2/4' :
-                          getPasswordStrength(formData.contrasena) === 3 ? 'bg-amber-400 w-3/4' :
-                          getPasswordStrength(formData.contrasena) === 4 ? 'bg-green-500 w-full' :
-                          'w-0'
-                        }`}
+                        className="h-full transition-all duration-300 rounded-full"
+                        style={{
+                          width: getPasswordStrength(formData.contrasena) === 1 ? '25%' :
+                                 getPasswordStrength(formData.contrasena) === 2 ? '50%' :
+                                 getPasswordStrength(formData.contrasena) === 3 ? '75%' :
+                                 getPasswordStrength(formData.contrasena) === 4 ? '100%' : '0%',
+                          backgroundColor: getPasswordStrength(formData.contrasena) === 1 ? '#ef4444' :
+                                           getPasswordStrength(formData.contrasena) === 2 ? '#f97316' :
+                                           getPasswordStrength(formData.contrasena) === 3 ? '#d97706' :
+                                           getPasswordStrength(formData.contrasena) === 4 ? '#059669' : 'transparent'
+                        }}
                       />
                     </div>
                   </div>

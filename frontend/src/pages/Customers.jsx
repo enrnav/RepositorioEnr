@@ -15,7 +15,8 @@ import {
   CheckCircle,
   CreditCard,
   Phone,
-  Mail
+  Mail,
+  ShieldCheck
 } from 'lucide-react';
 import { 
   fetchCustomers, 
@@ -51,7 +52,9 @@ const Customers = () => {
 
   const [paymentData, setPaymentData] = useState({
     monto: '',
-    notas: ''
+    notas: '',
+    auth_username: '',
+    auth_password: ''
   });
 
   const [error, setError] = useState('');
@@ -174,7 +177,9 @@ const Customers = () => {
     setSelectedCustomer(customer);
     setPaymentData({
       monto: '',
-      notas: ''
+      notas: '',
+      auth_username: '',
+      auth_password: ''
     });
     setError('');
     setShowPaymentModal(true);
@@ -190,11 +195,23 @@ const Customers = () => {
       return;
     }
 
+    if (currentUser?.rol === 'cajero') {
+      if (!paymentData.auth_username.trim() || !paymentData.auth_password) {
+        setError('Para registrar un abono como Cajero se requiere el usuario y contraseña de Administrador o Supervisor.');
+        return;
+      }
+    }
+
     try {
-      await registerCustomerPayment(selectedCustomer.id, {
+      const payload = {
         monto: amt,
         notas: paymentData.notas
-      });
+      };
+      if (currentUser?.rol === 'cajero') {
+        payload.auth_username = paymentData.auth_username.trim();
+        payload.auth_password = paymentData.auth_password;
+      }
+      await registerCustomerPayment(selectedCustomer.id, payload);
       setSuccess(`Abono de $${amt.toFixed(2)} registrado para ${selectedCustomer.name}.`);
       setShowPaymentModal(false);
       loadCustomers();
@@ -245,13 +262,15 @@ const Customers = () => {
           </p>
         </div>
 
-        <button
-          onClick={handleAddClick}
-          className="flex items-center justify-center space-x-2 bg-chiluda-red hover:bg-chiluda-darkred text-white px-5 py-2.5 rounded-full hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float w-full xl:w-auto font-black text-xs uppercase tracking-wider shrink-0"
-        >
-          <UserPlus size={16} />
-          <span>Nuevo Cliente</span>
-        </button>
+        {(currentUser?.rol === 'admin' || currentUser?.rol === 'supervisor') && (
+          <button
+            onClick={handleAddClick}
+            className="flex items-center justify-center space-x-2 bg-chiluda-red hover:bg-chiluda-darkred text-white px-5 py-2.5 rounded-full hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-float w-full xl:w-auto font-black text-xs uppercase tracking-wider shrink-0"
+          >
+            <UserPlus size={16} />
+            <span>Nuevo Cliente</span>
+          </button>
+        )}
       </div>
 
       <AlertModal 
@@ -357,13 +376,15 @@ const Customers = () => {
                           <History className="w-4 h-4" />
                           <span>DETALLE</span>
                         </button>
-                        <button
-                          onClick={() => handleEditClick(c)}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
+                        {(currentUser?.rol === 'admin' || currentUser?.rol === 'supervisor') && (
+                          <button
+                            onClick={() => handleEditClick(c)}
+                            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                        )}
                         {(currentUser?.rol === 'admin' || currentUser?.rol === 'supervisor') && (
                           <button
                             onClick={() => handleDeleteClick(c)}
@@ -476,29 +497,40 @@ const Customers = () => {
 
       {/* Modal Registrar Abono */}
       {showPaymentModal && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50">
-              <h2 className="text-lg font-bold text-slate-800 tracking-tight">REGISTRAR ABONO</h2>
-              <button onClick={() => setShowPaymentModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
-                <X className="w-6 h-6" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] max-w-md w-full shadow-2xl border border-stone-200/60 overflow-hidden animate-scale-up flex flex-col">
+            <div className="p-6 border-b border-stone-200/40 bg-stone-500/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-emerald-500/10 text-emerald-600 rounded-2xl border border-emerald-500/20">
+                  <DollarSign size={20} />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-brand-900 tracking-tight uppercase">REGISTRAR ABONO</h2>
+                  <p className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Abono a cuenta corriente</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPaymentModal(false)} 
+                className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-500/10 rounded-full transition-all cursor-pointer"
+              >
+                <X size={20} />
               </button>
             </div>
 
             <form onSubmit={handlePaymentSubmit} className="p-6 space-y-4">
-              <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 text-emerald-800 space-y-1">
-                <div className="text-xs font-semibold uppercase text-emerald-600">Cliente</div>
-                <div className="font-bold text-lg">{selectedCustomer?.name}</div>
-                <div className="flex justify-between text-sm pt-2 border-t border-emerald-100/50">
-                  <span>Saldo actual deudor:</span>
-                  <span className="font-bold">${selectedCustomer?.saldo_actual.toFixed(2)}</span>
+              <div className="bg-emerald-500/10 rounded-2xl p-4 border border-emerald-500/20 space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-wider text-emerald-600">Cliente</div>
+                <div className="font-black text-lg text-stone-850 leading-tight">{selectedCustomer?.name}</div>
+                <div className="flex justify-between items-center text-xs pt-2 border-t border-emerald-500/20 font-bold">
+                  <span className="text-stone-500">Saldo actual deudor:</span>
+                  <span className="font-black text-emerald-600 text-sm">${selectedCustomer?.saldo_actual.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Monto a Abonar (Efectivo) *</label>
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-extrabold text-stone-600 uppercase tracking-wider">Monto a Abonar (Efectivo) *</label>
                 <div className="relative">
-                  <DollarSign className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <DollarSign className="w-5 h-5 text-emerald-600 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="number"
                     step="0.01"
@@ -507,33 +539,66 @@ const Customers = () => {
                     value={paymentData.monto}
                     onChange={(e) => setPaymentData(prev => ({ ...prev, monto: e.target.value }))}
                     placeholder="0.00"
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-stone-200 bg-stone-50/50 text-sm font-bold text-stone-850 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col space-y-1">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Notas / Observaciones</label>
+              <div className="flex flex-col space-y-1.5">
+                <label className="text-xs font-extrabold text-stone-600 uppercase tracking-wider">Notas / Observaciones</label>
                 <input
                   type="text"
                   value={paymentData.notas}
                   onChange={(e) => setPaymentData(prev => ({ ...prev, notas: e.target.value }))}
                   placeholder="Ej. Abono parcial en efectivo"
-                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full px-4 py-3 rounded-2xl border border-stone-200 bg-stone-50/50 text-xs font-semibold text-stone-850 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
                 />
               </div>
 
-              <div className="flex justify-end space-x-2 pt-4 border-t border-slate-100">
+              {currentUser?.rol === 'cajero' && (
+                <div className="bg-amber-500/10 rounded-2xl p-4 border border-amber-500/20 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-600 font-black text-xs uppercase tracking-wider">
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    <span>Autorización de Supervisor Requerida</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-[10px] font-black text-amber-600 uppercase tracking-wider">Usuario Supervisor *</label>
+                      <input
+                        type="text"
+                        required
+                        value={paymentData.auth_username}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, auth_username: e.target.value }))}
+                        placeholder="Ej. admin"
+                        className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-amber-500/30 bg-white/70 text-stone-850 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:bg-white transition-all"
+                      />
+                    </div>
+                    <div className="flex flex-col space-y-1">
+                      <label className="text-[10px] font-black text-amber-600 uppercase tracking-wider">Contraseña Autorización *</label>
+                      <input
+                        type="password"
+                        required
+                        value={paymentData.auth_password}
+                        onChange={(e) => setPaymentData(prev => ({ ...prev, auth_password: e.target.value }))}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-amber-500/30 bg-white/70 text-stone-850 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:bg-white transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-3 pt-4 border-t border-stone-200/40">
                 <button
                   type="button"
                   onClick={() => setShowPaymentModal(false)}
-                  className="px-5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-50 transition-all text-sm uppercase"
+                  className="px-5 py-3 border border-stone-300/60 text-stone-600 hover:bg-stone-500/10 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all cursor-pointer"
                 >
                   CANCELAR
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-md transition-all text-sm uppercase"
+                  className="px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md hover:shadow-float active:scale-[0.98] transition-all cursor-pointer"
                 >
                   REGISTRAR PAGO
                 </button>

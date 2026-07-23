@@ -14,7 +14,7 @@ export const API_URL = baseApiUrl;
 
 // Add interceptor to inject the token
 axios.interceptors.request.use((config) => {
-    const token = sessionStorage.getItem('token');
+    const token = sessionStorage.getItem('token') || localStorage.getItem('token');
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
@@ -28,7 +28,7 @@ axios.interceptors.response.use((response) => {
 }, (error) => {
     if (error.response && error.response.status === 401) {
         // Automatically logout on 401 Unauthorized
-        const userStr = sessionStorage.getItem('user');
+        const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
         if (userStr) {
             try {
                 const user = JSON.parse(userStr);
@@ -41,6 +41,8 @@ axios.interceptors.response.use((response) => {
         }
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
         window.location.href = '/login';
     }
     return Promise.reject(error);

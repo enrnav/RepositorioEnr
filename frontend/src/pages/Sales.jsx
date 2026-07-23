@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import AlertModal from '../components/AlertModal';
 import { 
   Search, ShoppingCart, TrendingUp, Plus, Minus, Trash2, CheckCircle, 
   X, Printer, CreditCard, Banknote, History, Coins, ArrowRight, AlertCircle, Lock,
-  Package, Keyboard, UserCheck
+  Package, Keyboard, UserCheck, KeyRound
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { 
@@ -510,9 +511,13 @@ const Sales = () => {
         variante_id: item.variante_id,
         cantidad: item.cartQuantity
       })),
+      metodo_pago: paymentMethod,
       payment_method: paymentMethod,
+      monto_efectivo: actualPaidCash,
       cash_amount: actualPaidCash,
+      monto_tarjeta: actualPaidCard,
       card_amount: actualPaidCard,
+      descuento: cartDiscountTotal,
       discount: cartDiscountTotal,
       turno_id: activeShift ? activeShift.id : null,
       cliente_id: selectedCustomer ? selectedCustomer.id : null
@@ -536,7 +541,7 @@ const Sales = () => {
         change: change,
         date: new Date(),
         saleId: serverSaleId,
-        cashier: user.nombre_completo,
+        cashier: user?.nombre_completo || user?.nombre_usuario || 'Cajero',
         shiftId: activeShift ? activeShift.id : null,
         customerName: selectedCustomer ? selectedCustomer.name : null
       });
@@ -565,7 +570,16 @@ const Sales = () => {
       searchInputRef.current?.focus();
     } catch (error) {
       console.error("Checkout transaction error", error);
-      showAlert("Error en Cobro", error.response?.data?.detail || "Hubo un error al registrar la venta en el servidor.", "error");
+      let detailMsg = "Hubo un error al registrar la venta en el servidor.";
+      const detail = error.response?.data?.detail;
+      if (typeof detail === 'string') {
+        detailMsg = detail;
+      } else if (Array.isArray(detail)) {
+        detailMsg = detail.map(d => d.msg || JSON.stringify(d)).join(", ");
+      } else if (detail && typeof detail === 'object') {
+        detailMsg = JSON.stringify(detail);
+      }
+      showAlert("Error en Cobro", detailMsg, "error");
       await loadData();
     } finally {
       setIsProcessing(false);
@@ -795,30 +809,37 @@ const Sales = () => {
 
           {/* Locked Shift Overlay */}
           {!activeShift && !loadingShift && !isAdmin && (
-            <div className="bg-white/90 backdrop-blur-xl rounded-[2rem] border border-red-100 p-8 text-center flex flex-col items-center justify-center shadow-lg space-y-6 py-16 animate-scale-in">
-              <div className="w-20 h-20 bg-red-50 text-chiluda-red rounded-full flex items-center justify-center animate-bounce">
-                <Lock size={40} />
+            <div className="bg-white/10 backdrop-blur-2xl rounded-[2.5rem] border border-white/30 p-8 sm:p-12 text-center flex flex-col items-center justify-center shadow-2xl space-y-6 py-16 animate-scale-in max-w-2xl mx-auto my-6">
+              <div className="w-20 h-20 bg-emerald-500/15 text-emerald-600 rounded-3xl border border-emerald-500/30 flex items-center justify-center animate-bounce shadow-lg">
+                <Lock size={40} className="stroke-[2.5]" />
               </div>
-              <div className="max-w-md">
-                <h3 className="text-2xl font-black text-brand-900 mb-2">Caja Cerrada u Obligatoria</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">
-                  Para poder registrar ventas, es requerido iniciar el turno de caja. Esto nos permite auditar adecuadamente el fondo inicial, entradas y salidas de efectivo de Abarrotes ED & E.
+              <div className="max-w-md space-y-2">
+                <h3 className="text-2xl sm:text-3xl font-black text-stone-850 tracking-tight leading-none">Turno de Caja Requerido</h3>
+                <p className="text-stone-500 text-xs sm:text-sm font-semibold leading-relaxed">
+                  Para poder registrar ventas y emitir comprobantes, inicia tu turno de caja ingresando el fondo inicial en efectivo de <span className="font-extrabold text-stone-700">{storeSettings.nombre_tienda}</span>.
                 </p>
               </div>
               
-              <div className="w-full max-w-xs p-5 bg-brand-50/50 rounded-2xl border border-gray-100 flex flex-col gap-3">
-                <label className="text-xs font-bold text-gray-500 text-left uppercase tracking-wider">Fondo Inicial ($ MXN):</label>
-                <input
-                  type="number"
-                  className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-center font-bold text-xl text-brand-900"
-                  value={initialCashInput}
-                  onChange={(e) => setInitialCashInput(e.target.value)}
-                />
+              <div className="w-full max-w-sm p-6 bg-white/20 backdrop-blur-md rounded-3xl border border-white/30 flex flex-col gap-4 shadow-xl">
+                <div className="space-y-1.5 text-center">
+                  <label className="text-xs font-black text-stone-600 uppercase tracking-wider block">Fondo Inicial ($ MXN)</label>
+                  <input
+                    type="number"
+                    step="10"
+                    min="0"
+                    className="w-full px-4 py-3.5 bg-stone-50/70 border border-stone-200/80 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 text-center font-black text-2xl text-stone-850 transition-all shadow-inner placeholder-stone-400"
+                    value={initialCashInput}
+                    onChange={(e) => setInitialCashInput(e.target.value)}
+                    placeholder="100.00"
+                  />
+                </div>
+                
                 <button
                   onClick={handleOpenShift}
-                  className="w-full py-3 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred transition-all shadow-md active:scale-95"
+                  className="w-full py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-black text-xs uppercase tracking-wider rounded-2xl hover:shadow-float active:scale-[0.98] transition-all duration-300 shadow-md cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Abrir Turno de Caja
+                  <KeyRound size={18} />
+                  <span>Abrir Turno de Caja</span>
                 </button>
               </div>
             </div>
@@ -1024,17 +1045,17 @@ const Sales = () => {
 
       {/* Checkout Split Payment Modal */}
       {showCheckoutModal && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-md max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-              <h3 className="text-lg font-black text-brand-900">
-                {paymentMethod ? 'Procesar Pago' : 'Método de Pago'}
-              </h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight uppercase">
+                {paymentMethod ? 'PROCESAR PAGO' : 'MÉTODO DE PAGO'}
+              </h2>
               <button 
                 onClick={() => { setShowCheckoutModal(false); setPaymentMethod(null); }} 
-                className="text-gray-400 hover:text-gray-600 p-1 transition-colors"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
               >
-                <X size={20} />
+                <X className="w-6 h-6" />
               </button>
             </div>
             
@@ -1042,28 +1063,28 @@ const Sales = () => {
               {!paymentMethod ? (
                 <div className="space-y-6">
                   {/* Buscador de Cliente */}
-                  <div className="relative pb-4 border-b border-gray-100">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Cliente Asociado:</label>
+                  <div className="relative pb-4 border-b border-slate-100">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cliente Asociado:</label>
                     {selectedCustomer ? (
-                      <div className="flex items-center justify-between bg-emerald-50 text-emerald-800 p-3 rounded-xl border border-emerald-100 font-bold">
+                      <div className="flex items-center justify-between bg-emerald-50 text-emerald-800 p-3.5 rounded-xl border border-emerald-200/80 font-bold">
                         <div>
-                          <div className="text-sm">{selectedCustomer.name}</div>
-                          <div className="text-[10px] text-emerald-600 font-medium mt-0.5">
-                            Deuda: ${selectedCustomer.saldo_actual.toFixed(2)} | Límite: ${selectedCustomer.limite_credito.toFixed(2)}
+                          <div className="text-sm text-slate-900 font-extrabold">{selectedCustomer.name}</div>
+                          <div className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                            Deuda actual: <span className="font-bold">${selectedCustomer.saldo_actual.toFixed(2)}</span> | Límite: <span className="font-bold">${selectedCustomer.limite_credito.toFixed(2)}</span>
                           </div>
                         </div>
                         <button 
                           type="button" 
                           onClick={() => { setSelectedCustomer(null); setCustomerSearchTerm(''); }}
-                          className="p-1 text-emerald-700 hover:bg-emerald-100 rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-emerald-100 rounded-lg transition-all"
                         >
                           <X size={16} />
                         </button>
                       </div>
                     ) : (
                       <div className="relative">
-                        <div className="relative">
-                          <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <div className="relative z-10">
+                          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             placeholder="Buscar cliente por nombre..."
@@ -1074,13 +1095,13 @@ const Sales = () => {
                               setShowCustomerDropdown(true);
                             }}
                             onFocus={() => setShowCustomerDropdown(true)}
-                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs"
+                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs font-semibold text-slate-800 transition-all"
                           />
                         </div>
                         {showCustomerDropdown && customers.length > 0 && (
                           <>
-                            <div className="fixed inset-0 z-10" onClick={() => setShowCustomerDropdown(false)} />
-                            <div className="absolute left-0 right-0 mt-1 max-h-40 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg z-25 divide-y divide-slate-100">
+                            <div className="fixed inset-0 z-30" onClick={() => setShowCustomerDropdown(false)} />
+                            <div className="absolute left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-40 divide-y divide-slate-100">
                               {customers.map(c => (
                                 <button
                                   key={c.id}
@@ -1089,11 +1110,11 @@ const Sales = () => {
                                     setSelectedCustomer(c);
                                     setShowCustomerDropdown(false);
                                   }}
-                                  className="w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors text-xs flex flex-col"
+                                  className="w-full text-left px-4 py-3 hover:bg-emerald-50/60 transition-colors text-xs flex flex-col group cursor-pointer"
                                 >
-                                  <span className="font-semibold text-slate-800">{c.name}</span>
-                                  <span className="text-[10px] text-slate-500 mt-0.5">
-                                    Deuda: ${c.saldo_actual.toFixed(2)} | Límite: ${c.limite_credito.toFixed(2)}
+                                  <span className="font-bold text-slate-800 group-hover:text-emerald-800">{c.name}</span>
+                                  <span className="text-[10px] text-slate-500 mt-0.5 font-medium">
+                                    Deuda: <strong className="text-amber-600">${c.saldo_actual.toFixed(2)}</strong> | Límite: <strong className="text-slate-700">${c.limite_credito.toFixed(2)}</strong>
                                   </span>
                                 </button>
                               ))}
@@ -1104,65 +1125,78 @@ const Sales = () => {
                     )}
                   </div>
 
-                  <div className="text-center pb-4 border-b border-gray-100">
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-wider block mb-1">Monto a cobrar:</span>
-                    <span className="text-4xl font-black text-chiluda-red">${cartTotal.toFixed(2)}</span>
+                  <div className="text-center pb-4 border-b border-slate-100">
+                    <span className="text-slate-500 text-xs font-bold uppercase tracking-wider block mb-1">Monto a cobrar:</span>
+                    <span className="text-4xl font-black text-emerald-600">${cartTotal.toFixed(2)}</span>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPaymentMethod('efectivo')}
-                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-chiluda-red hover:bg-red-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-slate-100 rounded-2xl hover:border-chiluda-red hover:bg-red-50/30 transition-all group cursor-pointer"
                     >
-                      <Banknote size={32} className="text-gray-400 group-hover:text-chiluda-red mb-2 transition-colors" />
-                      <span className="font-extrabold text-xs text-gray-700 group-hover:text-chiluda-red">Efectivo</span>
+                      <Banknote size={32} className="text-slate-400 group-hover:text-chiluda-red mb-2 transition-colors" />
+                      <span className="font-extrabold text-xs text-slate-700 group-hover:text-chiluda-red uppercase tracking-wider">Efectivo</span>
                     </button>
+
                     <button
                       onClick={() => setPaymentMethod('tarjeta')}
-                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-blue-500 hover:bg-blue-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-slate-100 rounded-2xl hover:border-blue-500 hover:bg-blue-50/30 transition-all group cursor-pointer"
                     >
-                      <CreditCard size={32} className="text-gray-400 group-hover:text-blue-500 mb-2 transition-colors" />
-                      <span className="font-extrabold text-xs text-gray-700 group-hover:text-blue-600">Tarjeta</span>
+                      <CreditCard size={32} className="text-slate-400 group-hover:text-blue-500 mb-2 transition-colors" />
+                      <span className="font-extrabold text-xs text-slate-700 group-hover:text-blue-600 uppercase tracking-wider">Tarjeta</span>
                     </button>
+
                     <button
                       onClick={() => {
                         setPaymentMethod('mixto');
                         setAmountPaidCash('');
                         setAmountPaidCard('');
                       }}
-                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-purple-500 hover:bg-purple-50/30 transition-all group"
+                      className="flex flex-col items-center justify-center p-4 bg-white border-2 border-slate-100 rounded-2xl hover:border-purple-500 hover:bg-purple-50/30 transition-all group cursor-pointer"
                     >
-                      <Coins size={32} className="text-gray-400 group-hover:text-purple-500 mb-2 transition-colors" />
-                      <span className="font-extrabold text-xs text-gray-700 group-hover:text-purple-600">Pago Mixto</span>
+                      <Coins size={32} className="text-slate-400 group-hover:text-purple-500 mb-2 transition-colors" />
+                      <span className="font-extrabold text-xs text-slate-700 group-hover:text-purple-600 uppercase tracking-wider">Pago Mixto</span>
                     </button>
+
                     <button
-                      onClick={() => setPaymentMethod('credito')}
-                      disabled={!selectedCustomer}
-                      className={`flex flex-col items-center justify-center p-4 bg-white border-2 rounded-2xl transition-all group ${
+                      onClick={() => {
+                        if (!selectedCustomer) {
+                          showAlert("Cliente Requerido", "Busca y selecciona un cliente en el buscador de arriba para autorizar la venta a crédito.", "warning");
+                          return;
+                        }
+                        setPaymentMethod('credito');
+                      }}
+                      className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all group cursor-pointer ${
                         selectedCustomer 
-                          ? 'border-gray-100 hover:border-emerald-600 hover:bg-emerald-50/30' 
-                          : 'border-gray-100 opacity-40 cursor-not-allowed'
+                          ? 'bg-emerald-50/60 border-emerald-500/80 text-emerald-800 hover:bg-emerald-100/60 shadow-xs' 
+                          : 'bg-slate-50 border-slate-200/80 text-slate-400 hover:border-slate-300 hover:text-slate-600'
                       }`}
                     >
-                      <UserCheck size={32} className={`mb-2 transition-colors ${selectedCustomer ? 'text-gray-400 group-hover:text-emerald-600' : 'text-gray-300'}`} />
-                      <span className={`font-extrabold text-xs transition-colors ${selectedCustomer ? 'text-gray-700 group-hover:text-emerald-700' : 'text-gray-400'}`}>Crédito / Fiar</span>
+                      <UserCheck size={32} className={`mb-2 transition-colors ${selectedCustomer ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <span className="font-extrabold text-xs uppercase tracking-wider">Crédito / Fiar</span>
+                      {selectedCustomer && (
+                        <span className="text-[10px] font-bold text-emerald-700 mt-0.5 truncate max-w-full">
+                          {selectedCustomer.name}
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="flex justify-between items-center text-sm font-bold pb-2 border-b border-gray-100">
-                    <span className="text-gray-500">Monto Neto:</span>
-                    <span className="text-xl text-brand-900">${cartTotal.toFixed(2)}</span>
+                  <div className="flex justify-between items-center text-sm font-bold pb-2 border-b border-slate-100">
+                    <span className="text-slate-500">Monto Neto:</span>
+                    <span className="text-xl text-slate-800 font-extrabold">${cartTotal.toFixed(2)}</span>
                   </div>
 
                   {paymentMethod === 'efectivo' && (
                     <div className="space-y-3">
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Efectivo Recibido:</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">Efectivo Recibido:</label>
                       <input
                         type="number"
                         placeholder="Ej. 200"
-                        className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 focus:border-chiluda-red text-2xl text-center font-bold text-brand-900"
+                        className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-2xl text-center font-bold text-slate-800"
                         value={amountPaidCash}
                         onChange={(e) => setAmountPaidCash(e.target.value)}
                         autoFocus
@@ -1179,7 +1213,7 @@ const Sales = () => {
                         <button
                           type="button"
                           onClick={() => setAmountPaidCash(cartTotal.toFixed(2))}
-                          className="py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-900 rounded-xl font-bold text-xs border border-gray-200 transition-all active:scale-95"
+                          className="py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs border border-slate-200 transition-all active:scale-95 cursor-pointer"
                         >
                           Exacto
                         </button>
@@ -1188,7 +1222,7 @@ const Sales = () => {
                             key={val}
                             type="button"
                             onClick={() => setAmountPaidCash(val.toString())}
-                            className="py-2.5 bg-brand-50 hover:bg-brand-100 text-brand-900 rounded-xl font-bold text-xs border border-gray-200 transition-all active:scale-95"
+                            className="py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs border border-slate-200 transition-all active:scale-95 cursor-pointer"
                           >
                             ${val}
                           </button>
@@ -1196,13 +1230,13 @@ const Sales = () => {
                       </div>
 
                       {/* Touch numeric keypad */}
-                      <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto pt-2 border-t border-gray-100 mt-2">
+                      <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto pt-2 border-t border-slate-100 mt-2">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                           <button
                             key={num}
                             type="button"
                             onClick={() => setAmountPaidCash(prev => prev + num.toString())}
-                            className="h-11 bg-gray-50 hover:bg-gray-100 text-brand-900 font-extrabold text-lg rounded-xl flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                            className="h-11 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-lg rounded-xl flex items-center justify-center border border-slate-200 transition-all active:scale-95 cursor-pointer"
                           >
                             {num}
                           </button>
@@ -1210,21 +1244,21 @@ const Sales = () => {
                         <button
                           type="button"
                           onClick={() => setAmountPaidCash('')}
-                          className="h-11 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold text-sm rounded-xl flex items-center justify-center border border-red-100 transition-all active:scale-95"
+                          className="h-11 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold text-sm rounded-xl flex items-center justify-center border border-red-100 transition-all active:scale-95 cursor-pointer"
                         >
                           C
                         </button>
                         <button
                           type="button"
                           onClick={() => setAmountPaidCash(prev => prev + '0')}
-                          className="h-11 bg-gray-50 hover:bg-gray-100 text-brand-900 font-extrabold text-lg rounded-xl flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                          className="h-11 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-lg rounded-xl flex items-center justify-center border border-slate-200 transition-all active:scale-95 cursor-pointer"
                         >
                           0
                         </button>
                         <button
                           type="button"
                           onClick={() => setAmountPaidCash(prev => prev.slice(0, -1))}
-                          className="h-11 bg-gray-50 hover:bg-gray-100 text-brand-900 font-extrabold text-lg rounded-xl flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                          className="h-11 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-lg rounded-xl flex items-center justify-center border border-slate-200 transition-all active:scale-95 cursor-pointer"
                         >
                           ⌫
                         </button>
@@ -1253,11 +1287,11 @@ const Sales = () => {
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Efectivo:</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Efectivo:</label>
                           <input
                             type="number"
                             placeholder="0.00"
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-center font-bold"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center font-bold text-slate-800"
                             value={amountPaidCash}
                             onChange={(e) => {
                               const cash = parseFloat(e.target.value) || 0;
@@ -1268,22 +1302,22 @@ const Sales = () => {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider">Tarjeta:</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tarjeta:</label>
                           <input
                             type="number"
                             placeholder="0.00"
-                            className="w-full px-3 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-center font-bold bg-gray-50 text-gray-500"
+                            className="w-full px-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center font-bold bg-slate-50 text-slate-500"
                             value={amountPaidCard}
                             onChange={(e) => setAmountPaidCard(e.target.value)}
                           />
                         </div>
                       </div>
-                      <div className="text-[10px] text-gray-400 font-semibold text-center italic">
+                      <div className="text-[10px] text-slate-400 font-semibold text-center italic">
                         Tip: Escribe la cantidad de efectivo y calcularemos el remanente en tarjeta.
                       </div>
 
                       {/* Touch numeric keypad for Mixto Efectivo */}
-                      <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto pt-2 border-t border-gray-100 mt-2">
+                      <div className="grid grid-cols-3 gap-2 max-w-[280px] mx-auto pt-2 border-t border-slate-100 mt-2">
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                           <button
                             key={num}
@@ -1297,7 +1331,7 @@ const Sales = () => {
                                 return newVal;
                               });
                             }}
-                            className="h-11 bg-gray-50 hover:bg-gray-100 text-brand-900 font-extrabold text-lg rounded-xl flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                            className="h-11 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-lg rounded-xl flex items-center justify-center border border-slate-200 transition-all active:scale-95 cursor-pointer"
                           >
                             {num}
                           </button>
@@ -1308,7 +1342,7 @@ const Sales = () => {
                             setAmountPaidCash('');
                             setAmountPaidCard(cartTotal.toFixed(2));
                           }}
-                          className="h-11 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold text-sm rounded-xl flex items-center justify-center border border-red-100 transition-all active:scale-95"
+                          className="h-11 bg-red-50 hover:bg-red-100 text-red-600 font-extrabold text-sm rounded-xl flex items-center justify-center border border-red-100 transition-all active:scale-95 cursor-pointer"
                         >
                           C
                         </button>
@@ -1323,7 +1357,7 @@ const Sales = () => {
                               return newVal;
                             });
                           }}
-                          className="h-11 bg-gray-50 hover:bg-gray-100 text-brand-900 font-extrabold text-lg rounded-xl flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                          className="h-11 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-lg rounded-xl flex items-center justify-center border border-slate-200 transition-all active:scale-95 cursor-pointer"
                         >
                           0
                         </button>
@@ -1338,7 +1372,7 @@ const Sales = () => {
                               return newVal;
                             });
                           }}
-                          className="h-11 bg-gray-50 hover:bg-gray-100 text-brand-900 font-extrabold text-lg rounded-xl flex items-center justify-center border border-gray-200 transition-all active:scale-95"
+                          className="h-11 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-lg rounded-xl flex items-center justify-center border border-slate-200 transition-all active:scale-95 cursor-pointer"
                         >
                           ⌫
                         </button>
@@ -1346,17 +1380,17 @@ const Sales = () => {
                     </div>
                   )}
 
-                  <div className="flex gap-3 pt-4 border-t border-gray-100">
+                  <div className="flex gap-3 pt-4 border-t border-slate-100">
                     <button
                       onClick={() => setPaymentMethod(null)}
-                      className="w-1/3 py-3 rounded-xl font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
+                      className="w-1/3 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer uppercase text-xs tracking-wider"
                     >
                       Atrás
                     </button>
                     <button
                       onClick={handleCheckoutSubmit}
                       disabled={isProcessing}
-                      className="flex-1 py-3 bg-chiluda-red hover:bg-chiluda-darkred text-white font-extrabold rounded-xl transition-all shadow-md active:scale-95"
+                      className="flex-1 py-3 bg-chiluda-red hover:bg-chiluda-darkred text-white font-bold rounded-xl transition-all shadow-sm active:scale-95 cursor-pointer uppercase text-xs tracking-wider"
                     >
                       {isProcessing ? 'Confirmando...' : 'Confirmar Venta'}
                     </button>
@@ -1371,18 +1405,18 @@ const Sales = () => {
 
       {/* Product Variant Quick Selection Modal */}
       {showVariantModal && variantProduct && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-sm max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
-            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-              <h3 className="font-extrabold text-brand-900 text-sm">Selecciona Variante</h3>
-              <button onClick={() => setShowVariantModal(false)} className="text-gray-400 hover:text-gray-600 p-1">
-                <X size={18} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+              <h2 className="text-sm font-bold text-slate-800 tracking-tight uppercase">SELECCIONA VARIANTE</h2>
+              <button onClick={() => setShowVariantModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-5 overflow-y-auto flex-1 space-y-2">
-              <div className="mb-3">
-                <h4 className="text-sm font-bold text-gray-500">Producto Padre:</h4>
-                <p className="text-base font-extrabold text-brand-900">{variantProduct.name}</p>
+            <div className="p-5 overflow-y-auto flex-1 space-y-3">
+              <div className="mb-2">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Producto Base:</h4>
+                <p className="text-base font-extrabold text-slate-800">{variantProduct.name}</p>
               </div>
               <div className="space-y-2">
                 {variantProduct.variantes?.map(v => {
@@ -1395,17 +1429,17 @@ const Sales = () => {
                         setShowVariantModal(false);
                       }}
                       disabled={v.cantidad <= 0}
-                      className={`w-full p-3.5 border border-gray-100 hover:border-chiluda-red/40 hover:bg-red-50/10 rounded-2xl text-left flex justify-between items-center transition-all ${
-                        v.cantidad <= 0 ? 'opacity-50 cursor-not-allowed bg-gray-50' : 'cursor-pointer active:scale-98'
+                      className={`w-full p-3.5 border border-slate-200/80 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-xl text-left flex justify-between items-center transition-all ${
+                        v.cantidad <= 0 ? 'opacity-50 cursor-not-allowed bg-slate-50' : 'cursor-pointer active:scale-95'
                       }`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-extrabold text-xs text-brand-900 sm:text-sm">{v.name}</span>
-                        <span className="text-[10px] text-gray-400 font-bold mt-1">Stock: {v.cantidad}</span>
+                        <span className="font-bold text-xs text-slate-800 sm:text-sm">{v.name}</span>
+                        <span className="text-[10px] text-slate-400 font-semibold mt-0.5">Stock: {v.cantidad}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="font-extrabold text-sm text-chiluda-red">${varPrice.toFixed(2)}</span>
-                        <ArrowRight size={14} className="text-gray-400" />
+                        <span className="font-extrabold text-sm text-emerald-600">${varPrice.toFixed(2)}</span>
+                        <ArrowRight size={14} className="text-slate-400" />
                       </div>
                     </button>
                   );
@@ -1678,41 +1712,44 @@ const Sales = () => {
 
       {/* Control de Caja / Shift Manager Modal */}
       {showShiftManager && (activeShift || isAdmin) && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white/95 backdrop-blur-2xl rounded-[2.5rem] shadow-2xl w-full max-w-2xl max-h-[85vh] max-h-[85dvh] sm:max-h-[90vh] flex flex-col overflow-hidden border border-white animate-scale-in">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
-              <h3 className="text-lg font-black text-brand-900 flex items-center gap-2">
-                <Coins className="text-emerald-500" size={20} />
-                Gestión de Turno y Control de Caja
-              </h3>
-              <button onClick={() => setShowShiftManager(false)} className="text-gray-400 hover:text-gray-600 p-1">
-                <X size={20} />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 flex-shrink-0">
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <Coins className="text-emerald-600 w-5 h-5 shrink-0" />
+                <span>GESTIÓN DE TURNO Y CONTROL DE CAJA</span>
+              </h2>
+              <button 
+                onClick={() => setShowShiftManager(false)} 
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            <div className="flex border-b border-gray-100 bg-brand-50/30 flex-shrink-0">
+            <div className="flex border-b border-slate-100 bg-slate-50/50 flex-shrink-0">
               {activeShift && (
                 <>
                   <button 
                     onClick={() => setShiftTab('report')}
-                    className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                      shiftTab === 'report' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                    className={`flex-1 py-3 px-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                      shiftTab === 'report' ? 'border-chiluda-red text-chiluda-red bg-white' : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     Corte X (Ventas & Resumen)
                   </button>
                   <button 
                     onClick={() => setShiftTab('movement')}
-                    className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                      shiftTab === 'movement' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                    className={`flex-1 py-3 px-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                      shiftTab === 'movement' ? 'border-chiluda-red text-chiluda-red bg-white' : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     Registrar Movimiento Efectivo
                   </button>
                   <button 
                     onClick={() => setShiftTab('close')}
-                    className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                      shiftTab === 'close' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                    className={`flex-1 py-3 px-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                      shiftTab === 'close' ? 'border-chiluda-red text-chiluda-red bg-white' : 'border-transparent text-slate-500 hover:text-slate-800'
                     }`}
                   >
                     Corte Z (Cierre de Caja)
@@ -1722,8 +1759,8 @@ const Sales = () => {
               {!activeShift && isAdmin && (
                 <button 
                   onClick={() => setShiftTab('open')}
-                  className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                    shiftTab === 'open' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                  className={`flex-1 py-3 px-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                    shiftTab === 'open' ? 'border-chiluda-red text-chiluda-red bg-white' : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Abrir Mi Caja
@@ -1735,8 +1772,8 @@ const Sales = () => {
                     setShiftTab('adminShifts');
                     loadAdminShifts();
                   }}
-                  className={`flex-1 py-3.5 text-xs font-bold transition-all border-b-2 ${
-                    shiftTab === 'adminShifts' ? 'border-chiluda-red text-chiluda-red' : 'border-transparent text-gray-500 hover:text-chiluda-red'
+                  className={`flex-1 py-3 px-3 text-xs font-bold uppercase tracking-wider transition-all border-b-2 ${
+                    shiftTab === 'adminShifts' ? 'border-chiluda-red text-chiluda-red bg-white' : 'border-transparent text-slate-500 hover:text-slate-800'
                   }`}
                 >
                   Turnos de Cajeros
@@ -1744,30 +1781,30 @@ const Sales = () => {
               )}
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="p-6 overflow-y-auto flex-grow space-y-5">
               {shiftTab === 'open' && !activeShift && isAdmin && (
-                <div className="space-y-4 max-w-md mx-auto text-center py-6">
-                  <div className="w-16 h-16 bg-brand-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce">
+                <div className="space-y-4 max-w-md mx-auto text-center py-4">
+                  <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-bounce border border-emerald-100">
                     <Coins size={32} />
                   </div>
                   <div>
-                    <h4 className="text-lg font-bold text-brand-900 mb-1">Abrir Turno de Caja</h4>
-                    <p className="text-gray-500 text-xs leading-relaxed">
+                    <h4 className="text-lg font-bold text-slate-800 mb-1">Abrir Turno de Caja</h4>
+                    <p className="text-slate-500 text-xs leading-relaxed">
                       Como administrador, puedes iniciar tu propio turno de caja si deseas realizar ventas directas y registrar movimientos en esta sesión.
                     </p>
                   </div>
                   
-                  <div className="w-full p-5 bg-brand-50/50 rounded-2xl border border-gray-100 flex flex-col gap-3">
-                    <label className="text-xs font-bold text-gray-500 text-left uppercase tracking-wider">Fondo Inicial ($ MXN):</label>
+                  <div className="w-full p-5 bg-slate-50 rounded-2xl border border-slate-200/60 flex flex-col gap-3 text-left">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Fondo Inicial ($ MXN) *</label>
                     <input
                       type="number"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-center font-bold text-xl text-brand-900"
+                      className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center font-bold text-xl text-slate-800 transition-all"
                       value={initialCashInput}
                       onChange={(e) => setInitialCashInput(e.target.value)}
                     />
                     <button
                       onClick={handleOpenShift}
-                      className="w-full py-3 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred transition-all shadow-md active:scale-95 text-sm"
+                      className="w-full py-3 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred transition-all shadow-sm active:scale-95 text-sm uppercase tracking-wider"
                     >
                       Iniciar Turno
                     </button>
@@ -1778,27 +1815,27 @@ const Sales = () => {
               {shiftTab === 'report' && shiftReport && activeShift && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Fondo de Caja:</span>
-                      <span className="text-xl font-extrabold text-brand-900">${shiftReport.shift.efectivo_inicial.toFixed(2)}</span>
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Fondo de Caja:</span>
+                      <span className="text-xl font-extrabold text-slate-800">${shiftReport.shift.efectivo_inicial.toFixed(2)}</span>
                     </div>
-                    <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Efectivo Esperado:</span>
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Efectivo Esperado:</span>
                       <span className="text-xl font-extrabold text-emerald-600">${shiftReport.shift.efectivo_final_esperado.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  <div className="border border-gray-100 rounded-2xl p-4 bg-white space-y-2.5">
-                    <h4 className="text-xs font-black uppercase text-brand-900 pb-2 border-b border-gray-100 tracking-wider">Desglose de Ventas del Turno:</h4>
+                  <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                    <h4 className="text-xs font-black uppercase text-slate-700 pb-2 border-b border-slate-200/60 tracking-wider">Desglose de Ventas del Turno:</h4>
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-gray-500">Ventas en Efectivo:</span>
-                      <span className="text-brand-900">${shiftReport.totals.cash_sales.toFixed(2)}</span>
+                      <span className="text-slate-500">Ventas en Efectivo:</span>
+                      <span className="text-slate-800">${shiftReport.totals.cash_sales.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-xs font-bold">
-                      <span className="text-gray-500">Ventas en Tarjeta:</span>
-                      <span className="text-brand-900">${shiftReport.totals.card_sales.toFixed(2)}</span>
+                      <span className="text-slate-500">Ventas en Tarjeta:</span>
+                      <span className="text-slate-800">${shiftReport.totals.card_sales.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs font-bold pt-2 border-t border-gray-100 text-brand-900">
+                    <div className="flex justify-between text-xs font-bold pt-2 border-t border-slate-200/60 text-slate-900">
                       <span>Total de Ventas:</span>
                       <span>${shiftReport.totals.total_sales.toFixed(2)}</span>
                     </div>
@@ -1808,8 +1845,8 @@ const Sales = () => {
                     </div>
                   </div>
 
-                  <div className="border border-gray-100 rounded-2xl p-4 bg-white space-y-2.5">
-                    <h4 className="text-xs font-black uppercase text-brand-900 pb-2 border-b border-gray-100 tracking-wider">Movimientos Manuales:</h4>
+                  <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50/50 space-y-2.5">
+                    <h4 className="text-xs font-black uppercase text-slate-700 pb-2 border-b border-slate-200/60 tracking-wider">Movimientos Manuales:</h4>
                     <div className="flex justify-between text-xs font-bold text-emerald-600">
                       <span>Entradas:</span>
                       <span>+${shiftReport.totals.cash_entries.toFixed(2)}</span>
@@ -1827,43 +1864,43 @@ const Sales = () => {
                   <div className="flex gap-4">
                     <button
                       onClick={() => setCashMovementType('entrada')}
-                      className={`flex-1 py-3 rounded-xl font-bold text-sm border-2 ${
+                      className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider border-2 transition-all ${
                         cashMovementType === 'entrada' 
-                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700' 
-                          : 'border-gray-200 text-gray-500'
+                          ? 'border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm' 
+                          : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                       }`}
                     >
                       Entrada (Ingreso Cambio)
                     </button>
                     <button
                       onClick={() => setCashMovementType('salida')}
-                      className={`flex-1 py-3 rounded-xl font-bold text-sm border-2 ${
+                      className={`flex-1 py-3 rounded-xl font-bold text-xs uppercase tracking-wider border-2 transition-all ${
                         cashMovementType === 'salida' 
-                          ? 'border-red-500 bg-red-50 text-red-700' 
-                          : 'border-gray-200 text-gray-500'
+                          ? 'border-red-500 bg-red-50 text-red-700 shadow-sm' 
+                          : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                       }`}
                     >
                       Salida / Retiro Parcial
                     </button>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Cantidad ($):</label>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Cantidad ($) *</label>
                     <input
                       type="number"
                       placeholder="0.00"
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-lg font-bold"
+                      className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-lg font-bold text-slate-800 transition-all"
                       value={cashMovementAmount}
                       onChange={(e) => setCashMovementAmount(e.target.value)}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Descripción / Motivo:</label>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Descripción / Motivo *</label>
                     <textarea
                       rows={3}
                       placeholder="Ej. Cambio de caja, compra de insumos, retiro parcial de seguridad..."
-                      className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-sm font-medium resize-none"
+                      className="px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs font-semibold resize-none text-slate-800 transition-all"
                       value={cashMovementReason}
                       onChange={(e) => setCashMovementReason(e.target.value)}
                     />
@@ -1871,7 +1908,7 @@ const Sales = () => {
 
                   <button
                     onClick={handleCashMovement}
-                    className="w-full py-3.5 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred active:scale-98 transition-all text-sm shadow-md"
+                    className="w-full py-3.5 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred active:scale-95 transition-all text-sm uppercase shadow-sm"
                   >
                     Registrar Movimiento
                   </button>
@@ -1880,27 +1917,27 @@ const Sales = () => {
 
               {shiftTab === 'close' && shiftReport && activeShift && (
                 <div className="space-y-4">
-                  <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-800 text-xs sm:text-sm">
-                    <AlertCircle className="shrink-0 text-amber-600" size={20} />
+                  <div className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-start gap-3 text-amber-900 text-xs sm:text-sm shadow-xs">
+                    <AlertCircle className="shrink-0 text-amber-600 mt-0.5" size={20} />
                     <div className="space-y-1">
-                      <p className="font-extrabold">Procedimiento de Corte Z</p>
-                      <p className="opacity-90 leading-relaxed">
+                      <p className="font-extrabold text-amber-900">Procedimiento de Corte Z</p>
+                      <p className="opacity-90 leading-relaxed text-xs text-amber-800 font-medium">
                         El Corte Z cerrará este turno de caja. A continuación, favor de contar físicamente todo el efectivo disponible en la gaveta e ingresarlo. Se calcularán automáticamente los descuadres de caja.
                       </p>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-brand-50 rounded-2xl border border-gray-100 flex justify-between items-center">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Efectivo Esperado (Fórmula Sistema):</span>
-                    <span className="text-lg font-extrabold text-brand-900">${shiftReport.shift.efectivo_final_esperado.toFixed(2)}</span>
+                  <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/60 flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Efectivo Esperado (Fórmula Sistema):</span>
+                    <span className="text-lg font-extrabold text-slate-800">${shiftReport.shift.efectivo_final_esperado.toFixed(2)}</span>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Efectivo Físico Contado ($):</label>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Efectivo Físico Contado ($) *</label>
                     <input
                       type="number"
                       placeholder="Ej. 1000"
-                      className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-center font-bold text-2xl text-brand-900"
+                      className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center font-bold text-2xl text-slate-800 transition-all"
                       value={closeCashReal}
                       onChange={(e) => setCloseCashReal(e.target.value)}
                     />
@@ -1909,7 +1946,7 @@ const Sales = () => {
                   {closeCashReal !== '' && (
                     <div className={`p-4 rounded-2xl border text-center font-extrabold text-sm animate-fade-in ${
                       parseFloat(closeCashReal) - shiftReport.shift.efectivo_final_esperado === 0 
-                        ? 'bg-green-50 border-green-200 text-green-800' 
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
                         : 'bg-red-50 border-red-200 text-red-800'
                     }`}>
                       {parseFloat(closeCashReal) - shiftReport.shift.efectivo_final_esperado === 0 
@@ -1921,7 +1958,7 @@ const Sales = () => {
 
                   <button
                     onClick={handleCloseShift}
-                    className="w-full py-4 bg-red-600 text-white font-extrabold rounded-2xl hover:bg-red-700 active:scale-95 transition-all text-base shadow-lg"
+                    className="w-full py-3.5 bg-chiluda-red text-white font-bold rounded-xl hover:bg-chiluda-darkred active:scale-95 transition-all text-sm uppercase shadow-sm"
                   >
                     Confirmar Corte Z y Cerrar Caja
                   </button>
@@ -1932,37 +1969,37 @@ const Sales = () => {
                 <div className="space-y-4">
                   {selectedShiftToClose ? (
                     <div className="space-y-4 animate-scale-in">
-                      <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-start gap-3 text-amber-800 text-xs sm:text-sm">
-                        <AlertCircle className="shrink-0 text-amber-600" size={20} />
+                      <div className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-start gap-3 text-amber-900 text-xs sm:text-sm">
+                        <AlertCircle className="shrink-0 text-amber-600 mt-0.5" size={20} />
                         <div className="space-y-1">
                           <p className="font-extrabold">Corte Forzado por Administrador</p>
-                          <p className="opacity-90 leading-relaxed">
+                          <p className="opacity-90 leading-relaxed text-xs text-amber-800 font-medium">
                             Estás realizando el cierre del turno del cajero <strong>{selectedShiftToClose.nombre_completo || selectedShiftToClose.nombre_usuario}</strong>. El cajero será desconectado del control de caja.
                           </p>
                         </div>
                       </div>
 
-                      <div className="border border-gray-100 rounded-2xl p-4 bg-white space-y-2.5">
+                      <div className="border border-slate-200/60 rounded-2xl p-4 bg-slate-50 space-y-2.5">
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="text-gray-500">Fondo Inicial:</span>
-                          <span className="text-brand-900">${selectedShiftToClose.efectivo_inicial.toFixed(2)}</span>
+                          <span className="text-slate-500">Fondo Inicial:</span>
+                          <span className="text-slate-800">${selectedShiftToClose.efectivo_inicial.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="text-gray-500">Efectivo Esperado en Caja:</span>
+                          <span className="text-slate-500">Efectivo Esperado en Caja:</span>
                           <span className="text-emerald-600 font-extrabold">${selectedShiftToClose.efectivo_final_esperado.toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between text-xs font-bold">
-                          <span className="text-gray-500">Hora de Inicio:</span>
-                          <span className="text-brand-900">{new Date(selectedShiftToClose.hora_inicio).toLocaleString()}</span>
+                          <span className="text-slate-500">Hora de Inicio:</span>
+                          <span className="text-slate-800">{new Date(selectedShiftToClose.hora_inicio).toLocaleString()}</span>
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block">Efectivo Físico Contado ($):</label>
+                      <div className="flex flex-col space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Efectivo Físico Contado ($) *</label>
                         <input
                           type="number"
                           placeholder="Ej. 1000"
-                          className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-chiluda-red/30 text-center font-bold text-2xl text-brand-900"
+                          className="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center font-bold text-2xl text-slate-800 transition-all"
                           value={adminCloseReal}
                           onChange={(e) => setAdminCloseReal(e.target.value)}
                         />
@@ -1971,7 +2008,7 @@ const Sales = () => {
                       {adminCloseReal !== '' && (
                         <div className={`p-4 rounded-2xl border text-center font-extrabold text-sm animate-fade-in ${
                           parseFloat(adminCloseReal) - selectedShiftToClose.efectivo_final_esperado === 0 
-                            ? 'bg-green-50 border-green-200 text-green-800' 
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
                             : 'bg-red-50 border-red-200 text-red-800'
                         }`}>
                           {parseFloat(adminCloseReal) - selectedShiftToClose.efectivo_final_esperado === 0 
@@ -1987,13 +2024,13 @@ const Sales = () => {
                             setSelectedShiftToClose(null);
                             setAdminCloseReal('');
                           }}
-                          className="flex-1 py-3 border border-gray-200 text-gray-500 font-bold rounded-xl hover:bg-gray-50 active:scale-95 transition-all text-sm"
+                          className="flex-1 py-3 border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-xs uppercase"
                         >
                           Atrás
                         </button>
                         <button
                           onClick={() => handleCloseShiftAdmin(selectedShiftToClose.id, parseFloat(adminCloseReal))}
-                          className="flex-[2] py-3 bg-red-600 text-white font-extrabold rounded-xl hover:bg-red-700 active:scale-95 transition-all text-sm shadow-md"
+                          className="flex-[2] py-3 bg-chiluda-red text-white font-extrabold rounded-xl hover:bg-chiluda-darkred active:scale-95 transition-all text-xs uppercase shadow-sm"
                         >
                           Confirmar Corte y Cerrar Caja
                         </button>
@@ -2002,32 +2039,32 @@ const Sales = () => {
                   ) : (
                     <div className="space-y-4">
                       {loadingAdminShifts ? (
-                        <div className="text-center py-8 text-gray-500 font-medium text-xs">
+                        <div className="text-center py-8 text-slate-500 font-medium text-xs">
                           Cargando turnos de cajeros...
                         </div>
                       ) : adminShifts.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500 font-medium text-xs">
+                        <div className="text-center py-8 text-slate-500 font-medium text-xs">
                           No hay turnos activos de otros cajeros.
                         </div>
                       ) : (
-                        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+                        <div className="overflow-x-auto border border-slate-200/60 rounded-2xl">
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
-                              <tr className="bg-brand-50/50 border-b border-gray-100 text-gray-500 font-bold">
+                              <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
                                 <th className="p-3">Cajero</th>
                                 <th className="p-3">Apertura</th>
                                 <th className="p-3 text-right">Esperado</th>
                                 <th className="p-3 text-center">Acciones</th>
                               </tr>
                             </thead>
-                            <tbody>
+                            <tbody className="divide-y divide-slate-100">
                               {adminShifts.map((s) => (
-                                <tr key={s.id} className="border-b border-gray-100 hover:bg-gray-50/50 font-medium">
+                                <tr key={s.id} className="hover:bg-slate-50/50 font-medium">
                                   <td className="p-3">
-                                    <div className="font-bold text-brand-900">{s.nombre_completo}</div>
-                                    <div className="text-[10px] text-gray-400">@{s.nombre_usuario}</div>
+                                    <div className="font-bold text-slate-800">{s.nombre_completo}</div>
+                                    <div className="text-[10px] text-slate-400">@{s.nombre_usuario}</div>
                                   </td>
-                                  <td className="p-3 text-gray-500">
+                                  <td className="p-3 text-slate-500">
                                     {new Date(s.hora_inicio).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                   </td>
                                   <td className="p-3 text-right font-bold text-emerald-600">
@@ -2187,8 +2224,8 @@ const Sales = () => {
         <div className="fixed inset-0 z-[250] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden border border-slate-100 flex flex-col max-h-[90vh] animate-scale-in">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50 flex-shrink-0">
-              <h2 className="text-base font-bold text-slate-800 tracking-tight flex items-center gap-2">
-                <Lock className="text-red-500 w-5 h-5 shrink-0" />
+              <h2 className="text-lg font-bold text-slate-800 tracking-tight flex items-center gap-2">
+                <Lock className="text-emerald-600 w-5 h-5 shrink-0" />
                 <span>AUTORIZACIÓN DEL SUPERVISOR</span>
               </h2>
               <button 
@@ -2199,57 +2236,57 @@ const Sales = () => {
               </button>
             </div>
             
-            <div className="p-6 space-y-5 overflow-y-auto flex-grow">
-              <div className="p-4 bg-red-50/50 border border-red-100 rounded-xl">
+            <div className="p-6 space-y-4 overflow-y-auto flex-grow">
+              <div className="p-4 bg-red-50/50 border border-red-100 rounded-2xl space-y-1">
                 <span className="text-[10px] font-black text-red-500 uppercase tracking-wider block">Producto a Cancelar:</span>
-                <span className="text-sm font-bold text-slate-800 block mt-1">{cancelConfirm.productName}</span>
-                <span className="text-[10px] text-slate-500 block mt-1">Vendidas originalmente: <strong>{cancelConfirm.maxQuantity}</strong></span>
+                <span className="text-sm font-bold text-slate-800 block">{cancelConfirm.productName}</span>
+                <span className="text-[10px] text-slate-500 block">Vendidas originalmente: <strong>{cancelConfirm.maxQuantity}</strong></span>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Cantidad a Cancelar/Devolver:</label>
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Cantidad a Cancelar/Devolver *</label>
                 <input
                   type="number"
                   min="1"
                   max={cancelConfirm.maxQuantity}
-                  className="w-full px-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-center font-bold text-lg text-slate-800"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-center font-bold text-lg text-slate-800 transition-all"
                   value={cancelConfirm.cantidad}
                   onChange={(e) => setCancelConfirm(prev => ({ ...prev, cantidad: e.target.value }))}
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Motivo de la cancelación:</label>
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Motivo de la cancelación *</label>
                 <textarea
                   placeholder="Ej. Error de cobro, devolución física de cliente..."
                   rows={2}
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs font-semibold resize-none text-slate-850"
+                  className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs font-semibold resize-none text-slate-800 transition-all"
                   value={cancelConfirm.motivo}
                   onChange={(e) => setCancelConfirm(prev => ({ ...prev, motivo: e.target.value }))}
                 />
               </div>
 
-              <p className="text-[10px] text-slate-500 leading-normal">
+              <p className="text-xs text-slate-400 leading-normal">
                 Esta acción requiere la clave de autorización de un <strong>Supervisor</strong> o <strong>Administrador</strong> para poder devolver el inventario e impactar el balance de caja.
               </p>
               
               {/* Only show credentials input if NOT admin/supervisor */}
               {!isAdmin && !isStaff && (
-                <div className="grid grid-cols-2 gap-3 pt-2">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Usuario Supervisor:</label>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Usuario Supervisor *</label>
                     <input
                       type="text"
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs font-bold text-slate-800"
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs font-bold text-slate-800 transition-all"
                       value={cancelConfirm.authUser}
                       onChange={(e) => setCancelConfirm(prev => ({ ...prev, authUser: e.target.value }))}
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Contraseña:</label>
+                  <div className="flex flex-col space-y-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Contraseña *</label>
                     <input
                       type="password"
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500/20 text-xs font-bold text-slate-800"
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs font-bold text-slate-800 transition-all"
                       value={cancelConfirm.authPass}
                       onChange={(e) => setCancelConfirm(prev => ({ ...prev, authPass: e.target.value }))}
                     />
@@ -2258,17 +2295,18 @@ const Sales = () => {
               )}
             </div>
 
-            <div className="p-5 border-t border-slate-100 flex gap-3 flex-shrink-0 bg-slate-50">
+            <div className="flex justify-end space-x-2 p-5 border-t border-slate-100 bg-slate-50 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setCancelConfirm({ show: false, saleId: null, motivo: '', authUser: '', authPass: '', productName: '', maxQuantity: 1, cantidad: 1 })}
-                className="w-1/3 py-3 rounded-xl font-bold text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+                className="px-5 py-2.5 rounded-xl border border-slate-200 font-semibold text-slate-600 hover:bg-slate-100 transition-all text-sm uppercase"
               >
                 Volver
               </button>
               <button
+                type="button"
                 onClick={processCancelSale}
-                className="flex-1 py-3 rounded-xl font-bold text-xs text-white bg-red-600 hover:bg-red-700 transition-all active:scale-95 shadow-md"
+                className="px-5 py-2.5 rounded-xl bg-chiluda-red hover:bg-chiluda-darkred text-white font-bold transition-all text-sm uppercase shadow-sm active:scale-95"
               >
                 Confirmar Autorización
               </button>
@@ -2279,32 +2317,13 @@ const Sales = () => {
       )}
 
       {/* Global alert Toast overlay */}
-      {customAlert.show && createPortal(
-        <div className="fixed inset-0 bg-brand-900/40 backdrop-blur-sm flex items-center justify-center z-[300] p-4">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-xs overflow-hidden border border-white p-5 text-center animate-scale-in">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 ${
-              customAlert.tipo === 'success' ? 'bg-green-50 text-green-500' :
-              customAlert.tipo === 'warning' ? 'bg-orange-50 text-orange-500' :
-              'bg-red-50 text-red-500'
-            }`}>
-              <AlertCircle size={24} />
-            </div>
-            <h3 className="font-extrabold text-brand-900 text-sm mb-1">{customAlert.title}</h3>
-            <p className="text-gray-500 text-xs mb-4 leading-normal">{customAlert.message}</p>
-            <button
-              onClick={() => setCustomAlert(prev => ({ ...prev, show: false }))}
-              className={`w-full py-2.5 rounded-xl font-extrabold text-xs text-white ${
-                customAlert.tipo === 'success' ? 'bg-green-600 hover:bg-green-700' :
-                customAlert.tipo === 'warning' ? 'bg-orange-500 hover:bg-orange-600' :
-                'bg-red-600 hover:bg-red-700'
-              }`}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>,
-        document.body
-      )}
+      <AlertModal
+        isOpen={customAlert.show}
+        tipo={customAlert.tipo}
+        titulo={customAlert.title}
+        mensaje={customAlert.message}
+        onClose={() => setCustomAlert(prev => ({ ...prev, show: false }))}
+      />
     </div>
   );
 };

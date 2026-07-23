@@ -59,6 +59,7 @@ class UsuarioUpdate(BaseModel):
 class UsuarioLogin(BaseModel):
     nombre_usuario: str
     contrasena: str
+    subdominio: Optional[str] = None
 
 class UsuarioResponse(BaseModel):
     id: int
@@ -155,9 +156,26 @@ class TokenData(BaseModel):
 # Esquemas de Cancelación/Devolución
 class CancelarVentaRequest(BaseModel):
     motivo: str
+    auth_username: Optional[str] = None
+    auth_password: Optional[str] = None
     usuario_autorizacion: Optional[str] = None
     contrasena_autorizacion: Optional[str] = None
     cantidad: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def sync_auth_fields(cls, data):
+        if isinstance(data, dict):
+            if 'usuario_autorizacion' in data and not data.get('auth_username'):
+                data['auth_username'] = data['usuario_autorizacion']
+            elif 'auth_username' in data and not data.get('usuario_autorizacion'):
+                data['usuario_autorizacion'] = data['auth_username']
+                
+            if 'contrasena_autorizacion' in data and not data.get('auth_password'):
+                data['auth_password'] = data['contrasena_autorizacion']
+            elif 'auth_password' in data and not data.get('auth_password'):
+                data['auth_password'] = data['contrasena_autorizacion']
+        return data
 
 class DevolucionResponse(BaseModel):
     id: int
@@ -219,12 +237,37 @@ class ElementoCheckout(BaseModel):
 
 class PeticionCheckout(BaseModel):
     elementos: List[ElementoCheckout]
-    metodo_pago: str # 'efectivo', 'tarjeta', 'mixto', 'credito'
+    metodo_pago: Optional[str] = None
+    payment_method: Optional[str] = None
     monto_efectivo: float = 0.0
+    cash_amount: Optional[float] = None
     monto_tarjeta: float = 0.0
+    card_amount: Optional[float] = None
     descuento: float = 0.0
+    discount: Optional[float] = None
     turno_id: Optional[int] = None
     cliente_id: Optional[int] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def sync_checkout_fields(cls, data):
+        if isinstance(data, dict):
+            mp = data.get('metodo_pago') or data.get('payment_method')
+            data['metodo_pago'] = mp
+            data['payment_method'] = mp
+
+            me = data.get('monto_efectivo') if data.get('monto_efectivo') is not None else data.get('cash_amount', 0.0)
+            data['monto_efectivo'] = me
+            data['cash_amount'] = me
+
+            mt = data.get('monto_tarjeta') if data.get('monto_tarjeta') is not None else data.get('card_amount', 0.0)
+            data['monto_tarjeta'] = mt
+            data['card_amount'] = mt
+
+            d = data.get('descuento') if data.get('descuento') is not None else data.get('discount', 0.0)
+            data['descuento'] = d
+            data['discount'] = d
+        return data
 
 # Esquemas de Perfil de Facturación
 class PerfilFacturacionBase(BaseModel):
@@ -386,7 +429,26 @@ class ClienteResponse(ClienteBase):
 # Esquemas de Pago de Cliente
 class PagoClienteCreate(BaseModel):
     monto: float
-    notes: Optional[str] = None # Se mantiene como notes en el request o se traduce a notas
+    notes: Optional[str] = None
+    notas: Optional[str] = None
+    auth_username: Optional[str] = None
+    auth_password: Optional[str] = None
+    usuario_autorizacion: Optional[str] = None
+    contrasena_autorizacion: Optional[str] = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def sync_auth_fields(cls, data):
+        if isinstance(data, dict):
+            u = data.get('auth_username') or data.get('usuario_autorizacion')
+            p = data.get('auth_password') or data.get('contrasena_autorizacion')
+            data['auth_username'] = u
+            data['usuario_autorizacion'] = u
+            data['auth_password'] = p
+            data['contrasena_autorizacion'] = p
+            if 'notes' in data and not data.get('notas'):
+                data['notas'] = data['notes']
+        return data
 
 class PagoClienteResponse(BaseModel):
     id: int

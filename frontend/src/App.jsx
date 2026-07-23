@@ -16,9 +16,14 @@ import PaymentSimulation from './pages/PaymentSimulation';
 
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const userStr = sessionStorage.getItem('user');
+  const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
   if (!userStr) {
     return <Navigate to="/login" replace />;
+  }
+  if (!sessionStorage.getItem('user')) {
+    sessionStorage.setItem('user', userStr);
+    const token = localStorage.getItem('token');
+    if (token) sessionStorage.setItem('token', token);
   }
   
   const user = JSON.parse(userStr);
@@ -30,7 +35,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 const PublicRoute = ({ children }) => {
-  const userStr = sessionStorage.getItem('user');
+  const userStr = sessionStorage.getItem('user') || localStorage.getItem('user');
   if (userStr) {
     const user = JSON.parse(userStr);
     return user.rol === 'admin' ? <Navigate to="/dashboard" replace /> : <Navigate to="/sales" replace />;

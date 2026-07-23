@@ -38,16 +38,26 @@ const Login = () => {
   const [showSubdomainInput, setShowSubdomainInput] = useState(false);
   const [tempSubdomain, setTempSubdomain] = useState('');
 
-  const loadBranding = async (sub) => {
+  const loadBranding = async (sub, isManual = false) => {
     try {
       const data = await fetchTenantBranding(sub);
       if (data) {
+        const pColor = data.color_primario || '#064E3B';
+        const aColor = data.color_secundario || '#064E3B';
         const newBranding = {
+          inquilino_id: data.id,
           storeName: data.nombre_tienda,
           logoUrl: data.logo_url,
-          primaryColor: data.color_primario || '#064E3B',
-          accentColor: data.color_secundario || '#064E3B',
+          primaryColor: pColor,
+          accentColor: aColor,
           isBranded: sub !== 'principal'
+        };
+        const storeSettingsCache = {
+          inquilino_id: data.id,
+          nombre_tienda: data.nombre_tienda,
+          logo_url: data.logo_url,
+          color_primario: pColor,
+          color_secundario: aColor
         };
         setStoreName(newBranding.storeName);
         setLogoUrl(newBranding.logoUrl);
@@ -55,28 +65,38 @@ const Login = () => {
         setAccentColor(newBranding.accentColor);
         setIsBranded(newBranding.isBranded);
         
-        // Cache the values
+        // Cache the values synchronously
         localStorage.setItem('cached_tenant_branding', JSON.stringify(newBranding));
+        localStorage.setItem('cached_store_settings', JSON.stringify(storeSettingsCache));
         localStorage.setItem('last_tenant_subdomain', sub);
         setError('');
+        if (isManual) {
+          setShowSubdomainInput(false);
+          setTempSubdomain('');
+        }
       }
     } catch (err) {
       console.error("Could not load inquilino branding:", err);
-      // Reset to default settings on error (deleted inquilino)
-      const defaults = {
-        storeName: 'ED & E',
-        logoUrl: '',
-        primaryColor: '#064E3B',
-        accentColor: '#064E3B',
-        isBranded: false
-      };
-      setStoreName(defaults.storeName);
-      setLogoUrl(defaults.logoUrl);
-      setPrimaryColor(defaults.primaryColor);
-      setAccentColor(defaults.accentColor);
-      setIsBranded(defaults.isBranded);
-      localStorage.removeItem('cached_tenant_branding');
-      localStorage.removeItem('last_tenant_subdomain');
+      if (isManual) {
+        setError('El identificador de tienda (Slug) no existe.');
+      } else {
+        // Reset to default settings on error (deleted inquilino)
+        const defaults = {
+          storeName: 'ED & E',
+          logoUrl: '',
+          primaryColor: '#064E3B',
+          accentColor: '#064E3B',
+          isBranded: false
+        };
+        setStoreName(defaults.storeName);
+        setLogoUrl(defaults.logoUrl);
+        setPrimaryColor(defaults.primaryColor);
+        setAccentColor(defaults.accentColor);
+        setIsBranded(defaults.isBranded);
+        localStorage.removeItem('cached_tenant_branding');
+        localStorage.removeItem('cached_store_settings');
+        localStorage.removeItem('last_tenant_subdomain');
+      }
     }
   };
 
@@ -127,6 +147,7 @@ const Login = () => {
   useLayoutEffect(() => {
     if (!isBranded) {
       document.body.classList.remove('branded-dark-theme');
+      document.documentElement.classList.remove('branded-dark-theme');
       document.documentElement.style.setProperty('--primary-color', '#064E3B');
       document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
       document.documentElement.style.setProperty('--body-bg-color', '#f3f6f4');
@@ -134,8 +155,6 @@ const Login = () => {
       document.documentElement.style.setProperty('--accent-color-hover', '#059669');
       document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
     } else {
-      document.body.classList.add('branded-dark-theme');
-      
       const hexToRgb = (hex) => {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -150,28 +169,46 @@ const Login = () => {
       const pRgb = hexToRgb(primaryColor);
       const aRgb = hexToRgb(accentColor);
 
+      let isLight = false;
+      if (pRgb) {
+        const pLum = (pRgb.r * 299 + pRgb.g * 587 + pRgb.b * 114) / 1000;
+        isLight = pLum > 140;
+      }
+
+      if (isLight) {
+        document.body.classList.remove('branded-dark-theme');
+        document.documentElement.classList.remove('branded-dark-theme');
+      } else {
+        document.body.classList.add('branded-dark-theme');
+        document.documentElement.classList.add('branded-dark-theme');
+      }
+
       document.documentElement.style.setProperty('--primary-color', primaryColor);
       if (pRgb) {
         document.documentElement.style.setProperty('--primary-color-light', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+        document.documentElement.style.setProperty('--primary-color-surface', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.35)`);
       } else {
         document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+        document.documentElement.style.setProperty('--primary-color-surface', 'rgba(255, 255, 255, 0.08)');
       }
 
       document.documentElement.style.setProperty('--accent-color', accentColor);
       document.documentElement.style.setProperty('--accent-color-hover', accentColor);
       if (aRgb) {
         document.documentElement.style.setProperty('--accent-color-light', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.08)`);
+        const lum = (aRgb.r * 299 + aRgb.g * 587 + aRgb.b * 114) / 1000;
+        document.documentElement.style.setProperty('--accent-text-color', lum > 140 ? '#111827' : '#ffffff');
       } else {
         document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+        document.documentElement.style.setProperty('--accent-text-color', '#ffffff');
       }
     }
   }, [isBranded, primaryColor, accentColor]);
 
-  const handleCustomStoreSubmit = (e) => {
+  const handleCustomStoreSubmit = async (e) => {
     e.preventDefault();
     if (tempSubdomain.trim()) {
-      loadBranding(tempSubdomain.trim().toLowerCase());
-      setShowSubdomainInput(false);
+      await loadBranding(tempSubdomain.trim().toLowerCase(), true);
     }
   };
 
@@ -181,6 +218,9 @@ const Login = () => {
     setPrimaryColor('#064E3B');
     setAccentColor('#064E3B');
     setIsBranded(false);
+    setTempSubdomain('');
+    setNombreUsuario('');
+    setPassword('');
     localStorage.removeItem('last_tenant_subdomain');
     localStorage.removeItem('cached_tenant_branding');
     setShowSubdomainInput(false);
@@ -191,22 +231,43 @@ const Login = () => {
     e.preventDefault();
     setError('');
     
+    const activeSubdomain = localStorage.getItem('last_tenant_subdomain') || null;
+
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre_usuario, contrasena: password }),
+        body: JSON.stringify({
+          nombre_usuario,
+          contrasena: password,
+          subdominio: activeSubdomain
+        }),
       });
       
       if (response.ok) {
         const data = await response.json();
         sessionStorage.setItem('user', JSON.stringify(data.usuario));
         sessionStorage.setItem('token', data.access_token);
+        localStorage.setItem('user', JSON.stringify(data.usuario));
+        localStorage.setItem('token', data.access_token);
         if (data.usuario.subdominio) {
           localStorage.setItem('last_tenant_subdomain', data.usuario.subdominio);
         } else if (data.usuario.inquilino_id === 1) {
           localStorage.removeItem('last_tenant_subdomain');
           localStorage.removeItem('cached_tenant_branding');
+          localStorage.removeItem('cached_store_settings');
+        }
+        
+        // Ensure cache matches logged in user's inquilino_id
+        const cachedStoreStr = localStorage.getItem('cached_store_settings');
+        if (cachedStoreStr) {
+          try {
+            const parsedStore = JSON.parse(cachedStoreStr);
+            if (parsedStore.inquilino_id && parsedStore.inquilino_id !== data.usuario.inquilino_id) {
+              localStorage.removeItem('cached_store_settings');
+              localStorage.removeItem('cached_tenant_branding');
+            }
+          } catch(e) {}
         }
         if (data.usuario.rol === 'admin') {
           navigate('/dashboard');
@@ -224,7 +285,21 @@ const Login = () => {
 
 
   // --- BRANDED CUSTOM DARK THEME ---
-  if (isBranded) {
+  const getRgbFromHex = (hex) => {
+    const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+    const fullHex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(fullHex);
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : null;
+  };
+  const pRgbVal = getRgbFromHex(primaryColor);
+  const pLumVal = pRgbVal ? (pRgbVal.r * 299 + pRgbVal.g * 587 + pRgbVal.b * 114) / 1000 : 0;
+  const isLight = pLumVal > 140;
+
+  if (isBranded && !isLight) {
     return (
       <div 
         className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans transition-all duration-700"
@@ -259,7 +334,7 @@ const Login = () => {
               </div>
             )}
             
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6 bg-transparent" onSubmit={handleSubmit}>
               <div>
                 <label className="block text-xs font-black text-gray-200 uppercase tracking-wider">
                   Usuario
@@ -295,14 +370,17 @@ const Login = () => {
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-black text-white hover:scale-[1.02] active:scale-[0.98] focus:outline-none transition-all duration-300"
-                  style={{ backgroundColor: accentColor }}
+                  className="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-black hover:scale-[1.02] active:scale-[0.98] focus:outline-none transition-all duration-300"
+                  style={{ 
+                    backgroundColor: accentColor,
+                    color: 'var(--accent-text-color, #ffffff)'
+                  }}
                 >
                   Iniciar Sesión
                 </button>
               </div>
             </form>
-
+ 
             <div className="mt-6 border-t border-white/10 pt-4 flex flex-col items-center gap-3">
               {showSubdomainInput ? (
                 <form onSubmit={handleCustomStoreSubmit} className="w-full flex items-center gap-2 animate-fade-in">
@@ -316,27 +394,36 @@ const Login = () => {
                   />
                   <button
                     type="submit"
-                    className="px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all"
-                    style={{ backgroundColor: accentColor }}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                    style={{ 
+                      backgroundColor: accentColor,
+                      color: 'var(--accent-text-color, #ffffff)'
+                    }}
                   >
                     Cargar
                   </button>
                   <button
                     type="button"
-                    onClick={handleResetBranding}
-                    className="px-2 py-1.5 text-xs text-gray-400 hover:text-white"
+                    onClick={() => setTempSubdomain('')}
+                    className="px-2 py-1.5 text-xs text-gray-400 hover:text-white uppercase tracking-wider font-bold cursor-pointer"
                   >
                     Reset
                   </button>
                 </form>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setShowSubdomainInput(true)}
-                  className="text-[11px] text-gray-400 hover:text-white font-bold transition-colors uppercase tracking-wider"
-                >
-                  Acceder a otra tienda (Slug)
-                </button>
+                <div className="flex flex-col items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentSub = localStorage.getItem('last_tenant_subdomain') || '';
+                      setTempSubdomain(currentSub);
+                      setShowSubdomainInput(true);
+                    }}
+                    className="text-[11px] text-gray-400 hover:text-white font-bold transition-colors uppercase tracking-wider cursor-pointer"
+                  >
+                    Acceder a otra tienda (Slug)
+                  </button>
+                </div>
               )}
 
               <button
@@ -356,15 +443,19 @@ const Login = () => {
   // --- DEFAULT LIGHT POS THEME (ED & E ORIGINAL LOOK) ---
   return (
     <div className="min-h-screen bg-transparent flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden font-sans">
-      {/* Original light green icons */}
-      <FloatingStoreIconsBg />
+      {/* Dynamic colored background store icons */}
+      <FloatingStoreIconsBg color={isBranded ? accentColor + '20' : undefined} />
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-fade-in">
         <div className="flex justify-center mb-4">
-          <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-500" />
+          {isBranded && logoUrl ? (
+            <img src={logoUrl} alt={`${storeName} Logo`} className="h-28 w-auto object-contain rounded-2xl shadow-md border border-stone-200 animate-scale-in" />
+          ) : (
+            <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-500" />
+          )}
         </div>
         <h2 className="mt-2 text-center text-4xl font-black text-brand-900 tracking-tight uppercase">
-          Abarrotes <span className="text-[#064e3b]">ED & E</span>
+          Abarrotes <span style={{ color: isBranded ? accentColor : '#064e3b' }}>{isBranded ? storeName : 'ED & E'}</span>
         </h2>
         <p className="mt-3 text-center text-sm font-bold text-stone-500">
           Ingresa a tu cuenta
@@ -415,7 +506,11 @@ const Login = () => {
             <div className="pt-2">
               <button
                 type="submit"
-                className="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-black text-white bg-[#064e3b] hover:bg-emerald-800 hover:scale-[1.02] active:scale-[0.98] focus:outline-none transition-all duration-300"
+                className="w-full flex justify-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-black hover:scale-[1.02] active:scale-[0.98] focus:outline-none transition-all duration-300"
+                style={{ 
+                  backgroundColor: isBranded ? accentColor : '#064e3b',
+                  color: isBranded ? 'var(--accent-text-color, #ffffff)' : '#ffffff'
+                }}
               >
                 Iniciar Sesión
               </button>
@@ -436,7 +531,11 @@ const Login = () => {
                 />
                 <button
                   type="submit"
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#064e3b] hover:bg-emerald-800"
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                  style={{ 
+                    backgroundColor: isBranded ? accentColor : '#064e3b',
+                    color: isBranded ? 'var(--accent-text-color, #ffffff)' : '#ffffff'
+                  }}
                 >
                   Cargar
                 </button>

@@ -210,6 +210,20 @@ const Settings = () => {
         tasa_impuesto: parsedTax
       };
       await updateStoreSettings(payload);
+
+      const settingsWithTenant = { ...payload, inquilino_id: user.inquilino_id };
+      localStorage.setItem('cached_store_settings', JSON.stringify(settingsWithTenant));
+
+      const brandingCache = {
+        inquilino_id: user.inquilino_id,
+        storeName: payload.nombre_tienda,
+        logoUrl: payload.logo_url,
+        primaryColor: payload.color_primario,
+        accentColor: payload.color_secundario,
+        isBranded: user.inquilino_id !== 1
+      };
+      localStorage.setItem('cached_tenant_branding', JSON.stringify(brandingCache));
+
       setSuccess('Configuración guardada exitosamente.');
       window.dispatchEvent(new Event('store_settings_updated'));
     } catch (err) {

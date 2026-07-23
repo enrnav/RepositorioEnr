@@ -57,9 +57,30 @@ const Layout = () => {
   const [activeShift, setActiveShift] = useState(null);
   const getCachedSettings = () => {
     try {
+      const uStr = sessionStorage.getItem('user');
+      const u = uStr ? JSON.parse(uStr) : null;
+      const currentInquilinoId = u?.inquilino_id;
+
       const cached = localStorage.getItem('cached_store_settings');
       if (cached) {
-        return JSON.parse(cached);
+        const parsed = JSON.parse(cached);
+        if (!currentInquilinoId || !parsed.inquilino_id || parsed.inquilino_id === currentInquilinoId) {
+          return parsed;
+        }
+      }
+
+      const tbStr = localStorage.getItem('cached_tenant_branding');
+      if (tbStr) {
+        const tb = JSON.parse(tbStr);
+        if (!currentInquilinoId || !tb.inquilino_id || tb.inquilino_id === currentInquilinoId) {
+          return {
+            nombre_tienda: tb.storeName || 'ABARROTES ED & E',
+            color_primario: tb.primaryColor || '#064E3B',
+            color_secundario: tb.accentColor || '#064E3B',
+            logo_url: tb.logoUrl || null,
+            inquilino_id: currentInquilinoId
+          };
+        }
       }
     } catch (e) {}
     return {
@@ -124,8 +145,9 @@ const Layout = () => {
     try {
       const data = await fetchStoreSettings();
       if (data && data.nombre_tienda) {
-        setStoreSettings(data);
-        localStorage.setItem('cached_store_settings', JSON.stringify(data));
+        const settingsWithTenant = { ...data, inquilino_id: user.inquilino_id };
+        setStoreSettings(settingsWithTenant);
+        localStorage.setItem('cached_store_settings', JSON.stringify(settingsWithTenant));
       }
     } catch (err) {
       console.error("Error fetching settings in layout:", err);
@@ -165,29 +187,60 @@ const Layout = () => {
     };
 
     if (isBranded) {
-      document.body.classList.add('branded-dark-theme');
-      
       const pColor = storeSettings.color_primario || '#064E3B';
       const aColor = storeSettings.color_secundario || '#064E3B';
       const pRgb = hexToRgb(pColor);
       const aRgb = hexToRgb(aColor);
 
+      let isLight = false;
+      if (pRgb) {
+        const pLum = (pRgb.r * 299 + pRgb.g * 587 + pRgb.b * 114) / 1000;
+        isLight = pLum > 140;
+      }
+
+      if (isLight) {
+        document.body.classList.remove('branded-dark-theme');
+        document.documentElement.classList.remove('branded-dark-theme');
+      } else {
+        document.body.classList.add('branded-dark-theme');
+        document.documentElement.classList.add('branded-dark-theme');
+      }
+      
       document.documentElement.style.setProperty('--primary-color', pColor);
       if (pRgb) {
         document.documentElement.style.setProperty('--primary-color-light', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.08)`);
+        document.documentElement.style.setProperty('--primary-color-surface', `rgba(${pRgb.r}, ${pRgb.g}, ${pRgb.b}, 0.35)`);
+        
+        const pLum = (pRgb.r * 299 + pRgb.g * 587 + pRgb.b * 114) / 1000;
+        const isLightColor = pLum > 140;
+        document.documentElement.style.setProperty('--primary-text-color', isLightColor ? '#111827' : '#ffffff');
+        document.documentElement.style.setProperty('--primary-text-muted', isLightColor ? 'rgba(17, 24, 39, 0.65)' : 'rgba(255, 255, 255, 0.7)');
+        document.documentElement.style.setProperty('--primary-sidebar-active-bg', isLightColor ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.1)');
+        document.documentElement.style.setProperty('--primary-sidebar-hover-bg', isLightColor ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.05)');
+        document.documentElement.style.setProperty('--primary-sidebar-border', isLightColor ? 'rgba(17, 24, 39, 0.1)' : 'rgba(255, 255, 255, 0.1)');
       } else {
         document.documentElement.style.setProperty('--primary-color-light', 'rgba(59, 130, 246, 0.08)');
+        document.documentElement.style.setProperty('--primary-color-surface', 'rgba(255, 255, 255, 0.08)');
+        document.documentElement.style.setProperty('--primary-text-color', '#ffffff');
+        document.documentElement.style.setProperty('--primary-text-muted', 'rgba(255, 255, 255, 0.7)');
+        document.documentElement.style.setProperty('--primary-sidebar-active-bg', 'rgba(255, 255, 255, 0.1)');
+        document.documentElement.style.setProperty('--primary-sidebar-hover-bg', 'rgba(255, 255, 255, 0.05)');
+        document.documentElement.style.setProperty('--primary-sidebar-border', 'rgba(255, 255, 255, 0.1)');
       }
 
       document.documentElement.style.setProperty('--accent-color', aColor);
       document.documentElement.style.setProperty('--accent-color-hover', aColor);
       if (aRgb) {
         document.documentElement.style.setProperty('--accent-color-light', `rgba(${aRgb.r}, ${aRgb.g}, ${aRgb.b}, 0.08)`);
+        const lum = (aRgb.r * 299 + aRgb.g * 587 + aRgb.b * 114) / 1000;
+        document.documentElement.style.setProperty('--accent-text-color', lum > 140 ? '#111827' : '#ffffff');
       } else {
         document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+        document.documentElement.style.setProperty('--accent-text-color', '#ffffff');
       }
     } else {
       document.body.classList.remove('branded-dark-theme');
+      document.documentElement.classList.remove('branded-dark-theme');
       
       // Reset variables to the creator's default green/light palette
       document.documentElement.style.setProperty('--primary-color', '#064E3B');
@@ -196,6 +249,11 @@ const Layout = () => {
       document.documentElement.style.setProperty('--accent-color', '#064E3B');
       document.documentElement.style.setProperty('--accent-color-hover', '#059669');
       document.documentElement.style.setProperty('--accent-color-light', 'rgba(5, 150, 105, 0.08)');
+      document.documentElement.style.setProperty('--primary-text-color', '#ffffff');
+      document.documentElement.style.setProperty('--primary-text-muted', 'rgba(255, 255, 255, 0.7)');
+      document.documentElement.style.setProperty('--primary-sidebar-active-bg', 'rgba(255, 255, 255, 0.1)');
+      document.documentElement.style.setProperty('--primary-sidebar-hover-bg', 'rgba(255, 255, 255, 0.05)');
+      document.documentElement.style.setProperty('--primary-sidebar-border', 'rgba(255, 255, 255, 0.1)');
     }
   }, [storeSettings, user.inquilino_id]);
 
@@ -311,6 +369,8 @@ const Layout = () => {
                 }
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
                 window.location.href = '/login';
               }}
               className="px-6 py-3 border border-stone-200 text-stone-600 font-bold rounded-xl text-xs hover:bg-stone-50 transition-all active:scale-95 cursor-pointer"
@@ -344,9 +404,34 @@ const Layout = () => {
         <header className="h-20 bg-white/80 backdrop-blur-xl flex items-center justify-between px-4 sm:px-8 z-10 shadow-sm border-b border-gray-100 relative">
           <div className="flex items-center space-x-3 shrink-0 select-none">
             <img src={storeSettings.logo_url || "/logo.png?v=4"} alt={`${storeSettings.nombre_tienda} Logo`} className="h-16 w-auto object-contain animate-fade-in drop-shadow-sm rounded-lg" />
-            <div className="hidden sm:flex flex-col items-start max-w-[180px]">
+            <div className="hidden sm:flex flex-col items-start max-w-[140px] lg:max-w-[180px]">
               <span className="text-sm font-black text-brand-900 tracking-tight leading-none uppercase truncate">{storeSettings.nombre_tienda}</span>
             </div>
+
+            <nav className="flex items-center space-x-1.5 ml-2 border-l border-stone-200/60 pl-3">
+              <Link
+                to="/sales"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold uppercase transition-all ${
+                  location.pathname === '/sales'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <ShoppingCart size={16} />
+                <span className="hidden sm:inline">Ventas</span>
+              </Link>
+              <Link
+                to="/customers"
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold uppercase transition-all ${
+                  location.pathname === '/customers'
+                    ? 'bg-emerald-700 text-white shadow-sm'
+                    : 'text-stone-600 hover:bg-stone-100'
+                }`}
+              >
+                <UserCheck size={16} />
+                <span className="hidden sm:inline">Crédito / Clientes</span>
+              </Link>
+            </nav>
           </div>
           
           <div className="flex items-center">
@@ -366,6 +451,8 @@ const Layout = () => {
                 }
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
                 window.location.href = '/login';
               }}
               className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-5 sm:py-2.5 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0 cursor-pointer"
@@ -431,26 +518,44 @@ const Layout = () => {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsSidebarOpen(false)}
-                className={`group relative flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 ${
-                  isActive 
-                    ? 'bg-white/10 text-white shadow-[inset_0_1px_1px_rgba(255,255,255,0.1)]' 
-                    : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                }`}
+                className="group relative flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300"
+                style={{
+                  backgroundColor: isActive ? 'var(--primary-sidebar-active-bg)' : 'transparent',
+                  color: isActive ? 'var(--primary-text-color)' : 'var(--primary-text-muted)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'var(--primary-sidebar-hover-bg)';
+                    e.currentTarget.style.color = 'var(--primary-text-color)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--primary-text-muted)';
+                  }
+                }}
               >
                 <Icon size={18} className={`transition-transform duration-300 ${isActive ? 'scale-110' : 'group-hover:scale-110'}`} />
                 <span className="font-bold text-sm tracking-wide uppercase">{item.name}</span>
                 {isActive && (
-                  <span className="absolute left-1.5 top-1/3 bottom-1/3 w-1 bg-white rounded-full"></span>
+                  <span className="absolute left-1.5 top-1/3 bottom-1/3 w-1 rounded-full" style={{ backgroundColor: 'var(--primary-text-color)' }}></span>
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="p-6 border-t border-white/10 flex flex-col gap-2 flex-shrink-0">
-          <div className="px-4 py-3 bg-white/5 rounded-xl text-xs text-gray-300 flex flex-col border border-white/10">
-            <span className="font-black text-white text-sm">{user.nombre_completo}</span>
-            <span className="uppercase text-[9px] font-black text-[#4ade80] mt-1 tracking-wider">{user.rol === 'admin' ? 'Administrador' : 'Supervisor'}</span>
+        <div className="p-6 border-t flex flex-col gap-2 flex-shrink-0" style={{ borderColor: 'var(--primary-sidebar-border)' }}>
+          <div 
+            className="px-4 py-3 rounded-xl text-xs flex flex-col border" 
+            style={{ 
+              backgroundColor: 'var(--primary-sidebar-hover-bg)', 
+              borderColor: 'var(--primary-sidebar-border)' 
+            }}
+          >
+            <span className="font-black text-sm" style={{ color: 'var(--primary-text-color)' }}>{user.nombre_completo}</span>
+            <span className="uppercase text-[9px] font-black mt-1 tracking-wider" style={{ color: 'var(--primary-text-color)', opacity: 0.75 }}>{user.rol === 'admin' ? 'Administrador' : 'Supervisor'}</span>
           </div>
 
         </div>
@@ -503,6 +608,8 @@ const Layout = () => {
                 }
                 sessionStorage.removeItem('user');
                 sessionStorage.removeItem('token');
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
                 window.location.href = '/login';
               }}
               className="flex items-center space-x-1.5 px-2.5 py-2 sm:space-x-2 sm:px-4 sm:py-2 text-gray-500 hover:bg-red-50 hover:text-red-600 rounded-full transition-all duration-200 shrink-0 cursor-pointer"

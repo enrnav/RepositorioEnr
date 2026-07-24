@@ -576,3 +576,63 @@ body.branded-dark-theme .bg-red-50:hover {
   color: #ffffff !important;
   border-color: rgba(239, 68, 68, 0.45) !important;
 }
+
+/* Checkout and Payment Simulation styles */
+.spei-card-box {
+  background-color: #f8fafc !important;
+  border: 2px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+body.branded-dark-theme .spei-card-box {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+  background-image: linear-gradient(145deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.8) 100%) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f8fafc !important;
+}
+
+.spei-title {
+  color: #1e3a8a !important;
+}
+body.branded-dark-theme .spei-title {
+  color: #93c5fd !important;
+}
+
+.spei-value {
+  color: #1e293b !important;
+}
+body.branded-dark-theme .spei-value {
+  color: #f1f5f9 !important;
+}
+
+.spei-clabe-badge {
+  background-color: #fef3c7 !important;
+  border: 1px solid #fde68a !important;
+  color: #78350f !important;
+}
+body.branded-dark-theme .spei-clabe-badge {
+  background-color: rgba(245, 158, 11, 0.25) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+  color: #fef08a !important;
+}
+
+.spei-concept-badge {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+body.branded-dark-theme .spei-concept-badge {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #f1f5f9 !important;
+}
+
+.spei-warning-box {
+  background-color: #fff7ed !important;
+  border: 1px solid #ffedd5 !important;
+  color: #9a3412 !important;
+}
+body.branded-dark-theme .spei-warning-box {
+  background-color: rgba(249, 115, 22, 0.15) !important;
+  border-color: rgba(249, 115, 22, 0.25) !important;
+  color: #ffedd5 !important;
+}

@@ -26,6 +26,11 @@ class InquilinoResponse(InquilinoBase):
     estado_suscripcion: str
     nivel_plan: str
     creado_en: str
+    metodo_pago_guardado: Optional[str] = None
+    tarjeta_marca: Optional[str] = None
+    tarjeta_ultimos4: Optional[str] = None
+    tarjeta_titular: Optional[str] = None
+    tarjeta_vencimiento: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -502,3 +507,11 @@ class BitacoraUsuarioResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SimulatePaymentRequest(BaseModel):
+    tarjeta_marca: Optional[str] = None
+    tarjeta_ultimos4: Optional[str] = None
+    tarjeta_titular: Optional[str] = None
+    tarjeta_vencimiento: Optional[str] = None
+    metodo_pago: Optional[str] = "tarjeta" # tarjeta, spei, oxxo

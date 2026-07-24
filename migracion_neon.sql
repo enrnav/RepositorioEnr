@@ -465,3 +465,13 @@ INSERT INTO historial_ventas (id, inquilino_id, producto_id, variante_id, turno_
 SELECT setval(pg_get_serial_sequence('historial_ventas', 'id'), COALESCE((SELECT MAX(id)+1 FROM historial_ventas), 1), false);
 
 COMMIT;
+
+-- ========================================================
+-- 3. ACTUALIZACIÓN POST-MIGRACIÓN (MÉTODO DE PAGO INQUILINOS)
+-- ========================================================
+-- Agregar nuevas columnas para almacenar método de pago e información de tarjeta de forma segura en inquilinos.
+ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS metodo_pago_guardado VARCHAR(50);
+ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS tarjeta_marca VARCHAR(50);
+ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS tarjeta_ultimos4 VARCHAR(4);
+ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS tarjeta_titular VARCHAR(150);
+ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS tarjeta_vencimiento VARCHAR(5);

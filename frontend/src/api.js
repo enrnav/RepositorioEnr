@@ -642,9 +642,9 @@ export const createCheckoutSession = async () => {
     }
 };
 
-export const simulatePaymentSuccess = async () => {
+export const simulatePaymentSuccess = async (paymentData = null) => {
     try {
-        const response = await axios.post(`${API_URL}/billing/simulate-success`);
+        const response = await axios.post(`${API_URL}/billing/simulate-success`, paymentData);
         return response.data;
     } catch (error) {
         console.error("Error simulating payment success:", error);

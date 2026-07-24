@@ -10,6 +10,22 @@ def run_migration():
         print("Advertencia o error al crear tablas base (puede que ya existan):", e)
 
     with engine.connect() as conn:
+        # Add card columns if they don't exist
+        for col_name, col_type in [
+            ("metodo_pago_guardado", "VARCHAR"),
+            ("tarjeta_marca", "VARCHAR"),
+            ("tarjeta_ultimos4", "VARCHAR"),
+            ("tarjeta_titular", "VARCHAR"),
+            ("tarjeta_vencimiento", "VARCHAR")
+        ]:
+            try:
+                conn.execute(text(f"ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                conn.commit()
+                print(f"Columna {col_name} verificada/añadida a inquilinos.")
+            except Exception as e:
+                conn.rollback()
+                print(f"Error al verificar/añadir columna {col_name}:", e)
+
         # 1. Crear inquilino por defecto si no existe
         default_tenant_id = None
         try:

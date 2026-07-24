@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import AlertModal from '../components/AlertModal';
 import { createPortal } from 'react-dom';
 import { Settings as SettingsIcon, Save, Store, Receipt, AlertCircle, CheckCircle, Database, Download, UploadCloud, HelpCircle, FileText, CreditCard } from 'lucide-react';
-import { fetchStoreSettings, updateStoreSettings, exportBackupDatabase, importBackupDatabase, fetchTenant, changeTenantPlan } from '../api';
+import { fetchStoreSettings, updateStoreSettings, exportBackupDatabase, importBackupDatabase, fetchTenant, changeTenantPlan, createCheckoutSession } from '../api';
 
 const Settings = () => {
   const userStr = sessionStorage.getItem('user');
@@ -140,6 +140,25 @@ const Settings = () => {
     } catch (err) {
       console.error('Error changing plan', err);
       setError(err.response?.data?.detail || 'Error al cambiar de plan.');
+    } finally {
+      setChangingPlan(false);
+    }
+  };
+
+  const handleUpgradeToPremium = async () => {
+    setError('');
+    setSuccess('');
+    setChangingPlan(true);
+    try {
+      const response = await createCheckoutSession();
+      if (response && response.url) {
+        window.location.href = response.url;
+      } else {
+        setError('Ocurrió un problema al obtener la pasarela de pagos.');
+      }
+    } catch (err) {
+      console.error('Error upgrading to premium plan', err);
+      setError('Error de red. No se pudo iniciar el proceso de pago.');
     } finally {
       setChangingPlan(false);
     }
@@ -492,6 +511,30 @@ const Settings = () => {
               <p className="text-[11px] text-stone-400 mt-2 font-medium">
                 Registrado desde: {new Date(inquilino.creado_en).toLocaleDateString()}
               </p>
+              {inquilino.metodo_pago_guardado && (
+                <div className="mt-4 p-4 bg-slate-50 border border-slate-150 rounded-2xl flex items-center justify-between shadow-inner">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-600 text-white rounded-xl shadow-md">
+                      <CreditCard size={18} />
+                    </div>
+                    <div>
+                      <span className="text-[9px] text-stone-400 font-extrabold uppercase tracking-wider block">Método de Pago Guardado</span>
+                      {inquilino.metodo_pago_guardado === 'card' || inquilino.metodo_pago_guardado === 'tarjeta' ? (
+                        <span className="text-xs font-bold text-stone-700 uppercase">
+                          {inquilino.tarjeta_marca || 'Tarjeta'} •••• {inquilino.tarjeta_ultimos4}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold text-stone-700 uppercase">
+                          {inquilino.metodo_pago_guardado === 'spei' ? 'Transferencia SPEI' : 'OXXO Pay'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="text-[9px] bg-emerald-600 text-white font-black px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                    Activa
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="bg-slate-50/50 p-6 rounded-3xl border border-slate-100 flex flex-col space-y-4 justify-between h-full">
@@ -513,7 +556,7 @@ const Settings = () => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handlePlanChange('premium')}
+                  onClick={handleUpgradeToPremium}
                   disabled={inquilino.nivel_plan === 'premium' || changingPlan}
                   className="flex-1 bg-purple-600 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider hover:bg-purple-750 transition-colors shadow-md disabled:opacity-50 hover:shadow-float active:scale-[0.98]"
                 >

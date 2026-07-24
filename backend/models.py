@@ -15,6 +15,11 @@ class Inquilino(Base):
     stripe_id_suscripcion = Column(String, nullable=True)
     fin_suscripcion = Column(String, nullable=True)
     fecha_ultimo_pago = Column(String, nullable=True)
+    metodo_pago_guardado = Column(String, nullable=True)
+    tarjeta_marca = Column(String, nullable=True)
+    tarjeta_ultimos4 = Column(String, nullable=True)
+    tarjeta_titular = Column(String, nullable=True)
+    tarjeta_vencimiento = Column(String, nullable=True)
 
 class Usuario(Base):
     __tablename__ = "usuarios"

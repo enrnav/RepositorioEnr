@@ -74,20 +74,27 @@ def get_tenant_branding(subdominio: str, db: Session = Depends(get_db)):
     if not inquilino:
         raise HTTPException(status_code=404, detail="Tienda no encontrada")
     
+    plan = inquilino.nivel_plan or "free"
+    estado_sub = inquilino.estado_suscripcion or "active"
+    
     settings = db.query(models.ConfiguracionesTienda).filter(models.ConfiguracionesTienda.inquilino_id == inquilino.id).first()
     if not settings:
         return {
             "nombre_tienda": inquilino.nombre,
             "logo_url": None,
             "color_primario": "#064E3B",
-            "color_secundario": "#DC2626"
+            "color_secundario": "#DC2626",
+            "nivel_plan": plan,
+            "estado_suscripcion": estado_sub
         }
     
     return {
         "nombre_tienda": settings.nombre_tienda,
         "logo_url": settings.logo_url,
         "color_primario": settings.color_primario,
-        "color_secundario": settings.color_secundario
+        "color_secundario": settings.color_secundario,
+        "nivel_plan": plan,
+        "estado_suscripcion": estado_sub
     }
 
 @router.post("/auth/register-inquilino")
@@ -3247,7 +3254,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
 
 
 @router.post("/billing/simulate-success")
-def simulate_payment_success(db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
+def simulate_payment_success(req: schemas.SimulatePaymentRequest = None, db: Session = Depends(get_db), current_user: models.Usuario = Depends(get_current_user)):
     # Anyone can simulate for their own inquilino
     if not current_user.inquilino_id:
         raise HTTPException(status_code=400, detail="El usuario no tiene tienda vinculada.")
@@ -3261,6 +3268,25 @@ def simulate_payment_success(db: Session = Depends(get_db), current_user: models
     inquilino.fecha_ultimo_pago = datetime.utcnow().isoformat()
     # Expire in 30 days
     inquilino.fin_suscripcion = (datetime.utcnow() + timedelta(days=30)).isoformat()
+    
+    if req:
+        inquilino.metodo_pago_guardado = req.metodo_pago
+        inquilino.tarjeta_marca = req.tarjeta_marca
+        inquilino.tarjeta_ultimos4 = req.tarjeta_ultimos4
+        inquilino.tarjeta_titular = req.tarjeta_titular
+        inquilino.tarjeta_vencimiento = req.tarjeta_vencimiento
+
+    # Log action in BitacoraUsuario
+    log_entry = models.BitacoraUsuario(
+        inquilino_id=inquilino.id,
+        usuario=current_user.nombre_usuario,
+        nombre_completo=current_user.nombre_completo,
+        rol=current_user.rol,
+        accion="actualizacion",
+        detalles=f"Suscripción Premium activada/renovada mediante pago simulado ({req.metodo_pago if req else 'desconocido'}). Vencimiento establecido para: {inquilino.fin_suscripcion}.",
+        fecha_hora=datetime.utcnow().isoformat()
+    )
+    db.add(log_entry)
     db.commit()
     db.refresh(inquilino)
     return {

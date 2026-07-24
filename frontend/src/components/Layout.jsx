@@ -557,7 +557,9 @@ const Layout = () => {
             <span className="font-black text-sm" style={{ color: 'var(--primary-text-color)' }}>{user.nombre_completo}</span>
             <span className="uppercase text-[9px] font-black mt-1 tracking-wider" style={{ color: 'var(--primary-text-color)', opacity: 0.75 }}>{user.rol === 'admin' ? 'Administrador' : 'Supervisor'}</span>
           </div>
-
+          <span className="text-[9px] text-center mt-2 font-black select-none tracking-widest uppercase opacity-45" style={{ color: 'var(--primary-text-color)' }}>
+            © {new Date().getFullYear()} SaaS SCORPION.
+          </span>
         </div>
       </aside>
 

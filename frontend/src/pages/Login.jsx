@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL, fetchTenantBranding } from '../api';
 import FloatingStoreIconsBg from '../components/FloatingStoreIconsBg';
+import { ShieldCheck } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -22,7 +23,8 @@ const Login = () => {
       logoUrl: '',
       primaryColor: '#064E3B',
       accentColor: '#064E3B',
-      isBranded: false
+      isBranded: false,
+      nivelPlan: 'premium'
     };
   };
 
@@ -33,10 +35,46 @@ const Login = () => {
   const [primaryColor, setPrimaryColor] = useState(initialBranding.primaryColor);
   const [accentColor, setAccentColor] = useState(initialBranding.accentColor);
   const [isBranded, setIsBranded] = useState(initialBranding.isBranded);
+  const [nivelPlan, setNivelPlan] = useState(initialBranding.nivelPlan || 'premium');
   
   // Custom subdominio selector for local testing/multi-inquilino access
   const [showSubdomainInput, setShowSubdomainInput] = useState(false);
   const [tempSubdomain, setTempSubdomain] = useState('');
+  const [logoClickCount, setLogoClickCount] = useState(0);
+
+  // Hidden easter egg click trigger
+  const handleLogoClick = () => {
+    setLogoClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setShowSubdomainInput((show) => !show);
+        return 0;
+      }
+      return next;
+    });
+  };
+
+  // Reset logo click count after 2 seconds of inactivity
+  useEffect(() => {
+    if (logoClickCount > 0) {
+      const timer = setTimeout(() => {
+        setLogoClickCount(0);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [logoClickCount]);
+
+  // Keyboard shortcut trigger: Ctrl + Alt + S or Ctrl + Alt + A to toggle the subdomain input
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.altKey && (e.key.toLowerCase() === 's' || e.key.toLowerCase() === 'a')) {
+        e.preventDefault();
+        setShowSubdomainInput((show) => !show);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const loadBranding = async (sub, isManual = false) => {
     try {
@@ -44,26 +82,30 @@ const Login = () => {
       if (data) {
         const pColor = data.color_primario || '#064E3B';
         const aColor = data.color_secundario || '#064E3B';
+        const plan = data.nivel_plan || 'free';
         const newBranding = {
           inquilino_id: data.id,
           storeName: data.nombre_tienda,
           logoUrl: data.logo_url,
           primaryColor: pColor,
           accentColor: aColor,
-          isBranded: sub !== 'principal'
+          isBranded: sub !== 'principal',
+          nivelPlan: plan
         };
         const storeSettingsCache = {
           inquilino_id: data.id,
           nombre_tienda: data.nombre_tienda,
           logo_url: data.logo_url,
           color_primario: pColor,
-          color_secundario: aColor
+          color_secundario: aColor,
+          nivel_plan: plan
         };
         setStoreName(newBranding.storeName);
         setLogoUrl(newBranding.logoUrl);
         setPrimaryColor(newBranding.primaryColor);
         setAccentColor(newBranding.accentColor);
         setIsBranded(newBranding.isBranded);
+        setNivelPlan(plan);
         
         // Cache the values synchronously
         localStorage.setItem('cached_tenant_branding', JSON.stringify(newBranding));
@@ -218,8 +260,9 @@ const Login = () => {
     setPrimaryColor('#064E3B');
     setAccentColor('#064E3B');
     setIsBranded(false);
+    setNivelPlan('premium');
     setTempSubdomain('');
-    setNombreUsuario('');
+    setUsername('');
     setPassword('');
     localStorage.removeItem('last_tenant_subdomain');
     localStorage.removeItem('cached_tenant_branding');
@@ -313,12 +356,25 @@ const Login = () => {
         <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-fade-in">
           <div className="flex justify-center mb-4">
             {logoUrl ? (
-              <img src={logoUrl} alt={`${storeName} Logo`} className="h-28 w-auto object-contain rounded-2xl shadow-md border border-white/10 animate-scale-in" />
+              <img 
+                src={logoUrl} 
+                alt={`${storeName} Logo`} 
+                onClick={handleLogoClick}
+                className="h-28 w-auto object-contain rounded-2xl shadow-md border border-white/10 animate-scale-in cursor-pointer select-none" 
+              />
             ) : (
-              <img src="/logo.png?v=4" alt="SaaS POS Logo" className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-500" />
+              <img 
+                src="/logo.png?v=4" 
+                alt="SaaS POS Logo" 
+                onClick={handleLogoClick}
+                className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-500 cursor-pointer select-none" 
+              />
             )}
           </div>
-          <h2 className="mt-2 text-center text-4xl font-black text-white tracking-tight drop-shadow-md uppercase">
+          <h2 
+            onClick={handleLogoClick}
+            className="mt-2 text-center text-4xl font-black text-white tracking-tight drop-shadow-md uppercase cursor-pointer select-none"
+          >
             Abarrotes <span style={{ color: accentColor }}>{storeName}</span>
           </h2>
           <p className="mt-3 text-center text-sm font-bold text-gray-300">
@@ -381,9 +437,9 @@ const Login = () => {
               </div>
             </form>
  
-            <div className="mt-6 border-t border-white/10 pt-4 flex flex-col items-center gap-3">
-              {showSubdomainInput ? (
-                <form onSubmit={handleCustomStoreSubmit} className="w-full flex items-center gap-2 animate-fade-in">
+            {showSubdomainInput && (
+              <div className="mt-6 border-t border-white/10 pt-4 flex flex-col items-center gap-3 animate-fade-in">
+                <form onSubmit={handleCustomStoreSubmit} className="w-full flex items-center gap-2">
                   <input
                     type="text"
                     required
@@ -410,29 +466,18 @@ const Login = () => {
                     Reset
                   </button>
                 </form>
-              ) : (
-                <div className="flex flex-col items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const currentSub = localStorage.getItem('last_tenant_subdomain') || '';
-                      setTempSubdomain(currentSub);
-                      setShowSubdomainInput(true);
-                    }}
-                    className="text-[11px] text-gray-400 hover:text-white font-bold transition-colors uppercase tracking-wider cursor-pointer"
-                  >
-                    Acceder a otra tienda (Slug)
-                  </button>
-                </div>
-              )}
+              </div>
+            )}
 
-              <button
-                type="button"
-                onClick={() => navigate('/register-inquilino')}
-                className="text-xs text-gray-300 hover:text-white font-bold transition-colors uppercase tracking-wider"
-              >
-                ¿Registrar nueva tienda? Regístrate aquí
-              </button>
+            <div className="mt-8 border-t border-white/10 pt-5 flex flex-col items-center gap-2 select-none">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-gray-300 font-semibold shadow-inner">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-450 animate-pulse" style={{ backgroundColor: '#10b981' }}></span>
+                <ShieldCheck size={13} className="text-emerald-450" style={{ color: '#10b981' }} />
+                <span>Estado: Conectado - {storeName}</span>
+              </div>
+              <span className="text-[9px] text-gray-500 uppercase tracking-widest font-black mt-1" style={{ color: 'rgba(156, 163, 175, 0.65)' }}>
+                {isBranded && nivelPlan === 'free' ? 'Plan: Demo 30 días' : 'Plan: Premium Activo'}
+              </span>
             </div>
           </div>
         </div>
@@ -449,12 +494,25 @@ const Login = () => {
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10 animate-fade-in">
         <div className="flex justify-center mb-4">
           {isBranded && logoUrl ? (
-            <img src={logoUrl} alt={`${storeName} Logo`} className="h-28 w-auto object-contain rounded-2xl shadow-md border border-stone-200 animate-scale-in" />
+            <img 
+              src={logoUrl} 
+              alt={`${storeName} Logo`} 
+              onClick={handleLogoClick}
+              className="h-28 w-auto object-contain rounded-2xl shadow-md border border-stone-200 animate-scale-in cursor-pointer select-none" 
+            />
           ) : (
-            <img src="/logo.png?v=4" alt="Abarrotes ED & E Logo" className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-500" />
+            <img 
+              src="/logo.png?v=4" 
+              alt="Abarrotes ED & E Logo" 
+              onClick={handleLogoClick}
+              className="h-28 w-auto object-contain hover:scale-105 transition-transform duration-500 cursor-pointer select-none" 
+            />
           )}
         </div>
-        <h2 className="mt-2 text-center text-4xl font-black text-brand-900 tracking-tight uppercase">
+        <h2 
+          onClick={handleLogoClick}
+          className="mt-2 text-center text-4xl font-black text-brand-900 tracking-tight uppercase cursor-pointer select-none"
+        >
           Abarrotes <span style={{ color: isBranded ? accentColor : '#064e3b' }}>{isBranded ? storeName : 'ED & E'}</span>
         </h2>
         <p className="mt-3 text-center text-sm font-bold text-stone-500">
@@ -518,52 +576,59 @@ const Login = () => {
           </form>
 
           {/* Custom domain selector section */}
-          <div className="mt-6 border-t border-stone-100 pt-4 flex flex-col items-center gap-3">
-            {showSubdomainInput ? (
-              <form onSubmit={handleCustomStoreSubmit} className="w-full flex items-center gap-2 animate-fade-in">
-                <input
-                  type="text"
-                  required
-                  value={tempSubdomain}
-                  onChange={(e) => setTempSubdomain(e.target.value)}
-                  placeholder="Slug de tu tienda"
-                  className="flex-1 px-3 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-semibold text-stone-850 focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  style={{ 
-                    backgroundColor: isBranded ? accentColor : '#064e3b',
-                    color: isBranded ? 'var(--accent-text-color, #ffffff)' : '#ffffff'
-                  }}
-                >
-                  Cargar
-                </button>
+          {(showSubdomainInput || !isBranded) && (
+            <div className="mt-6 border-t border-stone-100 pt-4 flex flex-col items-center gap-3">
+              {showSubdomainInput && (
+                <form onSubmit={handleCustomStoreSubmit} className="w-full flex items-center gap-2 animate-fade-in">
+                  <input
+                    type="text"
+                    required
+                    value={tempSubdomain}
+                    onChange={(e) => setTempSubdomain(e.target.value)}
+                    placeholder="Slug de tu tienda"
+                    className="flex-1 px-3 py-1.5 bg-white border border-stone-200 rounded-lg text-xs font-semibold text-stone-850 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                    style={{ 
+                      backgroundColor: isBranded ? accentColor : '#064e3b',
+                      color: isBranded ? 'var(--accent-text-color, #ffffff)' : '#ffffff'
+                    }}
+                  >
+                    Cargar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetBranding}
+                    className="px-2 py-1.5 text-xs text-stone-400 hover:text-stone-600"
+                  >
+                    Reset
+                  </button>
+                </form>
+              )}
+
+              {!isBranded && (
                 <button
                   type="button"
-                  onClick={handleResetBranding}
-                  className="px-2 py-1.5 text-xs text-stone-400 hover:text-stone-600"
+                  onClick={() => navigate('/register-inquilino')}
+                  className="text-xs text-stone-500 hover:text-stone-700 font-black transition-colors uppercase tracking-wider"
                 >
-                  Reset
+                  ¿Registrar nueva tienda? Regístrate aquí
                 </button>
-              </form>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setShowSubdomainInput(true)}
-                className="text-[11px] text-stone-400 hover:text-stone-600 font-bold transition-colors uppercase tracking-wider"
-              >
-                Acceder a otra tienda (Slug)
-              </button>
-            )}
+              )}
+            </div>
+          )}
 
-            <button
-              type="button"
-              onClick={() => navigate('/register-inquilino')}
-              className="text-xs text-stone-500 hover:text-stone-700 font-black transition-colors uppercase tracking-wider"
-            >
-              ¿Registrar nueva tienda? Regístrate aquí
-            </button>
+          <div className="mt-8 border-t border-stone-100 pt-5 flex flex-col items-center gap-2 select-none">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-stone-50 border border-stone-200/60 text-[11px] text-stone-600 font-semibold shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <ShieldCheck size={13} className="text-emerald-500" />
+              <span>Estado: Conectado - {isBranded ? storeName : 'ED & E'}</span>
+            </div>
+            <span className="text-[9px] text-stone-400 uppercase tracking-widest font-black mt-1">
+              {isBranded && nivelPlan === 'free' ? 'Plan: Demo 30 días' : 'Plan: Premium Activo'}
+            </span>
           </div>
         </div>
       </div>
